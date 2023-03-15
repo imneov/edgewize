@@ -94,7 +94,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	} else {
 		// The object is being deleted
 		if sliceutil.HasString(instance.ObjectMeta.Finalizers, finalizer) {
-			// TODO undoReconcile
+			if _, err := r.undoReconcile(ctx, instance); err != nil {
+				return ctrl.Result{}, err
+			}
 			// remove our finalizer from the list and update it.
 			instance.ObjectMeta.Finalizers = sliceutil.RemoveString(instance.ObjectMeta.Finalizers, func(item string) bool {
 				return item == finalizer
