@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	controllerconfig "kubesphere.io/kubesphere/pkg/apiserver/config"
-	"kubesphere.io/kubesphere/pkg/simple/client/edgewize"
+	controllerconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/edgewize"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -34,7 +34,7 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog"
 
-	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
 )
 
 type KubeSphereControllerManagerOptions struct {

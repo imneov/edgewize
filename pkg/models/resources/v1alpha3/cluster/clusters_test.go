@@ -23,12 +23,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	infrav1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 
-	"kubesphere.io/kubesphere/pkg/api"
-	"kubesphere.io/kubesphere/pkg/apiserver/query"
-	"kubesphere.io/kubesphere/pkg/client/clientset/versioned/fake"
-	"kubesphere.io/kubesphere/pkg/client/informers/externalversions"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	"github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/fake"
+	"github.com/edgewize-io/edgewize/pkg/client/informers/externalversions"
 )
 
 var clusters = []*infrav1alpha1.Cluster{

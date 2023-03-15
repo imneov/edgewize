@@ -26,17 +26,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"kubesphere.io/kubesphere/pkg/api"
-	"kubesphere.io/kubesphere/pkg/apiserver/query"
-	ksruntime "kubesphere.io/kubesphere/pkg/apiserver/runtime"
-	"kubesphere.io/kubesphere/pkg/models/crds"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	ksruntime "github.com/edgewize-io/edgewize/pkg/apiserver/runtime"
+	"github.com/edgewize-io/edgewize/pkg/models/crds"
 )
 
 const (
 	ok = "OK"
 )
 
-//AddToContainer register GET and LIST API for CRD to the web service
+// AddToContainer register GET and LIST API for CRD to the web service
 func AddToContainer(c *restful.Container, cli client.Client, cache cache.Cache, crdList *extv1.CustomResourceDefinitionList) error {
 
 	for _, crd := range crdList.Items {

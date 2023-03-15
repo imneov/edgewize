@@ -24,7 +24,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"kubesphere.io/kubesphere/pkg/server/errors"
+	"github.com/edgewize-io/edgewize/pkg/server/errors"
 )
 
 var ErrNoSuchKey = errors.New("no such key")

@@ -27,9 +27,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"kubesphere.io/kubesphere/pkg/api"
-	"kubesphere.io/kubesphere/pkg/apiserver/query"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3"
 )
 
 type applicationsGetter struct {

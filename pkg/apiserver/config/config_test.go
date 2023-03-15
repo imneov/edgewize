@@ -21,13 +21,13 @@ import (
 	"os"
 	"testing"
 
+	"github.com/edgewize-io/edgewize/pkg/simple/client/edgewize"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v2"
-	"kubesphere.io/kubesphere/pkg/simple/client/edgewize"
 
-	"kubesphere.io/kubesphere/pkg/models/terminal"
-	"kubesphere.io/kubesphere/pkg/simple/client/cache"
-	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
+	"github.com/edgewize-io/edgewize/pkg/models/terminal"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/cache"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
 )
 
 func newTestConfig() (*Config, error) {

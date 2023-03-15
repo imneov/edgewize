@@ -27,10 +27,10 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/klog"
 
-	infrav1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 
-	"kubesphere.io/kubesphere/pkg/apiserver/request"
-	"kubesphere.io/kubesphere/pkg/utils/edgeclusterclient"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/request"
+	"github.com/edgewize-io/edgewize/pkg/utils/edgeclusterclient"
 )
 
 const proxyURLFormat = "/api/v1/namespaces/kubesphere-system/services/:ks-apiserver:/proxy%s"

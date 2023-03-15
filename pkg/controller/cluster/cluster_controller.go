@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"time"
 
+	clusterv1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,12 +42,11 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	clusterv1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
 
-	kubesphere "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
-	clusterinformer "kubesphere.io/kubesphere/pkg/client/informers/externalversions/infra/v1alpha1"
-	clusterlister "kubesphere.io/kubesphere/pkg/client/listers/infra/v1alpha1"
-	"kubesphere.io/kubesphere/pkg/utils/k8sutil"
+	kubesphere "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
+	clusterinformer "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/infra/v1alpha1"
+	clusterlister "github.com/edgewize-io/edgewize/pkg/client/listers/infra/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/utils/k8sutil"
 )
 
 // Cluster controller only runs under multicluster mode. Cluster controller is following below steps,

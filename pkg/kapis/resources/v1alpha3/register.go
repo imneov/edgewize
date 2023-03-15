@@ -23,14 +23,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
-	"kubesphere.io/kubesphere/pkg/api"
-	"kubesphere.io/kubesphere/pkg/api/resource/v1alpha2"
-	"kubesphere.io/kubesphere/pkg/apiserver/query"
-	"kubesphere.io/kubesphere/pkg/apiserver/runtime"
-	"kubesphere.io/kubesphere/pkg/informers"
-	"kubesphere.io/kubesphere/pkg/models/components"
-	v2 "kubesphere.io/kubesphere/pkg/models/registries/v2"
-	resourcev1alpha3 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/resource"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/api/resource/v1alpha2"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/runtime"
+	"github.com/edgewize-io/edgewize/pkg/informers"
+	"github.com/edgewize-io/edgewize/pkg/models/components"
+	v2 "github.com/edgewize-io/edgewize/pkg/models/registries/v2"
+	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/resource"
 
 	"net/http"
 )

@@ -19,17 +19,17 @@ package v1alpha1
 import (
 	"net/http"
 
+	"github.com/edgewize-io/edgewize/pkg/informers"
+	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/resource"
 	"github.com/emicklei/go-restful"
 	restfulspec "github.com/emicklei/go-restful-openapi"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"kubesphere.io/kubesphere/pkg/informers"
-	resourcev1alpha3 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/resource"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
-	"kubesphere.io/kubesphere/pkg/api"
-	"kubesphere.io/kubesphere/pkg/apiserver/runtime"
-	kubesphere "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
-	"kubesphere.io/kubesphere/pkg/constants"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/runtime"
+	kubesphere "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
+	"github.com/edgewize-io/edgewize/pkg/constants"
 )
 
 const (

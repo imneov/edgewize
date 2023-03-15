@@ -19,7 +19,7 @@ package main
 import (
 	"log"
 
-	"kubesphere.io/kubesphere/cmd/edgewize-apiserver/app"
+	"github.com/edgewize-io/edgewize/cmd/edgewize-apiserver/app"
 )
 
 func main() {

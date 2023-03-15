@@ -19,8 +19,8 @@ limitations under the License.
 package infra
 
 import (
-	v1alpha1 "kubesphere.io/kubesphere/pkg/client/informers/externalversions/infra/v1alpha1"
-	internalinterfaces "kubesphere.io/kubesphere/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/infra/v1alpha1"
+	internalinterfaces "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.

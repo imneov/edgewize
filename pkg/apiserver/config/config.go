@@ -22,17 +22,17 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/edgewize-io/edgewize/pkg/simple/client/edgewize"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
-	"kubesphere.io/kubesphere/pkg/simple/client/edgewize"
 
-	"kubesphere.io/kubesphere/pkg/constants"
-	"kubesphere.io/kubesphere/pkg/models/terminal"
-	"kubesphere.io/kubesphere/pkg/simple/client/cache"
-	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
+	"github.com/edgewize-io/edgewize/pkg/constants"
+	"github.com/edgewize-io/edgewize/pkg/models/terminal"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/cache"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
 )
 
 // Package config saves configuration for running KubeSphere components

@@ -17,13 +17,13 @@ limitations under the License.
 package app
 
 import (
+	"github.com/edgewize-io/edgewize/cmd/controller-manager/app/options"
+	"github.com/edgewize-io/edgewize/pkg/controller/cluster"
+	"github.com/edgewize-io/edgewize/pkg/controller/edgecluster"
+	"github.com/edgewize-io/edgewize/pkg/informers"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
-	"kubesphere.io/kubesphere/cmd/controller-manager/app/options"
-	"kubesphere.io/kubesphere/pkg/controller/cluster"
-	"kubesphere.io/kubesphere/pkg/controller/edgecluster"
-	"kubesphere.io/kubesphere/pkg/informers"
-	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )

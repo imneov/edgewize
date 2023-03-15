@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	"kubesphere.io/kubesphere/pkg/apiserver/query"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
 )
 
 var c client.Client

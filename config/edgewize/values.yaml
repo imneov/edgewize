@@ -175,8 +175,7 @@ controller:
   ##
   command:
     - controller-manager
-    - --logtostderr=true
-    - --leader-elect=true
+    - '-v=10'
   ## @param extraEnvVars Array with extra environment variables to add to haproxy nodes
   ##
   extraEnvVars: []

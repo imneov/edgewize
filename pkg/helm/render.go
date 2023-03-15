@@ -10,7 +10,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 
-	"kubesphere.io/kubesphere/manifests"
+	"github.com/edgewize-io/edgewize/manifests"
 )
 
 // TODO 重构

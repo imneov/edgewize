@@ -19,9 +19,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
-	v1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
-	"kubesphere.io/kubesphere/pkg/client/clientset/versioned/scheme"
 )
 
 type InfraV1alpha1Interface interface {

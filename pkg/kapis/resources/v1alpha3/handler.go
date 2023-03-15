@@ -21,16 +21,16 @@ import (
 	"net/http"
 	"strings"
 
+	v2 "github.com/edgewize-io/edgewize/pkg/models/registries/v2"
 	"github.com/emicklei/go-restful"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog"
-	v2 "kubesphere.io/kubesphere/pkg/models/registries/v2"
 
-	"kubesphere.io/kubesphere/pkg/api"
-	"kubesphere.io/kubesphere/pkg/apiserver/query"
-	"kubesphere.io/kubesphere/pkg/models/components"
-	resourcev1alpha3 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/resource"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	"github.com/edgewize-io/edgewize/pkg/models/components"
+	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/resource"
 )
 
 type Handler struct {

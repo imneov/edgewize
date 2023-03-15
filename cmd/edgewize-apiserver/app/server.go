@@ -29,10 +29,10 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	"kubesphere.io/kubesphere/cmd/edgewize-apiserver/app/options"
-	apiserverconfig "kubesphere.io/kubesphere/pkg/apiserver/config"
-	"kubesphere.io/kubesphere/pkg/utils/term"
-	"kubesphere.io/kubesphere/pkg/version"
+	"github.com/edgewize-io/edgewize/cmd/edgewize-apiserver/app/options"
+	apiserverconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
+	"github.com/edgewize-io/edgewize/pkg/utils/term"
+	"github.com/edgewize-io/edgewize/pkg/version"
 )
 
 func NewAPIServerCommand() *cobra.Command {

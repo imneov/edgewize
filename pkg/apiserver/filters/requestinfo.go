@@ -21,9 +21,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/edgewize-io/edgewize/pkg/apiserver/request"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/klog"
-	"kubesphere.io/kubesphere/pkg/apiserver/request"
 )
 
 func WithRequestInfo(handler http.Handler, resolver request.RequestInfoResolver) http.Handler {

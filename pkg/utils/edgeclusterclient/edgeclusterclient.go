@@ -29,11 +29,11 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 
-	infrav1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 
-	kubesphere "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
-	clusterinformer "kubesphere.io/kubesphere/pkg/client/informers/externalversions/infra/v1alpha1"
-	clusterlister "kubesphere.io/kubesphere/pkg/client/listers/infra/v1alpha1"
+	kubesphere "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
+	clusterinformer "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/infra/v1alpha1"
+	clusterlister "github.com/edgewize-io/edgewize/pkg/client/listers/infra/v1alpha1"
 )
 
 type innerCluster struct {

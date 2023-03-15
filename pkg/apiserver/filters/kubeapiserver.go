@@ -25,8 +25,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 
-	"kubesphere.io/kubesphere/pkg/apiserver/request"
-	"kubesphere.io/kubesphere/pkg/server/errors"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/request"
+	"github.com/edgewize-io/edgewize/pkg/server/errors"
 )
 
 // WithKubeAPIServer proxy request to kubernetes service if requests path starts with /api

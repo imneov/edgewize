@@ -19,12 +19,12 @@ package cluster
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 
-	infrav1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 
-	"kubesphere.io/kubesphere/pkg/api"
-	"kubesphere.io/kubesphere/pkg/apiserver/query"
-	"kubesphere.io/kubesphere/pkg/client/informers/externalversions"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	"github.com/edgewize-io/edgewize/pkg/client/informers/externalversions"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3"
 )
 
 type clustersGetter struct {

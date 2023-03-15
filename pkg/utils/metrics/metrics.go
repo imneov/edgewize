@@ -27,7 +27,7 @@ import (
 	apimachineryversion "k8s.io/apimachinery/pkg/version"
 	compbasemetrics "k8s.io/component-base/metrics"
 
-	ksVersion "kubesphere.io/kubesphere/pkg/version"
+	ksVersion "github.com/edgewize-io/edgewize/pkg/version"
 )
 
 var (
@@ -66,7 +66,7 @@ func (m DefaultMetrics) registerMetrics() {
 	RawMustRegister(prometheus.NewGoCollector())
 }
 
-//Overwrite version.Get
+// Overwrite version.Get
 func versionGet() apimachineryversion.Info {
 	info := ksVersion.Get()
 	return apimachineryversion.Info{

@@ -20,14 +20,14 @@ import (
 	"context"
 	"errors"
 
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	controllerutils "github.com/edgewize-io/edgewize/pkg/controller/utils/controller"
+	"github.com/edgewize-io/edgewize/pkg/helm"
+	"github.com/edgewize-io/edgewize/pkg/utils/sliceutil"
 	"github.com/go-logr/logr"
 	"helm.sh/helm/v3/pkg/release"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
-	infrav1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
-	controllerutils "kubesphere.io/kubesphere/pkg/controller/utils/controller"
-	"kubesphere.io/kubesphere/pkg/helm"
-	"kubesphere.io/kubesphere/pkg/utils/sliceutil"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -118,6 +118,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (ctrl.Result, error) {
 	logger := log.FromContext(ctx, "func", "undoReconcile", "instance", instance.Name)
+	logger.V(4).Info("delete edgecluster", "instance", instance)
 	switch instance.Status.Status {
 	case infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		status, err := helm.Status(instance.Spec.Distro, instance.Spec.Name, instance.Spec.Namespace)
@@ -126,12 +127,14 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 		}
 		switch status {
 		case "deployed", "superseded", "failed", "pending-install", "pending-upgrade", "pending-rollback":
+			logger.V(4).Info("begin uninstall edgecluster ", "status", status)
 			instance.Status.Status = infrav1alpha1.UninstallingStatus
 			err = helm.Uninstall(instance.Spec.Distro, instance.Spec.Name, instance.Spec.Namespace)
 			if err != nil {
 				logger.Error(err, "uninstall edge cluster error")
 				return ctrl.Result{}, err
 			}
+			logger.V(4).Info("uninstall edgecluster success", "name", instance.Name)
 		}
 	}
 	if err := r.Status().Update(ctx, instance); err != nil {
@@ -141,7 +144,7 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 }
 
 func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (ctrl.Result, error) {
-	logger := log.FromContext(ctx, "func", "doReconcile", "instance", instance.Name)
+	logger := log.FromContext(ctx, "doReconcile", instance.Name)
 	if instance.Spec.Name == "" || instance.Spec.Namespace == "" {
 		return ctrl.Result{}, errors.New("cluster name and namespace cannot be empty")
 	}

@@ -25,7 +25,7 @@ import (
 	"net/http"
 	"strings"
 
-	"kubesphere.io/kubesphere/pkg/utils/iputil"
+	"github.com/edgewize-io/edgewize/pkg/utils/iputil"
 
 	"k8s.io/apimachinery/pkg/api/validation/path"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
@@ -36,8 +36,8 @@ import (
 	k8srequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/klog"
 
-	"kubesphere.io/kubesphere/pkg/api"
-	"kubesphere.io/kubesphere/pkg/constants"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/constants"
 )
 
 type RequestInfoResolver interface {

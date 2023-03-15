@@ -21,10 +21,10 @@ package versioned
 import (
 	"fmt"
 
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/typed/infra/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
-	infrav1alpha1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/infra/v1alpha1"
 )
 
 type Interface interface {

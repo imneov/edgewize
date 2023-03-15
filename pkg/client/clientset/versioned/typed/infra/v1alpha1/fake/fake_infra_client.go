@@ -19,9 +19,9 @@ limitations under the License.
 package fake
 
 import (
+	v1alpha1 "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/typed/infra/v1alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
-	v1alpha1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/infra/v1alpha1"
 )
 
 type FakeInfraV1alpha1 struct {

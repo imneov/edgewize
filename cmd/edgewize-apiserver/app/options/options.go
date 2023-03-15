@@ -24,7 +24,7 @@ import (
 	"strings"
 	"sync"
 
-	"kubesphere.io/kubesphere/pkg/utils/edgeclusterclient"
+	"github.com/edgewize-io/edgewize/pkg/utils/edgeclusterclient"
 
 	"k8s.io/client-go/kubernetes/scheme"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -32,14 +32,14 @@ import (
 	runtimecache "sigs.k8s.io/controller-runtime/pkg/cache"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"kubesphere.io/kubesphere/pkg/apis"
-	"kubesphere.io/kubesphere/pkg/apiserver"
-	apiserverconfig "kubesphere.io/kubesphere/pkg/apiserver/config"
-	"kubesphere.io/kubesphere/pkg/informers"
-	genericoptions "kubesphere.io/kubesphere/pkg/server/options"
-	"kubesphere.io/kubesphere/pkg/simple/client/cache"
+	"github.com/edgewize-io/edgewize/pkg/apis"
+	"github.com/edgewize-io/edgewize/pkg/apiserver"
+	apiserverconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
+	"github.com/edgewize-io/edgewize/pkg/informers"
+	genericoptions "github.com/edgewize-io/edgewize/pkg/server/options"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/cache"
 
-	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
 )
 
 type ServerRunOptions struct {
