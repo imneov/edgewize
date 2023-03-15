@@ -134,8 +134,8 @@ for repo in $(kube::util::list_staging_repos); do
 done
 
 if [[ ! -f go.mod ]]; then
-  kube::log::status "go.mod: initialize kubesphere.io/kubesphere"
-  go mod init "kubesphere.io/kubesphere"
+  kube::log::status "go.mod: initialize github.com/edgewize-io/edgewize"
+  go mod init "github.com/edgewize-io/edgewize"
   rm -f Godeps/Godeps.json # remove after initializing
 fi
 

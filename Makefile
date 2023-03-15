@@ -6,8 +6,8 @@
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
-GV="network:v1alpha1 servicemesh:v1alpha2 tenant:v1alpha1 tenant:v1alpha2 devops:v1alpha1 iam:v1alpha2 devops:v1alpha3 cluster:v1alpha1 storage:v1alpha1 auditing:v1alpha1 types:v1beta1 quota:v1alpha2 application:v1alpha1 notification:v2beta1 gateway:v1alpha1"
-MANIFESTS="application/* cluster/* iam/* network/v1alpha1 quota/* storage/* tenant/* gateway/*"
+GV="infra:v1alpha1"
+MANIFESTS="infra/*"
 
 # App Version
 APP_VERSION = v0.1.0
@@ -86,6 +86,7 @@ vet: ;$(info $(M)...Begin to run go vet against code.)  @ ## Run go vet against 
 	go vet ./pkg/... ./cmd/...
 
 # Generate manifests e.g. CRD, RBAC etc.
+.PHONY: manifests
 manifests: ;$(info $(M)...Begin to generate manifests e.g. CRD, RBAC etc..)  @ ## Generate manifests e.g. CRD, RBAC etc.
 	hack/generate_manifests.sh ${CRD_OPTIONS} ${MANIFESTS}
 
