@@ -144,8 +144,8 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 			requestInfo.IsKubernetesRequest = true
 		}
 	}()
-	// /edgeclusters/{cluster}/apis/
-	// /edgeclusters/{cluster}/kapis/
+	// /kapis/infra.edgewize.io/v1alpha1/clusters/{cluster}/apis/
+	// /kapis/infra.edgewize.io/v1alpha1/clusters/{cluster}/kapis/
 
 	currentParts := splitPath(req.URL.Path)
 	//if len(currentParts) < 3 {

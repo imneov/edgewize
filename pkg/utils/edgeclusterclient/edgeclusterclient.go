@@ -149,8 +149,7 @@ func (c *clusterClients) addCluster(obj interface{}) *innerCluster {
 }
 
 func (c *clusterClients) Get(clusterName string) (*infrav1alpha1.Cluster, error) {
-	//return c.clusterLister.Get(clusterName)
-	return nil, nil
+	return c.clusterLister.Get(clusterName)
 }
 
 func (c *clusterClients) GetClusterKubeconfig(clusterName string) (string, error) {

@@ -40,14 +40,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog"
 	"kubesphere.io/kubesphere/pkg/api"
 	clusterv1alpha1 "kubesphere.io/kubesphere/pkg/api/cluster/v1alpha1"
 	infrav1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
 	"kubesphere.io/kubesphere/pkg/apiserver/config"
+	"kubesphere.io/kubesphere/pkg/apiserver/query"
 	kubesphere "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
 	"kubesphere.io/kubesphere/pkg/client/informers/externalversions"
 	clusterlister "kubesphere.io/kubesphere/pkg/client/listers/infra/v1alpha1"
 	"kubesphere.io/kubesphere/pkg/constants"
+	resourcev1alpha3 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/resource"
 	"kubesphere.io/kubesphere/pkg/utils/k8sutil"
 	"kubesphere.io/kubesphere/pkg/version"
 )
@@ -61,10 +64,11 @@ const (
 var errClusterConnectionIsNotProxy = fmt.Errorf("cluster is not using proxy connection")
 
 type handler struct {
-	ksclient        kubesphere.Interface
-	serviceLister   v1.ServiceLister
-	clusterLister   clusterlister.ClusterLister
-	configMapLister v1.ConfigMapLister
+	ksclient               kubesphere.Interface
+	serviceLister          v1.ServiceLister
+	clusterLister          clusterlister.ClusterLister
+	configMapLister        v1.ConfigMapLister
+	resourceGetterV1alpha3 *resourcev1alpha3.ResourceGetter
 
 	proxyService string
 	proxyAddress string
@@ -72,17 +76,18 @@ type handler struct {
 	yamlPrinter  *printers.YAMLPrinter
 }
 
-func newHandler(ksclient kubesphere.Interface, k8sInformers k8sinformers.SharedInformerFactory, ksInformers externalversions.SharedInformerFactory, proxyService, proxyAddress, agentImage string) *handler {
+func New(ksclient kubesphere.Interface, k8sInformers k8sinformers.SharedInformerFactory, ksInformers externalversions.SharedInformerFactory, proxyService, proxyAddress, agentImage string, resourceGetterV1alpha3 *resourcev1alpha3.ResourceGetter) *handler {
 
 	if len(agentImage) == 0 {
 		agentImage = defaultAgentImage
 	}
 
 	return &handler{
-		ksclient:        ksclient,
-		serviceLister:   k8sInformers.Core().V1().Services().Lister(),
-		clusterLister:   ksInformers.Infra().V1alpha1().Clusters().Lister(),
-		configMapLister: k8sInformers.Core().V1().ConfigMaps().Lister(),
+		ksclient:               ksclient,
+		serviceLister:          k8sInformers.Core().V1().Services().Lister(),
+		clusterLister:          ksInformers.Infra().V1alpha1().Clusters().Lister(),
+		configMapLister:        k8sInformers.Core().V1().ConfigMaps().Lister(),
+		resourceGetterV1alpha3: resourceGetterV1alpha3,
 
 		proxyService: proxyService,
 		proxyAddress: proxyAddress,
@@ -332,62 +337,27 @@ func (h *handler) updateKubeConfig(request *restful.Request, response *restful.R
 }
 
 // ValidateCluster validate cluster kubeconfig and kubesphere apiserver address, check their accessibility
-func (h *handler) createEdGeCluster(request *restful.Request, response *restful.Response) {
-	var cluster infrav1alpha1.Cluster
+func (h *handler) listEdgeCluster(request *restful.Request, response *restful.Response) {
+	query := query.ParseQueryParameter(request)
+	resourceType := "clusters"
+	namespace := request.PathParameter("namespace")
 
-	err := request.ReadEntity(&cluster)
-	if err != nil {
-		api.HandleBadRequest(response, request, err)
+	result, err := h.resourceGetterV1alpha3.List(resourceType, namespace, query)
+	if err == nil {
+		response.WriteEntity(result)
 		return
 	}
 
-	if cluster.Spec.Connection.Type != infrav1alpha1.ConnectionTypeDirect {
-		api.HandleBadRequest(response, request, fmt.Errorf("cluster connection type MUST be direct"))
+	if err != resourcev1alpha3.ErrResourceNotSupported {
+		klog.Error(err, resourceType)
+		api.HandleInternalError(response, request, err)
 		return
 	}
-
-	if len(cluster.Spec.Connection.KubeConfig) == 0 {
-		api.HandleBadRequest(response, request, fmt.Errorf("cluster kubeconfig MUST NOT be empty"))
-		return
-	}
-
-	config, err := k8sutil.LoadKubeConfigFromBytes(cluster.Spec.Connection.KubeConfig)
-	if err != nil {
-		api.HandleBadRequest(response, request, err)
-		return
-	}
-	config.Timeout = defaultTimeout
-	clientSet, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		api.HandleBadRequest(response, request, err)
-		return
-	}
-
-	if err = h.validateKubeConfig(cluster.Name, clientSet); err != nil {
-		api.HandleBadRequest(response, request, err)
-		return
-	}
-
-	if _, err = validateKubeSphereAPIServer(config); err != nil {
-		api.HandleBadRequest(response, request, fmt.Errorf("unable validate kubesphere endpoint, %v", err))
-		return
-	}
-
-	if err = h.validateMemberClusterConfiguration(clientSet); err != nil {
-		api.HandleBadRequest(response, request, fmt.Errorf("failed to validate member cluster configuration, err: %v", err))
-	}
-
-	response.WriteHeader(http.StatusOK)
+	response.WriteEntity(result)
 }
 
 // ValidateCluster validate cluster kubeconfig and kubesphere apiserver address, check their accessibility
-func (h *handler) listEdGeCluster(request *restful.Request, response *restful.Response) {
-
-	response.WriteHeader(http.StatusOK)
-}
-
-// ValidateCluster validate cluster kubeconfig and kubesphere apiserver address, check their accessibility
-func (h *handler) validateCluster(request *restful.Request, response *restful.Response) {
+func (h *handler) validateEdgeCluster(request *restful.Request, response *restful.Response) {
 	var cluster infrav1alpha1.Cluster
 
 	err := request.ReadEntity(&cluster)

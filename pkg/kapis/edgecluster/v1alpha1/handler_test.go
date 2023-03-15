@@ -252,7 +252,7 @@ func TestGeranteAgentDeployment(t *testing.T) {
 	for _, testCase := range testCases {
 
 		t.Run(testCase.description, func(t *testing.T) {
-			h := newHandler(ksclient, informersFactory.KubernetesSharedInformerFactory(),
+			h := New(ksclient, informersFactory.KubernetesSharedInformerFactory(),
 				informersFactory.KubeSphereSharedInformerFactory(),
 				proxyService,
 				"",
@@ -333,7 +333,7 @@ func TestValidateKubeConfig(t *testing.T) {
 	informersFactory.KubernetesSharedInformerFactory().Core().V1().Services().Informer().GetIndexer().Add(service)
 	informersFactory.KubeSphereSharedInformerFactory().Infra().V1alpha1().Clusters().Informer().GetIndexer().Add(cluster)
 
-	h := newHandler(ksclient, informersFactory.KubernetesSharedInformerFactory(),
+	h := New(ksclient, informersFactory.KubernetesSharedInformerFactory(),
 		informersFactory.KubeSphereSharedInformerFactory(),
 		proxyService,
 		"",
@@ -392,7 +392,7 @@ func TestValidateMemberClusterConfiguration(t *testing.T) {
 	informersFactory.KubeSphereSharedInformerFactory().Infra().V1alpha1().Clusters().Informer().GetIndexer().Add(cluster)
 	informersFactory.KubernetesSharedInformerFactory().Core().V1().ConfigMaps().Informer().GetIndexer().Add(hostCm)
 
-	h := newHandler(ksclient, informersFactory.KubernetesSharedInformerFactory(),
+	h := New(ksclient, informersFactory.KubernetesSharedInformerFactory(),
 		informersFactory.KubeSphereSharedInformerFactory(),
 		proxyService,
 		"",

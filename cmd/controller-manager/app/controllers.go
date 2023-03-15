@@ -20,35 +20,51 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
 	"kubesphere.io/kubesphere/cmd/controller-manager/app/options"
+	"kubesphere.io/kubesphere/pkg/controller/cluster"
 	"kubesphere.io/kubesphere/pkg/controller/edgecluster"
 	"kubesphere.io/kubesphere/pkg/informers"
 	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 var allControllers = []string{
-	"cluster",
 	"edgecluster",
+	"cluster",
 }
 
 // setup all available controllers one by one
 func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory informers.InformerFactory,
-	cmOptions *options.KubeSphereControllerManagerOptions,
-	stopCh <-chan struct{}) error {
+	cmOptions *options.KubeSphereControllerManagerOptions, stopCh <-chan struct{}) error {
 
 	kubesphereInformer := informerFactory.KubeSphereSharedInformerFactory()
 
-	// "edgecluster" controller
-	clusterController := edgecluster.NewClusterController(
+	clusterController := cluster.NewClusterController(
 		client.Kubernetes(),
 		client.KubeSphere(),
 		client.Config(),
 		kubesphereInformer.Infra().V1alpha1().Clusters(),
-		cmOptions.MultiClusterOptions.ClusterControllerResyncPeriod,
-		cmOptions.MultiClusterOptions.HostClusterName,
+		cmOptions.EdgeWizeOptions.ClusterControllerResyncPeriod,
+		cmOptions.EdgeWizeOptions.HostClusterName,
 	)
 	addController(mgr, "cluster", clusterController)
 
+	// "edgecluster" controller
+	edgeclusterReconciler := &edgecluster.Reconciler{}
+	addControllerWithSetup(mgr, "edgecluster", edgeclusterReconciler)
+
+	// log all controllers process result
+	for _, name := range allControllers {
+		if cmOptions.IsControllerEnabled(name) {
+			if addSuccessfullyControllers.Has(name) {
+				klog.Infof("%s controller is enabled and added successfully.", name)
+			} else {
+				klog.Infof("%s controller is enabled but is not going to run due to its dependent component being disabled.", name)
+			}
+		} else {
+			klog.Infof("%s controller is disabled by controller selectors.", name)
+		}
+	}
 	return nil
 }
 
@@ -56,6 +72,17 @@ var addSuccessfullyControllers = sets.NewString()
 
 func addController(mgr manager.Manager, name string, controller manager.Runnable) {
 	if err := mgr.Add(controller); err != nil {
+		klog.Fatalf("Unable to create %v controller: %v", name, err)
+	}
+	addSuccessfullyControllers.Insert(name)
+}
+
+type setupableController interface {
+	SetupWithManager(mgr ctrl.Manager) error
+}
+
+func addControllerWithSetup(mgr manager.Manager, name string, controller setupableController) {
+	if err := controller.SetupWithManager(mgr); err != nil {
 		klog.Fatalf("Unable to create %v controller: %v", name, err)
 	}
 	addSuccessfullyControllers.Insert(name)

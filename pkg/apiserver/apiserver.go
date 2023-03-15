@@ -48,7 +48,6 @@ import (
 	"kubesphere.io/kubesphere/pkg/informers"
 	"kubesphere.io/kubesphere/pkg/kapis/crd"
 	clusterkapisv1alpha1 "kubesphere.io/kubesphere/pkg/kapis/edgecluster/v1alpha1"
-	resourcesv1alpha2 "kubesphere.io/kubesphere/pkg/kapis/resources/v1alpha2"
 	resourcev1alpha3 "kubesphere.io/kubesphere/pkg/kapis/resources/v1alpha3"
 	terminalv1alpha2 "kubesphere.io/kubesphere/pkg/kapis/terminal/v1alpha2"
 	"kubesphere.io/kubesphere/pkg/kapis/version"
@@ -138,16 +137,14 @@ func (s *APIServer) installMetricsAPI() {
 func (s *APIServer) installKubeSphereAPIs(stopCh <-chan struct{}) {
 
 	urlruntime.Must(resourcev1alpha3.AddToContainer(s.container, s.InformerFactory, s.RuntimeCache))
-	urlruntime.Must(resourcesv1alpha2.AddToContainer(s.container, s.KubernetesClient.Kubernetes(), s.InformerFactory,
-		s.KubernetesClient.Master()))
 	urlruntime.Must(terminalv1alpha2.AddToContainer(s.container, s.KubernetesClient.Kubernetes(), s.KubernetesClient.Config(), s.Config.TerminalOptions))
 	urlruntime.Must(clusterkapisv1alpha1.AddToContainer(s.container,
 		s.KubernetesClient.KubeSphere(),
-		s.InformerFactory.KubernetesSharedInformerFactory(),
-		s.InformerFactory.KubeSphereSharedInformerFactory(),
-		s.Config.MultiClusterOptions.ProxyPublishService,
-		s.Config.MultiClusterOptions.ProxyPublishAddress,
-		s.Config.MultiClusterOptions.AgentImage))
+		s.InformerFactory,
+		s.RuntimeCache,
+		s.Config.EdgeWizeOptions.ProxyPublishService,
+		s.Config.EdgeWizeOptions.ProxyPublishAddress,
+		s.Config.EdgeWizeOptions.AgentImage))
 	urlruntime.Must(version.AddToContainer(s.container, s.KubernetesClient.Kubernetes().Discovery()))
 }
 

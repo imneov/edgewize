@@ -23,6 +23,7 @@ import (
 	"time"
 
 	controllerconfig "kubesphere.io/kubesphere/pkg/apiserver/config"
+	"kubesphere.io/kubesphere/pkg/simple/client/edgewize"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -34,15 +35,14 @@ import (
 	"k8s.io/klog"
 
 	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
-	"kubesphere.io/kubesphere/pkg/simple/client/multicluster"
 )
 
 type KubeSphereControllerManagerOptions struct {
-	KubernetesOptions   *k8s.KubernetesOptions
-	MultiClusterOptions *multicluster.Options
-	LeaderElect         bool
-	LeaderElection      *leaderelection.LeaderElectionConfig
-	WebhookCertDir      string
+	KubernetesOptions *k8s.KubernetesOptions
+	EdgeWizeOptions   *edgewize.Options
+	LeaderElect       bool
+	LeaderElection    *leaderelection.LeaderElectionConfig
+	WebhookCertDir    string
 
 	// KubeSphere is using sigs.k8s.io/application as fundamental object to implement Application Management.
 	// There are other projects also built on sigs.k8s.io/application, when KubeSphere installed along side
@@ -69,8 +69,8 @@ type KubeSphereControllerManagerOptions struct {
 
 func NewKubeSphereControllerManagerOptions() *KubeSphereControllerManagerOptions {
 	s := &KubeSphereControllerManagerOptions{
-		KubernetesOptions:   k8s.NewKubernetesOptions(),
-		MultiClusterOptions: multicluster.NewOptions(),
+		KubernetesOptions: k8s.NewKubernetesOptions(),
+		EdgeWizeOptions:   edgewize.NewOptions(),
 		LeaderElection: &leaderelection.LeaderElectionConfig{
 			LeaseDuration: 30 * time.Second,
 			RenewDeadline: 15 * time.Second,
@@ -89,7 +89,7 @@ func (s *KubeSphereControllerManagerOptions) Flags(allControllerNameSelectors []
 	fss := cliflag.NamedFlagSets{}
 
 	s.KubernetesOptions.AddFlags(fss.FlagSet("kubernetes"), s.KubernetesOptions)
-	s.MultiClusterOptions.AddFlags(fss.FlagSet("multicluster"), s.MultiClusterOptions)
+	s.EdgeWizeOptions.AddFlags(fss.FlagSet("edgewize"), s.EdgeWizeOptions)
 	fs := fss.FlagSet("leaderelection")
 	s.bindLeaderElectionFlags(s.LeaderElection, fs)
 
@@ -129,7 +129,7 @@ func (s *KubeSphereControllerManagerOptions) Flags(allControllerNameSelectors []
 func (o *KubeSphereControllerManagerOptions) Validate(allControllerNameSelectors []string) []error {
 	var errs []error
 	errs = append(errs, o.KubernetesOptions.Validate()...)
-	errs = append(errs, o.MultiClusterOptions.Validate()...)
+	errs = append(errs, o.EdgeWizeOptions.Validate()...)
 
 	// genetic option: application-selector
 	if len(o.ApplicationSelector) != 0 {
@@ -192,6 +192,5 @@ func (s *KubeSphereControllerManagerOptions) bindLeaderElectionFlags(l *leaderel
 // When misconfigured, the app should just crash directly
 func (s *KubeSphereControllerManagerOptions) MergeConfig(cfg *controllerconfig.Config) {
 	s.KubernetesOptions = cfg.KubernetesOptions
-
-	s.MultiClusterOptions = cfg.MultiClusterOptions
+	s.EdgeWizeOptions = cfg.EdgeWizeOptions
 }

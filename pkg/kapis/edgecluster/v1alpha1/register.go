@@ -22,12 +22,13 @@ import (
 	"github.com/emicklei/go-restful"
 	restfulspec "github.com/emicklei/go-restful-openapi"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	k8sinformers "k8s.io/client-go/informers"
+	"kubesphere.io/kubesphere/pkg/informers"
+	resourcev1alpha3 "kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/resource"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 
 	"kubesphere.io/kubesphere/pkg/api"
 	"kubesphere.io/kubesphere/pkg/apiserver/runtime"
 	kubesphere "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
-	"kubesphere.io/kubesphere/pkg/client/informers/externalversions"
 	"kubesphere.io/kubesphere/pkg/constants"
 )
 
@@ -39,50 +40,45 @@ var GroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1alpha1"}
 
 func AddToContainer(container *restful.Container,
 	ksclient kubesphere.Interface,
-	k8sInformers k8sinformers.SharedInformerFactory,
-	ksInformers externalversions.SharedInformerFactory,
+	informerFactory informers.InformerFactory,
+	cache cache.Cache,
 	proxyService string,
 	proxyAddress string,
 	agentImage string) error {
+	k8sInformers := informerFactory.KubernetesSharedInformerFactory()
+	ksInformers := informerFactory.KubeSphereSharedInformerFactory()
 
 	webservice := runtime.NewWebService(GroupVersion)
-	h := newHandler(ksclient, k8sInformers, ksInformers, proxyService, proxyAddress, agentImage)
+	handler := New(ksclient, k8sInformers, ksInformers, proxyService, proxyAddress, agentImage, resourcev1alpha3.NewResourceGetter(informerFactory, cache))
 
 	// returns deployment yaml for cluster agent
 	webservice.Route(webservice.GET("/edgeclusters/{cluster}/agent/deployment").
 		Doc("Return deployment yaml for cluster agent.").
 		Param(webservice.PathParameter("cluster", "Name of the cluster.").Required(true)).
-		To(h.generateAgentDeployment).
+		To(handler.generateAgentDeployment).
 		Returns(http.StatusOK, api.StatusOK, nil).
-		Metadata(restfulspec.KeyOpenAPITags, []string{constants.MultiClusterTag}))
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
 
 	webservice.Route(webservice.POST("/edgeclusters/validation").
 		Doc("").
 		Param(webservice.BodyParameter("cluster", "cluster specification")).
-		To(h.validateCluster).
+		To(handler.validateEdgeCluster).
 		Returns(http.StatusOK, api.StatusOK, nil).
-		Metadata(restfulspec.KeyOpenAPITags, []string{constants.MultiClusterTag}))
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
 
 	webservice.Route(webservice.PUT("/edgeclusters/{cluster}/kubeconfig").
 		Doc("Update cluster kubeconfig.").
 		Param(webservice.PathParameter("cluster", "Name of the cluster.").Required(true)).
-		To(h.updateKubeConfig).
+		To(handler.updateKubeConfig).
 		Returns(http.StatusOK, api.StatusOK, nil).
-		Metadata(restfulspec.KeyOpenAPITags, []string{constants.MultiClusterTag}))
-
-	webservice.Route(webservice.POST("/edgeclusters/{cluster}").
-		Doc("").
-		Param(webservice.BodyParameter("cluster", "cluster specification")).
-		To(h.createEdGeCluster).
-		Returns(http.StatusOK, api.StatusOK, nil).
-		Metadata(restfulspec.KeyOpenAPITags, []string{constants.MultiClusterTag}))
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
 
 	webservice.Route(webservice.GET("/edgeclusters").
 		Doc("").
 		Param(webservice.BodyParameter("cluster", "cluster specification")).
-		To(h.listEdGeCluster).
+		To(handler.listEdgeCluster).
 		Returns(http.StatusOK, api.StatusOK, nil).
-		Metadata(restfulspec.KeyOpenAPITags, []string{constants.MultiClusterTag}))
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
 
 	container.Add(webservice)
 

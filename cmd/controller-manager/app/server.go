@@ -47,11 +47,11 @@ func NewControllerManagerCommand() *cobra.Command {
 	if err == nil {
 		// make sure LeaderElection is not nil
 		s = &options.KubeSphereControllerManagerOptions{
-			KubernetesOptions:   conf.KubernetesOptions,
-			MultiClusterOptions: conf.MultiClusterOptions,
-			LeaderElection:      s.LeaderElection,
-			LeaderElect:         s.LeaderElect,
-			WebhookCertDir:      s.WebhookCertDir,
+			KubernetesOptions: conf.KubernetesOptions,
+			EdgeWizeOptions:   conf.EdgeWizeOptions,
+			LeaderElection:    s.LeaderElection,
+			LeaderElect:       s.LeaderElect,
+			WebhookCertDir:    s.WebhookCertDir,
 		}
 	} else {
 		klog.Fatal("Failed to load configuration from disk", err)
