@@ -35,10 +35,15 @@ const (
 
 // EdgeClusterSpec defines the desired state of EdgeCluster
 type EdgeClusterSpec struct {
-	// Name is the edge cluster name
+	// Name is the name of the edge cluster.
 	Name string `json:"name,omitempty"`
 
+	// Namespace is the target namespace where the edge cluster will be installed
 	Namespace string `json:"namespace,omitempty"`
+
+	// Cluster is the target cluster where the edge cluster will be installed (default "host"),
+	// it depends on the multi-cluster component.
+	Cluster string `json:"cluster,omitempty"`
 
 	// Distro is Kubernetes distro to use for the virtual cluster. Allowed distros: k3s, k0s, k8s, eks (default "k3s")
 	Distro string `json:"distro,omitempty"`
