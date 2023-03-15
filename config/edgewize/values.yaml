@@ -24,7 +24,7 @@ commonLabels: {}
 ##
 commonAnnotations: {}
 
-role: member
+role: host
 
 adminPassword: ""
 

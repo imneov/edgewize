@@ -66,6 +66,7 @@ spec:
           {{- if .Values.apiserver.extraVolumeMounts }}
           {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
+        {{- if eq .Values.role "host" }}
         - name: edgewize-controller-manager
           image: {{ template "edgewize-controller-manager.image" . }}
           imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
@@ -91,6 +92,7 @@ spec:
           {{- if .Values.controller.extraVolumeMounts }}
           {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
+        {{- end}}
       volumes:
         - name: edgewize-config
           configMap:

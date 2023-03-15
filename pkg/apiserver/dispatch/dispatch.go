@@ -33,7 +33,8 @@ import (
 	"github.com/edgewize-io/edgewize/pkg/utils/edgeclusterclient"
 )
 
-const proxyURLFormat = "/api/v1/namespaces/kubesphere-system/services/:ks-apiserver:/proxy%s"
+// const proxyURLFormat = "/api/v1/namespaces/kubesphere-system/services/:ks-apiserver:/proxy%s"
+const proxyURLFormat = "/api/v1/namespaces/edgewize-system/services/:edgewize-apiserver:/proxy%s"
 
 // Dispatcher defines how to forward request to designated cluster based on cluster name
 // This should only be used in host cluster when edgecluster mode enabled, use in any other cases may cause

@@ -42,11 +42,7 @@ spec:
       protocol: TCP
       targetPort: 8443
   selector:
-    {{- if eq .Values.role "host" }}
-    app: edgewize-controller-manager
-    {{- else }}
     app: edgewize
-    {{- end }}
     tier: backend
     # version: {{ .Chart.AppVersion }}
   sessionAffinity: None

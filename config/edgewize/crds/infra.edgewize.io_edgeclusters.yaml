@@ -49,6 +49,11 @@ spec:
           spec:
             description: EdgeClusterSpec defines the desired state of EdgeCluster
             properties:
+              cluster:
+                description: Cluster is the target cluster where the edge cluster
+                  will be installed (default "host"), it depends on the multi-cluster
+                  component.
+                type: string
               distro:
                 description: 'Distro is Kubernetes distro to use for the virtual cluster.
                   Allowed distros: k3s, k0s, k8s, eks (default "k3s")'
@@ -57,9 +62,11 @@ spec:
                 description: Location is the location of the current cluster. TODO
                 type: string
               name:
-                description: Name is the edge cluster name
+                description: Name is the name of the edge cluster.
                 type: string
               namespace:
+                description: Namespace is the target namespace where the edge cluster
+                  will be installed
                 type: string
               version:
                 description: Version is the edge cluster distro version. TODO

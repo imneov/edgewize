@@ -155,7 +155,7 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 	if len(currentParts) > 2 && r.APIPrefixes.Has(currentParts[2]) {
 		requestInfo.Cluster = currentParts[1]
 		currentParts = currentParts[2:]
-	} else {
+	} else if !r.APIPrefixes.Has(currentParts[0]) {
 		req.URL.Path = "/kapis/infra.edgewize.io/v1alpha1" + req.URL.Path
 		return &requestInfo, nil
 	}
