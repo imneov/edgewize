@@ -25,7 +25,11 @@ import (
 	"reflect"
 	"time"
 
-	clusterv1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	kubesphere "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
+	clusterinformer "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/infra/v1alpha1"
+	clusterlister "github.com/edgewize-io/edgewize/pkg/client/listers/infra/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/utils/k8sutil"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,11 +46,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-
-	kubesphere "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
-	clusterinformer "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/infra/v1alpha1"
-	clusterlister "github.com/edgewize-io/edgewize/pkg/client/listers/infra/v1alpha1"
-	"github.com/edgewize-io/edgewize/pkg/utils/k8sutil"
 )
 
 // Cluster controller only runs under multicluster mode. Cluster controller is following below steps,
@@ -85,7 +84,7 @@ const (
 )
 
 // Cluster template for reconcile host cluster if there is none.
-var hostCluster = &clusterv1alpha1.Cluster{
+var hostCluster = &infrav1alpha1.Cluster{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "host",
 		Annotations: map[string]string{
@@ -94,21 +93,19 @@ var hostCluster = &clusterv1alpha1.Cluster{
 				"and deploy workloads on Member Clusters.",
 		},
 		Labels: map[string]string{
-			clusterv1alpha1.HostCluster: "",
-			kubesphereManaged:           "true",
+			infrav1alpha1.HostCluster: "",
+			kubesphereManaged:         "true",
 		},
 	},
-	Spec: clusterv1alpha1.ClusterSpec{
-		JoinFederation: false,
-		Enable:         true,
-		Provider:       "kubesphere",
-		Connection: clusterv1alpha1.Connection{
-			Type: clusterv1alpha1.ConnectionTypeDirect,
+	Spec: infrav1alpha1.ClusterSpec{
+		Provider: "edgewize",
+		Connection: infrav1alpha1.Connection{
+			Type: infrav1alpha1.ConnectionTypeDirect,
 		},
 	},
 }
 
-type clusterController struct {
+type ClusterController struct {
 	eventBroadcaster record.EventBroadcaster
 	eventRecorder    record.EventRecorder
 
@@ -137,7 +134,7 @@ func NewClusterController(
 	clusterInformer clusterinformer.ClusterInformer,
 	resyncPeriod time.Duration,
 	hostClusterName string,
-) *clusterController {
+) *ClusterController {
 
 	broadcaster := record.NewBroadcaster()
 	broadcaster.StartLogging(func(format string, args ...interface{}) {
@@ -146,7 +143,7 @@ func NewClusterController(
 	broadcaster.StartRecordingToSink(&corev1.EventSinkImpl{Interface: k8sClient.CoreV1().Events("")})
 	recorder := broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "cluster-controller"})
 
-	c := &clusterController{
+	c := &ClusterController{
 		eventBroadcaster: broadcaster,
 		eventRecorder:    recorder,
 		k8sClient:        k8sClient,
@@ -163,8 +160,8 @@ func NewClusterController(
 	clusterInformer.Informer().AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.enqueueCluster,
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			oldCluster := oldObj.(*clusterv1alpha1.Cluster)
-			newCluster := newObj.(*clusterv1alpha1.Cluster)
+			oldCluster := oldObj.(*infrav1alpha1.Cluster)
+			newCluster := newObj.(*infrav1alpha1.Cluster)
 			if !reflect.DeepEqual(oldCluster.Spec, newCluster.Spec) || newCluster.DeletionTimestamp != nil {
 				c.enqueueCluster(newObj)
 			}
@@ -175,11 +172,11 @@ func NewClusterController(
 	return c
 }
 
-func (c *clusterController) Start(ctx context.Context) error {
+func (c *ClusterController) Start(ctx context.Context) error {
 	return c.Run(3, ctx.Done())
 }
 
-func (c *clusterController) Run(workers int, stopCh <-chan struct{}) error {
+func (c *ClusterController) Run(workers int, stopCh <-chan struct{}) error {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
@@ -209,12 +206,12 @@ func (c *clusterController) Run(workers int, stopCh <-chan struct{}) error {
 	return nil
 }
 
-func (c *clusterController) worker() {
+func (c *ClusterController) worker() {
 	for c.processNextItem() {
 	}
 }
 
-func (c *clusterController) processNextItem() bool {
+func (c *ClusterController) processNextItem() bool {
 	key, quit := c.queue.Get()
 	if quit {
 		return false
@@ -228,8 +225,8 @@ func (c *clusterController) processNextItem() bool {
 }
 
 // reconcileHostCluster will create a host cluster if there are no clusters labeled 'cluster-role.kubesphere.io/host'
-func (c *clusterController) reconcileHostCluster() error {
-	clusters, err := c.clusterLister.List(labels.SelectorFromSet(labels.Set{clusterv1alpha1.HostCluster: ""}))
+func (c *ClusterController) reconcileHostCluster() error {
+	clusters, err := c.clusterLister.List(labels.SelectorFromSet(labels.Set{infrav1alpha1.HostCluster: ""}))
 	if err != nil {
 		return err
 	}
@@ -271,7 +268,7 @@ func (c *clusterController) reconcileHostCluster() error {
 	return err
 }
 
-func (c *clusterController) resyncClusters() error {
+func (c *ClusterController) resyncClusters() error {
 	clusters, err := c.clusterLister.List(labels.Everything())
 	if err != nil {
 		return err
@@ -285,7 +282,7 @@ func (c *clusterController) resyncClusters() error {
 	return nil
 }
 
-func (c *clusterController) syncCluster(key string) error {
+func (c *ClusterController) syncCluster(key string) error {
 	klog.V(5).Infof("starting to sync cluster %s", key)
 	startTime := time.Now()
 
@@ -315,18 +312,18 @@ func (c *clusterController) syncCluster(key string) error {
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// registering our finalizer.
-		if !sets.NewString(cluster.ObjectMeta.Finalizers...).Has(clusterv1alpha1.Finalizer) {
-			cluster.ObjectMeta.Finalizers = append(cluster.ObjectMeta.Finalizers, clusterv1alpha1.Finalizer)
+		if !sets.NewString(cluster.ObjectMeta.Finalizers...).Has(infrav1alpha1.Finalizer) {
+			cluster.ObjectMeta.Finalizers = append(cluster.ObjectMeta.Finalizers, infrav1alpha1.Finalizer)
 			if cluster, err = c.ksClient.InfraV1alpha1().Clusters().Update(context.TODO(), cluster, metav1.UpdateOptions{}); err != nil {
 				return err
 			}
 		}
 	} else {
 		// The object is being deleted
-		if sets.NewString(cluster.ObjectMeta.Finalizers...).Has(clusterv1alpha1.Finalizer) {
+		if sets.NewString(cluster.ObjectMeta.Finalizers...).Has(infrav1alpha1.Finalizer) {
 			// remove our cluster finalizer
 			finalizers := sets.NewString(cluster.ObjectMeta.Finalizers...)
-			finalizers.Delete(clusterv1alpha1.Finalizer)
+			finalizers.Delete(infrav1alpha1.Finalizer)
 			cluster.ObjectMeta.Finalizers = finalizers.List()
 			if _, err = c.ksClient.InfraV1alpha1().Clusters().Update(context.TODO(), cluster, metav1.UpdateOptions{}); err != nil {
 				return err
@@ -381,12 +378,12 @@ func (c *clusterController) syncCluster(key string) error {
 	}
 	cluster.Status.UID = kubeSystem.UID
 
-	readyCondition := clusterv1alpha1.ClusterCondition{
-		Type:               clusterv1alpha1.ClusterReady,
+	readyCondition := infrav1alpha1.ClusterCondition{
+		Type:               infrav1alpha1.ClusterReady,
 		Status:             v1.ConditionTrue,
 		LastUpdateTime:     metav1.Now(),
 		LastTransitionTime: metav1.Now(),
-		Reason:             string(clusterv1alpha1.ClusterReady),
+		Reason:             string(infrav1alpha1.ClusterReady),
 		Message:            "Cluster is available now",
 	}
 	c.updateClusterCondition(cluster, readyCondition)
@@ -407,8 +404,8 @@ func (c *clusterController) syncCluster(key string) error {
 	return nil
 }
 
-func (c *clusterController) enqueueCluster(obj interface{}) {
-	cluster := obj.(*clusterv1alpha1.Cluster)
+func (c *ClusterController) enqueueCluster(obj interface{}) {
+	cluster := obj.(*infrav1alpha1.Cluster)
 
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
@@ -419,7 +416,7 @@ func (c *clusterController) enqueueCluster(obj interface{}) {
 	c.queue.Add(key)
 }
 
-func (c *clusterController) handleErr(err error, key interface{}) {
+func (c *ClusterController) handleErr(err error, key interface{}) {
 	if err == nil {
 		c.queue.Forget(key)
 		return
@@ -438,12 +435,12 @@ func (c *clusterController) handleErr(err error, key interface{}) {
 
 // updateClusterCondition updates condition in cluster conditions using giving condition
 // adds condition if not existed
-func (c *clusterController) updateClusterCondition(cluster *clusterv1alpha1.Cluster, condition clusterv1alpha1.ClusterCondition) {
+func (c *ClusterController) updateClusterCondition(cluster *infrav1alpha1.Cluster, condition infrav1alpha1.ClusterCondition) {
 	if cluster.Status.Conditions == nil {
-		cluster.Status.Conditions = make([]clusterv1alpha1.ClusterCondition, 0)
+		cluster.Status.Conditions = make([]infrav1alpha1.ClusterCondition, 0)
 	}
 
-	newConditions := make([]clusterv1alpha1.ClusterCondition, 0)
+	newConditions := make([]infrav1alpha1.ClusterCondition, 0)
 	for _, cond := range cluster.Status.Conditions {
 		if cond.Type == condition.Type {
 			continue
@@ -474,12 +471,12 @@ func parseKubeConfigExpirationDate(kubeconfig []byte) (time.Time, error) {
 	return cert.NotAfter, nil
 }
 
-func (c *clusterController) updateKubeConfigExpirationDateCondition(cluster *clusterv1alpha1.Cluster) error {
-	if _, ok := cluster.Labels[clusterv1alpha1.HostCluster]; ok {
+func (c *ClusterController) updateKubeConfigExpirationDateCondition(cluster *infrav1alpha1.Cluster) error {
+	if _, ok := cluster.Labels[infrav1alpha1.HostCluster]; ok {
 		return nil
 	}
 	// we don't need to check member clusters which using proxy mode, their certs are managed and will be renewed by tower.
-	if cluster.Spec.Connection.Type == clusterv1alpha1.ConnectionTypeProxy {
+	if cluster.Spec.Connection.Type == infrav1alpha1.ConnectionTypeProxy {
 		return nil
 	}
 
@@ -493,12 +490,12 @@ func (c *clusterController) updateKubeConfigExpirationDateCondition(cluster *clu
 		expiresInSevenDays = v1.ConditionTrue
 	}
 
-	c.updateClusterCondition(cluster, clusterv1alpha1.ClusterCondition{
-		Type:               clusterv1alpha1.ClusterKubeConfigCertExpiresInSevenDays,
+	c.updateClusterCondition(cluster, infrav1alpha1.ClusterCondition{
+		Type:               infrav1alpha1.ClusterKubeConfigCertExpiresInSevenDays,
 		Status:             expiresInSevenDays,
 		LastUpdateTime:     metav1.Now(),
 		LastTransitionTime: metav1.Now(),
-		Reason:             string(clusterv1alpha1.ClusterKubeConfigCertExpiresInSevenDays),
+		Reason:             string(infrav1alpha1.ClusterKubeConfigCertExpiresInSevenDays),
 		Message:            notAfter.String(),
 	})
 	return nil

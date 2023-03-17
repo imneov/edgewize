@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edgewize-config
+data:
+  edgewize.yaml: |
+    authentication:
+      mode: AllowAlways
+      authenticateRateLimiterMaxTries: {{ .Values.config.authentication.authenticateRateLimiterMaxTries | default 10 }}
+      authenticateRateLimiterDuration: {{ .Values.config.authentication.authenticationRateLimiterDuration | default "10m0s" }}
+      loginHistoryRetentionPeriod: {{ .Values.config.authentication.loginHistoryRetentionPeriod | default "168h"  }}
+      maximumClockSkew: {{ .Values.config.authentication.maximumClockSkew | default "10s" }}
+      jwtSecret: "{{ .Values.config.jwtSecret | default (randAlphaNum 32 ) }}"
+{{- if .Values.config.authentication.oauthOptions }}
+      {{- with .Values.config.authentication.oauthOptions }}
+      oauthOptions:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- else if eq (default .Values.config.multicluster.clusterRole "none") "member" }}
+      oauthOptions:
+        accessTokenMaxAge: 0
+{{- end }}
+    monitoring:
+      endpoint: {{ .Values.config.monitoring.endpoint | default "http://prometheus-operated.edgewize-monitoring-system.svc:9090" }}
+    notification:
+      endpoint: {{ .Values.config.notification.endpoint | default "http://notification-manager-svc.edgewize-monitoring-system.svc:19093" }}
+    {{- with .Values.config.servicemesh }}
+    servicemesh:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}

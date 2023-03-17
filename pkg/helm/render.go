@@ -20,9 +20,9 @@ func LoadChart(distro string) (*chart.Chart, error) {
 	filenames, err := GetFilesRecursive(filesystem, path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("distro %q does not exist", distro)
+			return nil, fmt.Errorf("chart '%q' does not exist", distro)
 		}
-		return nil, fmt.Errorf("list files: %v", err)
+		return nil, fmt.Errorf("get files errors: %v", err)
 	}
 
 	var bfs []*loader.BufferedFile

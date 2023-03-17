@@ -27,6 +27,14 @@ import (
 //go:embed charts/k3s/templates/*
 //go:embed charts/k8s/templates/*
 
+//go:embed charts/edgewize/*
+//go:embed charts/edgewize/crds/*
+//go:embed charts/edgewize/templates/*
+
+//go:embed charts/cloudcore/*
+//go:embed charts/cloudcore/crds/*
+//go:embed charts/cloudcore/templates/*
+
 var FS embed.FS
 
 // BuiltinOrDir returns a FS for the provided directory. If no directory is passed, the compiled in

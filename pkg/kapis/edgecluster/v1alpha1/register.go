@@ -21,9 +21,12 @@ import (
 
 	"github.com/edgewize-io/edgewize/pkg/informers"
 	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/resource"
+	"github.com/edgewize-io/edgewize/pkg/version"
 	"github.com/emicklei/go-restful"
 	restfulspec "github.com/emicklei/go-restful-openapi"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
 	"github.com/edgewize-io/edgewize/pkg/api"
@@ -44,7 +47,8 @@ func AddToContainer(container *restful.Container,
 	cache cache.Cache,
 	proxyService string,
 	proxyAddress string,
-	agentImage string) error {
+	agentImage string,
+	k8sDiscovery discovery.DiscoveryInterface) error {
 	k8sInformers := informerFactory.KubernetesSharedInformerFactory()
 	ksInformers := informerFactory.KubeSphereSharedInformerFactory()
 
@@ -79,6 +83,23 @@ func AddToContainer(container *restful.Container,
 		To(handler.listEdgeCluster).
 		Returns(http.StatusOK, api.StatusOK, nil).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
+
+	webservice.Route(webservice.GET("/version").
+		To(func(request *restful.Request, response *restful.Response) {
+			ksVersion := version.Get()
+
+			if k8sDiscovery != nil {
+				k8sVersion, err := k8sDiscovery.ServerVersion()
+				if err == nil {
+					ksVersion.Kubernetes = k8sVersion
+				} else {
+					klog.Errorf("Failed to get kubernetes version, error %v", err)
+				}
+			}
+
+			response.WriteAsJson(ksVersion)
+		})).
+		Doc("KubeSphere version")
 
 	container.Add(webservice)
 

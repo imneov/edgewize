@@ -17,12 +17,16 @@ limitations under the License.
 package helm
 
 import (
+	"path/filepath"
+
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/util/homedir"
 )
 
 type Installer struct {
@@ -30,13 +34,16 @@ type Installer struct {
 	configuration *action.Configuration
 	name          string
 	namespace     string
+	kubeconfig    string
 }
 
-func NewHelmInstaller(cha *chart.Chart, name string, namespace string) *Installer {
+func NewHelmInstaller(cha *chart.Chart, name string, namespace string, kubeconfig string) *Installer {
+
 	return &Installer{
-		name:      name,
-		namespace: namespace,
-		chart:     cha,
+		name:       name,
+		namespace:  namespace,
+		chart:      cha,
+		kubeconfig: kubeconfig,
 	}
 }
 
@@ -44,6 +51,10 @@ func (i *Installer) Init() error {
 	i.configuration = &action.Configuration{}
 	k8sFlags := &genericclioptions.ConfigFlags{
 		Namespace: &i.namespace,
+	}
+	if i.kubeconfig != "" {
+		configpath := filepath.Join(homedir.HomeDir(), ".kube", i.kubeconfig)
+		k8sFlags.KubeConfig = &configpath
 	}
 	debugFunc := func(format string, v ...interface{}) {}
 	err := i.configuration.Init(k8sFlags, i.namespace, "", debugFunc)
@@ -54,12 +65,12 @@ func (i *Installer) Init() error {
 	return nil
 }
 
-func (i *Installer) Install() error {
+func (i *Installer) Install(values chartutil.Values) error {
 	installer := action.NewInstall(i.configuration)
 	installer.Namespace = i.namespace
 	installer.ReleaseName = i.name
 	installer.CreateNamespace = true
-	if _, err := installer.Run(i.chart, nil); err != nil {
+	if _, err := installer.Run(i.chart, values); err != nil {
 		return errors.Wrap(err, "Installation failure")
 	}
 	return nil

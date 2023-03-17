@@ -17,17 +17,27 @@ limitations under the License.
 package edgecluster
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	controllerutils "github.com/edgewize-io/edgewize/pkg/controller/utils/controller"
 	"github.com/edgewize-io/edgewize/pkg/helm"
 	"github.com/edgewize-io/edgewize/pkg/utils/sliceutil"
 	"github.com/go-logr/logr"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/homedir"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -59,6 +69,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.MaxConcurrentReconciles <= 0 {
 		r.MaxConcurrentReconciles = 1
 	}
+	_ = os.MkdirAll(filepath.Join(homedir.HomeDir(), ".kube"), 0644)
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(controllerName).
 		WithOptions(controller.Options{
@@ -123,7 +134,7 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 	logger.V(4).Info("delete edgecluster", "instance", instance)
 	switch instance.Status.Status {
 	case infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
-		status, err := helm.Status(instance.Spec.Distro, instance.Spec.Name, instance.Spec.Namespace)
+		status, err := helm.Status(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, "")
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -131,13 +142,22 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 		case "deployed", "superseded", "failed", "pending-install", "pending-upgrade", "pending-rollback":
 			logger.V(4).Info("begin uninstall edgecluster ", "status", status)
 			instance.Status.Status = infrav1alpha1.UninstallingStatus
-			err = helm.Uninstall(instance.Spec.Distro, instance.Spec.Name, instance.Spec.Namespace)
+			err = helm.Uninstall(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, "")
 			if err != nil {
 				logger.Error(err, "uninstall edge cluster error")
 				return ctrl.Result{}, err
 			}
 			logger.V(4).Info("uninstall edgecluster success", "name", instance.Name)
 		}
+	}
+	member := &infrav1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: instance.Name,
+		},
+		Spec: infrav1alpha1.ClusterSpec{},
+	}
+	if err := r.Delete(ctx, member); err != nil {
+		return ctrl.Result{}, err
 	}
 	if err := r.Status().Update(ctx, instance); err != nil {
 		return ctrl.Result{}, err
@@ -147,52 +167,218 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 
 func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (ctrl.Result, error) {
 	logger := log.FromContext(ctx, "doReconcile", instance.Name)
-	if instance.Spec.Name == "" || instance.Spec.Namespace == "" {
+	if instance.Name == "" || instance.Spec.Namespace == "" {
 		return ctrl.Result{}, errors.New("cluster name and namespace cannot be empty")
 	}
 	if instance.Spec.Distro == "" {
-		instance.Spec.Distro = "k3s"
-		if err := r.Update(ctx, instance); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
+		instance.Spec.Distro = "k3s" // TODO constants
 	}
-	logger.V(4).Info("doReconcile ", "edgecluster", instance)
+	if instance.Spec.Components == "" {
+		instance.Spec.Components = "edgewize,cloudcore,-fluent" // TODO constants
+	}
+	if instance.Spec.AdvertiseAddress == nil {
+		instance.Spec.AdvertiseAddress = []string{}
+	}
+	logger.V(3).Info("set default value", "distro", instance.Spec.Distro, "components", instance.Spec.Components, "advertiseaddress", instance.Spec.AdvertiseAddress)
+	if err := r.Update(ctx, instance); err != nil {
+		logger.Error(err, "update edge cluster error")
+		return ctrl.Result{}, err
+	}
 
 	switch instance.Status.Status {
 	case "", infrav1alpha1.InstallingStatus:
-		status, err := helm.Status(instance.Spec.Distro, instance.Spec.Name, instance.Spec.Namespace)
+		logger.V(2).Info("install edge cluster")
+		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, "", nil)
 		if err != nil {
+			logger.Error(err, "install edge cluster error")
 			return ctrl.Result{}, err
 		}
-		logger.V(4).Info("doReconcile ", "helm release status", status)
-		switch status {
-		case release.StatusUnknown:
-			logger.Info("install edge cluster", "name", instance.Spec.Name)
-			instance.Status.Status = infrav1alpha1.InstallingStatus
-			err = helm.Install(instance.Spec.Distro, instance.Spec.Name, instance.Spec.Namespace)
+		instance.Status.Status = status
+	case infrav1alpha1.RunningStatus:
+		if instance.Status.KubeConfig == "" {
+			config, err := r.GetKubeConfig(instance)
 			if err != nil {
-				logger.Error(err, "install edge cluster error")
+				logger.Error(err, "get edge cluster kube config error")
 				return ctrl.Result{}, err
 			}
-		case release.StatusUninstalling:
-			instance.Status.Status = infrav1alpha1.UninstallingStatus
-		case release.StatusUninstalled:
-			instance.Status.Status = infrav1alpha1.UninstalledStatus
-		case release.StatusDeployed:
-			instance.Status.Status = infrav1alpha1.RunningStatus
-		case release.StatusFailed:
-			instance.Status.Status = infrav1alpha1.ErrorStatus
+			data, err := clientcmd.Write(*config)
+			if err != nil {
+				logger.Error(err, "encode edge cluster kube config error")
+				return ctrl.Result{}, err
+			}
+			instance.Status.KubeConfig = string(data)
 		}
-	case infrav1alpha1.RunningStatus:
-
+		err := CheckKubeConfig(instance.Name, []byte(instance.Status.KubeConfig))
+		if err != nil {
+			logger.Error(err, "write edge cluster kube config to file error")
+			return ctrl.Result{}, err
+		}
+		err = r.ReconcileEdgeWize(ctx, instance)
+		if err != nil {
+			logger.Error(err, "install edgewize agent error")
+			return ctrl.Result{}, err
+		}
+		err = r.ReconcileCloudCore(ctx, instance)
+		if err != nil {
+			logger.Error(err, "install cloudcore error")
+			return ctrl.Result{}, err
+		}
 	case infrav1alpha1.ErrorStatus:
-		logger.Info("edge cluster install error", "name", instance.Spec.Name)
-	case infrav1alpha1.UninstalledStatus:
-		logger.Info("edge cluster uninstalled", "name", instance.Spec.Name)
+		logger.Info("edge cluster install error", "name", instance.Name)
 	}
 	if err := r.Status().Update(ctx, instance); err != nil {
+		logger.Error(err, "install edge cluster status error")
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
+}
+
+func (r *Reconciler) GetKubeConfig(instance *infrav1alpha1.EdgeCluster) (*clientcmdapi.Config, error) {
+	secret := &corev1.Secret{}
+	key := types.NamespacedName{
+		Namespace: instance.Spec.Namespace,
+		Name:      fmt.Sprintf("vc-%s", instance.Name),
+	}
+	err := r.Get(context.Background(), key, secret)
+	if err != nil {
+		return nil, err
+	}
+	data, ok := secret.Data["config"]
+	if !ok {
+		return nil, errors.New("kubeconfig does not exist")
+	}
+	config, err := clientcmd.Load(data)
+	if err != nil {
+		return nil, err
+	}
+	// my-vcluster is the default name of cluster kubeconfig
+	config.Clusters["my-vcluster"].Server = fmt.Sprintf("https://%s.%s:443", instance.Name, instance.Spec.Namespace)
+	return config, nil
+}
+
+func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	logger := log.FromContext(ctx, "ReconcileEdgeWize", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.V(4).Info("kubeconfig is null, skip install edgewize agent")
+		return nil
+	}
+	switch instance.Status.EdgeWize {
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
+		values := chartutil.Values{}
+		values["role"] = "member"
+		status, err := InstallChart("edgewize", "edgewize", "edgewize-system", instance.Name, values)
+		if err != nil {
+			instance.Status.EdgeWize = infrav1alpha1.ErrorStatus
+			return err
+		}
+		instance.Status.EdgeWize = status
+		if instance.Status.EdgeWize == infrav1alpha1.RunningStatus {
+			member := &infrav1alpha1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        instance.Name,
+					Annotations: map[string]string{},
+					Labels: map[string]string{
+						infrav1alpha1.MemberCluster: "",
+						infrav1alpha1.ClusterAlias:  instance.Spec.Alias,
+					},
+				},
+				Spec: infrav1alpha1.ClusterSpec{
+					Provider: "edgewize",
+					Connection: infrav1alpha1.Connection{
+						Type:       infrav1alpha1.ConnectionTypeDirect,
+						KubeConfig: []byte(instance.Status.KubeConfig),
+					},
+				},
+			}
+			err = r.Create(ctx, member)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	case infrav1alpha1.ErrorStatus:
+		logger.V(4).Info("edgewize install error")
+	}
+	return nil
+}
+
+func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	logger := log.FromContext(ctx, "ReconcileCloudCore", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.V(4).Info("kubeconfig is null, skip install cloudcore")
+		return nil
+	}
+	switch instance.Status.CloudCore {
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
+		values := chartutil.Values{}
+		//cloudCore.modules.cloudHub.advertiseAddress=xxx
+		values["cloudCore"] = map[string]interface{}{
+			"modules": map[string]interface{}{
+				"cloudHub": map[string]interface{}{
+					"advertiseAddress": instance.Spec.AdvertiseAddress,
+				},
+			},
+		}
+		status, err := InstallChart("cloudcore", "cloudcore", "kubeedge", instance.Name, values)
+		if err != nil {
+			instance.Status.CloudCore = infrav1alpha1.ErrorStatus
+			return err
+		}
+		instance.Status.CloudCore = status
+		return nil
+	case infrav1alpha1.ErrorStatus:
+		logger.V(4).Info("edgewize install error")
+	}
+	return nil
+}
+
+func InstallChart(file, name, namespace, kubeconfig string, values chartutil.Values) (infrav1alpha1.Status, error) {
+	chartStatus, err := helm.Status(file, name, namespace, kubeconfig)
+	if err != nil {
+		return "", err
+	}
+	switch chartStatus {
+	case release.StatusUnknown, release.StatusUninstalled:
+		err = helm.Install(file, name, namespace, kubeconfig, values)
+		if err != nil {
+			return "", err
+		}
+		return infrav1alpha1.InstallingStatus, nil
+	case release.StatusUninstalling:
+		return infrav1alpha1.UninstallingStatus, nil
+	case release.StatusDeployed:
+		return infrav1alpha1.RunningStatus, nil
+	case release.StatusFailed:
+		return infrav1alpha1.ErrorStatus, nil
+	case release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback:
+		return infrav1alpha1.InstallingStatus, nil
+	}
+	return infrav1alpha1.ErrorStatus, nil
+}
+
+func SaveToLocal(name string, config []byte) error {
+	path := filepath.Join(homedir.HomeDir(), ".kube", name)
+	return os.WriteFile(path, config, 0644)
+}
+
+func CheckKubeConfig(name string, config []byte) error {
+	path := filepath.Join(homedir.HomeDir(), ".kube", name)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		err = SaveToLocal(name, config)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	if bytes.Compare(data, config) != 0 {
+		err = SaveToLocal(name, config)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

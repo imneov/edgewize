@@ -50,7 +50,6 @@ import (
 	clusterkapisv1alpha1 "github.com/edgewize-io/edgewize/pkg/kapis/edgecluster/v1alpha1"
 	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/kapis/resources/v1alpha3"
 	terminalv1alpha2 "github.com/edgewize-io/edgewize/pkg/kapis/terminal/v1alpha2"
-	"github.com/edgewize-io/edgewize/pkg/kapis/version"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/cache"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
 	"github.com/edgewize-io/edgewize/pkg/utils/edgeclusterclient"
@@ -144,8 +143,8 @@ func (s *APIServer) installKubeSphereAPIs(stopCh <-chan struct{}) {
 		s.RuntimeCache,
 		s.Config.EdgeWizeOptions.ProxyPublishService,
 		s.Config.EdgeWizeOptions.ProxyPublishAddress,
-		s.Config.EdgeWizeOptions.AgentImage))
-	urlruntime.Must(version.AddToContainer(s.container, s.KubernetesClient.Kubernetes().Discovery()))
+		s.Config.EdgeWizeOptions.AgentImage,
+		s.KubernetesClient.Kubernetes().Discovery()))
 }
 
 // installCRDAPIs Install CRDs to the KAPIs with List and Get options

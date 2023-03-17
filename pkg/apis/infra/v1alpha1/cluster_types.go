@@ -27,31 +27,23 @@ const (
 	ResourcesSingularCluster = "cluster"
 	ResourcesPluralCluster   = "clusters"
 
-	HostCluster = "cluster-role.kubesphere.io/host"
+	HostCluster   = "cluster-role.edgewize.io/host"
+	MemberCluster = "cluster-role.edgewize.io/member"
 	// Description of which region the cluster been placed
-	ClusterRegion = "cluster.kubesphere.io/region"
+	ClusterRegion = "infra.edgewize.io/region"
 	// Name of the cluster group
-	ClusterGroup = "cluster.kubesphere.io/group"
+	ClusterGroup = "infra.edgewize.io/group"
+	ClusterAlias = "infra.edgewize.io/alias"
 
-	Finalizer = "finalizer.cluster.kubesphere.io"
+	Finalizer = "finalizer.infra.edgewize.io"
 )
 
 type ClusterSpec struct {
-
-	// Join cluster as a kubefed cluster
-	JoinFederation bool `json:"joinFederation,omitempty"`
-
-	// Desired state of the cluster
-	Enable bool `json:"enable,omitempty"`
-
 	// Provider of the cluster, this field is just for description
 	Provider string `json:"provider,omitempty"`
 
 	// Connection holds info to connect to the member cluster
 	Connection Connection `json:"connection,omitempty"`
-
-	// ExternalKubeAPIEnabled export kubeapiserver to public use a lb type service if connection type is proxy
-	ExternalKubeAPIEnabled bool `json:"externalKubeAPIEnabled,omitempty"`
 }
 
 type ConnectionType string
@@ -178,7 +170,6 @@ type ClusterStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:openapi-gen=true
 // +genclient:nonNamespaced
-// +kubebuilder:printcolumn:name="Federated",type="boolean",JSONPath=".spec.joinFederation"
 // +kubebuilder:printcolumn:name="Provider",type="string",JSONPath=".spec.provider"
 // +kubebuilder:printcolumn:name="Active",type="boolean",JSONPath=".spec.enable"
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".status.kubernetesVersion"
