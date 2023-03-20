@@ -30,7 +30,8 @@ const (
 	HostCluster   = "cluster-role.edgewize.io/host"
 	MemberCluster = "cluster-role.edgewize.io/member"
 	// Description of which region the cluster been placed
-	ClusterRegion = "infra.edgewize.io/region"
+	ClusterRegion   = "infra.edgewize.io/region"
+	ClusterLocation = "infra.edgewize.io/location"
 	// Name of the cluster group
 	ClusterGroup = "infra.edgewize.io/group"
 	ClusterAlias = "infra.edgewize.io/alias"

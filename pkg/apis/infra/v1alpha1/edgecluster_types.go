@@ -46,13 +46,15 @@ type EdgeClusterSpec struct {
 	// Distro is Kubernetes distro to use for the virtual cluster. Allowed distros: k3s, k0s, k8s, eks (default "k3s")
 	Distro string `json:"distro,omitempty"`
 
+	Description string `json:"description,omitempty"`
+
 	// Version is the edge cluster distro version. TODO
 	Version string `json:"version,omitempty"`
 
 	// Location is the location of the current cluster. TODO
 	Location string `json:"location,omitempty"`
 
-	// Components will install in the edgecluster ,default is "edgewize,cloudcore,-fluent" TODO
+	// Components will install in the edgecluster ,default is "edgewize,cloudcore,-fluent"
 	//   -fluent means does not install fluent component
 	//   edgewize will always install
 	Components string `json:"components,omitempty"`

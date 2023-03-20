@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	controllerutils "github.com/edgewize-io/edgewize/pkg/controller/utils/controller"
@@ -45,7 +46,10 @@ import (
 )
 
 const (
-	controllerName = "edgecluster-controller"
+	controllerName     = "edgecluster-controller"
+	DefaultComponents  = "edgewize,cloudcore,-fluent"
+	ComponentEdgeWize  = "edgewize"
+	ComponentCloudCore = "cloudcore"
 )
 
 // Reconciler reconciles a Workspace object
@@ -96,7 +100,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !sliceutil.HasString(instance.ObjectMeta.Finalizers, finalizer) {
-			logger.V(4).Info("edgecluster is created, add finalizer and update", "req", req, "finalizer", finalizer)
+			logger.V(4).Info("edge cluster is created, add finalizer and update", "req", req, "finalizer", finalizer)
 			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, finalizer)
 			if err := r.Update(rootCtx, instance); err != nil {
 				return ctrl.Result{}, err
@@ -112,9 +116,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			instance.ObjectMeta.Finalizers = sliceutil.RemoveString(instance.ObjectMeta.Finalizers, func(item string) bool {
 				return item == finalizer
 			})
-			logger.V(4).Info("update edgecluster")
+			logger.V(4).Info("update edge cluster")
 			if err := r.Update(rootCtx, instance); err != nil {
-				logger.Error(err, "update edgecluster failed")
+				logger.Error(err, "update edge cluster failed")
 				return ctrl.Result{}, err
 			}
 		}
@@ -131,7 +135,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (ctrl.Result, error) {
 	logger := log.FromContext(ctx, "func", "undoReconcile", "instance", instance.Name)
-	logger.V(4).Info("delete edgecluster", "instance", instance)
+	logger.V(4).Info("delete edge cluster", "instance", instance)
 	switch instance.Status.Status {
 	case infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		status, err := helm.Status(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, "")
@@ -140,14 +144,14 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 		}
 		switch status {
 		case "deployed", "superseded", "failed", "pending-install", "pending-upgrade", "pending-rollback":
-			logger.V(4).Info("begin uninstall edgecluster ", "status", status)
+			logger.V(4).Info("begin uninstall edge cluster ", "status", status)
 			instance.Status.Status = infrav1alpha1.UninstallingStatus
 			err = helm.Uninstall(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, "")
 			if err != nil {
 				logger.Error(err, "uninstall edge cluster error")
 				return ctrl.Result{}, err
 			}
-			logger.V(4).Info("uninstall edgecluster success", "name", instance.Name)
+			logger.V(4).Info("uninstall edge cluster success", "name", instance.Name)
 		}
 	}
 	member := &infrav1alpha1.Cluster{
@@ -174,7 +178,9 @@ func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.Ed
 		instance.Spec.Distro = "k3s" // TODO constants
 	}
 	if instance.Spec.Components == "" {
-		instance.Spec.Components = "edgewize,cloudcore,-fluent" // TODO constants
+		instance.Spec.Components = DefaultComponents
+	} else if !strings.Contains(instance.Spec.Components, ComponentEdgeWize) {
+		instance.Spec.Components = fmt.Sprintf("%s,%s", ComponentEdgeWize, instance.Spec.Components)
 	}
 	if instance.Spec.AdvertiseAddress == nil {
 		instance.Spec.AdvertiseAddress = []string{}
@@ -213,16 +219,28 @@ func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.Ed
 			logger.Error(err, "write edge cluster kube config to file error")
 			return ctrl.Result{}, err
 		}
-		err = r.ReconcileEdgeWize(ctx, instance)
-		if err != nil {
-			logger.Error(err, "install edgewize agent error")
-			return ctrl.Result{}, err
+		components := strings.Split(instance.Spec.Components, ",")
+		for _, component := range components {
+			if len(component) > 0 && component[0] != '-' {
+				switch component {
+				case "edgewize":
+					err = r.ReconcileEdgeWize(ctx, instance)
+					if err != nil {
+						logger.Error(err, "install edgewize agent error")
+						return ctrl.Result{}, err
+					}
+				case "cloudcore":
+					err = r.ReconcileCloudCore(ctx, instance)
+					if err != nil {
+						logger.Error(err, "install cloudcore error")
+						return ctrl.Result{}, err
+					}
+				default:
+					logger.Info(fmt.Sprintf("unknown component %s", component))
+				}
+			}
 		}
-		err = r.ReconcileCloudCore(ctx, instance)
-		if err != nil {
-			logger.Error(err, "install cloudcore error")
-			return ctrl.Result{}, err
-		}
+
 	case infrav1alpha1.ErrorStatus:
 		logger.Info("edge cluster install error", "name", instance.Name)
 	}
@@ -275,8 +293,7 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 		if instance.Status.EdgeWize == infrav1alpha1.RunningStatus {
 			member := &infrav1alpha1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        instance.Name,
-					Annotations: map[string]string{},
+					Name: instance.Name,
 					Labels: map[string]string{
 						infrav1alpha1.MemberCluster: "",
 						infrav1alpha1.ClusterAlias:  instance.Spec.Alias,
@@ -289,6 +306,9 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 						KubeConfig: []byte(instance.Status.KubeConfig),
 					},
 				},
+			}
+			if instance.Spec.Location != "" {
+				member.Labels[infrav1alpha1.ClusterLocation] = instance.Spec.Location
 			}
 			err = r.Create(ctx, member)
 			if err != nil {
