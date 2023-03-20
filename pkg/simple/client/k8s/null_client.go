@@ -18,6 +18,7 @@ package k8s
 
 import (
 	snapshotclient "github.com/kubernetes-csi/external-snapshotter/client/v4/clientset/versioned"
+	promresourcesclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
@@ -55,6 +56,10 @@ func (n nullClient) Discovery() discovery.DiscoveryInterface {
 
 func (n nullClient) Master() string {
 	return ""
+}
+
+func (n *nullClient) Prometheus() promresourcesclient.Interface {
+	return nil
 }
 
 func (n nullClient) Config() *rest.Config {

@@ -29,7 +29,7 @@ const (
 )
 
 // +genclient:nonNamespaced
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:scope=Cluster
 // +kubebuilder:subresource:status
@@ -53,7 +53,7 @@ type NotificationReceiverTemplate struct {
 	Spec              v2beta1.ReceiverSpec `json:"spec,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // FederatedNotificationConfigList contains a list of federatednotificationreceiverlists
 type FederatedNotificationReceiverList struct {
@@ -61,3 +61,5 @@ type FederatedNotificationReceiverList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []FederatedNotificationReceiver `json:"items"`
 }
+
+func (_ *FederatedNotificationReceiver) Hub() {}

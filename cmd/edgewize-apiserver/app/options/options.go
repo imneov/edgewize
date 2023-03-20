@@ -39,7 +39,10 @@ import (
 	genericoptions "github.com/edgewize-io/edgewize/pkg/server/options"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/cache"
 
+	"github.com/edgewize-io/edgewize/pkg/simple/client/alerting"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/monitoring/metricsserver"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/monitoring/prometheus"
 )
 
 type ServerRunOptions struct {
@@ -99,7 +102,7 @@ func (s *ServerRunOptions) NewAPIServer(stopCh <-chan struct{}) (*apiserver.APIS
 	apiServer.KubernetesClient = kubernetesClient
 
 	informerFactory := informers.NewInformerFactories(kubernetesClient.Kubernetes(), kubernetesClient.KubeSphere(),
-		kubernetesClient.Snapshot(), kubernetesClient.ApiExtensions())
+		kubernetesClient.Snapshot(), kubernetesClient.ApiExtensions(), kubernetesClient.Prometheus())
 	apiServer.InformerFactory = informerFactory
 
 	// If debug mode is on or CacheOptions is nil, will create a fake cache.
@@ -138,6 +141,26 @@ func (s *ServerRunOptions) NewAPIServer(stopCh <-chan struct{}) (*apiserver.APIS
 			Certificates: []tls.Certificate{certificate},
 		}
 		server.Addr = fmt.Sprintf(":%d", s.GenericServerRunOptions.SecurePort)
+	}
+
+	if s.MonitoringOptions == nil || len(s.MonitoringOptions.Endpoint) == 0 {
+		klog.Fatalf("moinitoring service address in configuration MUST not be empty, please check configmap/edgewize-config in kubesphere-system namespace")
+	} else {
+		monitoringClient, err := prometheus.NewPrometheus(s.MonitoringOptions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to prometheus, please check prometheus status, error: %v", err)
+		}
+		apiServer.MonitoringClient = monitoringClient
+	}
+
+	apiServer.MetricsClient = metricsserver.NewMetricsClient(kubernetesClient.Kubernetes(), s.KubernetesOptions)
+
+	if s.AlertingOptions != nil && (s.AlertingOptions.PrometheusEndpoint != "" || s.AlertingOptions.ThanosRulerEndpoint != "") {
+		alertingClient, err := alerting.NewRuleClient(s.AlertingOptions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to init alerting client: %v", err)
+		}
+		apiServer.AlertingClient = alertingClient
 	}
 
 	sch := scheme.Scheme

@@ -117,7 +117,7 @@ func (c *FakeEdgeClusters) UpdateStatus(ctx context.Context, edgeCluster *v1alph
 // Delete takes name of the edgeCluster and deletes it. Returns an error if one occurs.
 func (c *FakeEdgeClusters) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(edgeclustersResource, c.ns, name), &v1alpha1.EdgeCluster{})
+		Invokes(testing.NewDeleteActionWithOptions(edgeclustersResource, c.ns, name, opts), &v1alpha1.EdgeCluster{})
 
 	return err
 }

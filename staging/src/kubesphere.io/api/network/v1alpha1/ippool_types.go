@@ -43,7 +43,7 @@ const (
 
 // +genclient
 // +genclient:nonNamespaced
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
@@ -83,6 +83,7 @@ type IPPoolStatus struct {
 	Unallocated int                        `json:"unallocated"`
 	Allocations int                        `json:"allocations"`
 	Capacity    int                        `json:"capacity"`
+	Tunnel      int                        `json:"tunnel,omitempty"`
 	Reserved    int                        `json:"reserved,omitempty"`
 	Synced      bool                       `json:"synced,omitempty"`
 	Workspaces  map[string]WorkspaceStatus `json:"workspaces,omitempty"`
@@ -106,6 +107,16 @@ type IPPoolSpec struct {
 	// The block size to use for IP address assignments from this pool. Defaults to 26 for IPv4 and 112 for IPv6.
 	BlockSize int `json:"blockSize,omitempty"`
 
+	// Contains configuration for IPIP tunneling for this pool. If not specified, the default is consistent with the calico-node daemonset.
+	// +optional
+	// +kubebuilder:validation:Enum=Always;CrossSubnet;Never
+	IPIPMode string `json:"ipipMode,omitempty"`
+
+	// Contains configuration for VXLAN tunneling for this pool. If not specified, the default is consistent with the calico-node daemonset.
+	// +optional
+	// +kubebuilder:validation:Enum=Always;CrossSubnet;Never
+	VXLANMode string `json:"vxlanMode,omitempty"`
+
 	VLAN VLANConfig `json:"vlanConfig,omitempty"`
 
 	Gateway string  `json:"gateway,omitempty"`
@@ -113,7 +124,7 @@ type IPPoolSpec struct {
 	DNS     DNS     `json:"dns,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 // +genclient:nonNamespaced
 type IPPoolList struct {
 	metav1.TypeMeta `json:",inline"`

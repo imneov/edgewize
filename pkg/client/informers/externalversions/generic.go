@@ -21,6 +21,7 @@ package externalversions
 import (
 	"fmt"
 
+	v2beta1 "github.com/edgewize-io/edgewize/pkg/apis/alerting/v2beta1"
 	v1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -52,7 +53,15 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=infra.edgewize.io, Version=v1alpha1
+	// Group=alerting.kubesphere.io, Version=v2beta1
+	case v2beta1.SchemeGroupVersion.WithResource("clusterrulegroups"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Alerting().V2beta1().ClusterRuleGroups().Informer()}, nil
+	case v2beta1.SchemeGroupVersion.WithResource("globalrulegroups"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Alerting().V2beta1().GlobalRuleGroups().Informer()}, nil
+	case v2beta1.SchemeGroupVersion.WithResource("rulegroups"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Alerting().V2beta1().RuleGroups().Informer()}, nil
+
+		// Group=infra.edgewize.io, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("clusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Infra().V1alpha1().Clusters().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("edgeclusters"):

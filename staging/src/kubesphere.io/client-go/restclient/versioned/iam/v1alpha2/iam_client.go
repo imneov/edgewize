@@ -17,8 +17,8 @@ limitations under the License.
 package v1alpha2
 
 import (
-	"github.com/go-resty/resty/v2"
-	"k8s.io/client-go/rest"
+	resty "github.com/go-resty/resty/v2"
+	rest "k8s.io/client-go/rest"
 )
 
 type IamV1alpha2Interface interface {
