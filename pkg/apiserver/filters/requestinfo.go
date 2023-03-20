@@ -21,14 +21,14 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/edgewize-io/edgewize/pkg/apiserver/request"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
-
-	"kubesphere.io/kubesphere/pkg/apiserver/request"
+	"k8s.io/klog"
 )
 
 func WithRequestInfo(handler http.Handler, resolver request.RequestInfoResolver) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		// KubeSphere supports kube-apiserver proxy requests in multicluster mode. But kube-apiserver
+		// KubeSphere supports kube-apiserver proxy requests in edgecluster mode. But kube-apiserver
 		// stripped all authorization headers. Use custom header to carry token to avoid losing authentication token.
 		// We may need a better way. See issue below.
 		// https://github.com/kubernetes/kubernetes/issues/38775#issuecomment-277915961
@@ -57,6 +57,7 @@ func WithRequestInfo(handler http.Handler, resolver request.RequestInfoResolver)
 			req.URL.RawQuery = rawQuery
 			req.Header.Del("X-KubeSphere-Rawquery")
 		}
+		klog.Infoln("request url", req.URL.Path)
 		if strings.HasPrefix(req.URL.Path, "/kapis/infra.edgewize.io/v1alpha1") {
 			req.URL.Path = strings.Replace(req.URL.Path, "/kapis/infra.edgewize.io/v1alpha1", "", 1)
 		}

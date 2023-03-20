@@ -19,49 +19,40 @@ package resource
 import (
 	"errors"
 
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/volumesnapshotcontent"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshotcontent"
 
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/volumesnapshotclass"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshotclass"
 
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/persistentvolume"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/persistentvolume"
 
 	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	monitoringdashboardv1alpha2 "kubesphere.io/monitoring-dashboard/api/v1alpha2"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
-	iamv1alpha2 "kubesphere.io/api/iam/v1alpha2"
-	"kubesphere.io/kubesphere/pkg/api"
-	infrav1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
-	"kubesphere.io/kubesphere/pkg/apiserver/query"
-	"kubesphere.io/kubesphere/pkg/informers"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/application"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/cluster"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/clusterdashboard"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/clusterrole"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/clusterrolebinding"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/configmap"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/customresourcedefinition"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/daemonset"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/dashboard"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/deployment"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/ingress"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/job"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/namespace"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/networkpolicy"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/node"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/persistentvolumeclaim"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/pod"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/role"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/rolebinding"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/secret"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/service"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/serviceaccount"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/statefulset"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3/volumesnapshot"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	"github.com/edgewize-io/edgewize/pkg/informers"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/application"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/cluster"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/configmap"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/customresourcedefinition"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/daemonset"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/deployment"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/ingress"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/job"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/namespace"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/networkpolicy"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/node"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/persistentvolumeclaim"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/pod"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/secret"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/service"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/serviceaccount"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/statefulset"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshot"
 )
 
 var ErrResourceNotSupported = errors.New("resource is not supported")
@@ -92,21 +83,12 @@ func NewResourceGetter(factory informers.InformerFactory, cache cache.Cache) *Re
 	namespacedResourceGetters[snapshotv1.SchemeGroupVersion.WithResource("volumesnapshots")] = volumesnapshot.New(factory.SnapshotSharedInformerFactory())
 	clusterResourceGetters[snapshotv1.SchemeGroupVersion.WithResource("volumesnapshotclasses")] = volumesnapshotclass.New(factory.SnapshotSharedInformerFactory())
 	clusterResourceGetters[snapshotv1.SchemeGroupVersion.WithResource("volumesnapshotcontents")] = volumesnapshotcontent.New(factory.SnapshotSharedInformerFactory())
-	namespacedResourceGetters[rbacv1.SchemeGroupVersion.WithResource(iamv1alpha2.ResourcesPluralRoleBinding)] = rolebinding.New(factory.KubernetesSharedInformerFactory())
-	namespacedResourceGetters[rbacv1.SchemeGroupVersion.WithResource(iamv1alpha2.ResourcesPluralRole)] = role.New(factory.KubernetesSharedInformerFactory())
 	clusterResourceGetters[schema.GroupVersionResource{Group: "", Version: "v1", Resource: "nodes"}] = node.New(factory.KubernetesSharedInformerFactory())
 	clusterResourceGetters[schema.GroupVersionResource{Group: "", Version: "v1", Resource: "namespaces"}] = namespace.New(factory.KubernetesSharedInformerFactory())
 	clusterResourceGetters[schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"}] = customresourcedefinition.New(factory.ApiExtensionSharedInformerFactory())
 
 	// kubesphere resources
-	clusterResourceGetters[rbacv1.SchemeGroupVersion.WithResource(iamv1alpha2.ResourcesPluralClusterRole)] = clusterrole.New(factory.KubernetesSharedInformerFactory())
-	clusterResourceGetters[rbacv1.SchemeGroupVersion.WithResource(iamv1alpha2.ResourcesPluralClusterRoleBinding)] = clusterrolebinding.New(factory.KubernetesSharedInformerFactory())
 	clusterResourceGetters[infrav1alpha1.SchemeGroupVersion.WithResource(infrav1alpha1.ResourcesPluralCluster)] = cluster.New(factory.KubeSphereSharedInformerFactory())
-	clusterResourceGetters[monitoringdashboardv1alpha2.GroupVersion.WithResource("clusterdashboards")] = clusterdashboard.New(cache)
-
-	// federated resources
-	namespacedResourceGetters[monitoringdashboardv1alpha2.GroupVersion.WithResource("dashboards")] = dashboard.New(cache)
-
 	return &ResourceGetter{
 		namespacedResourceGetters: namespacedResourceGetters,
 		clusterResourceGetters:    clusterResourceGetters,

@@ -2,58 +2,73 @@
 // Run hack/pin-dependency.sh to change pinned dependency versions.
 // Run hack/update-vendor.sh to update go.mod files and the vendor directory.
 
-module kubesphere.io/kubesphere
+module github.com/edgewize-io/edgewize
 
 go 1.16
 
 require (
 	code.cloudfoundry.org/bytefmt v0.0.0-20190710193110-1eb035ffe2b6
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e // indirect
+	github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
-	github.com/deckarep/golang-set v1.7.1 // indirect
+	github.com/bshuster-repo/logrus-logstash-hook v0.4.1 // indirect
+	github.com/bugsnag/bugsnag-go v1.5.0 // indirect
+	github.com/bugsnag/panicwrap v1.2.0 // indirect
+	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v20.10.7+incompatible
-	github.com/elastic/go-elasticsearch/v5 v5.6.1
-	github.com/elastic/go-elasticsearch/v6 v6.8.2
-	github.com/elastic/go-elasticsearch/v7 v7.3.0
+	github.com/docker/go-metrics v0.0.0-20181218153428-b84716841b82 // indirect
+	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/elazarl/goproxy v0.0.0-20200315184450-1f3cb6622dad // indirect
 	github.com/emicklei/go-restful v2.14.3+incompatible
 	github.com/emicklei/go-restful-openapi v1.4.1
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/evanphx/json-patch v4.11.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.9
+	github.com/garyburd/redigo v1.6.0 // indirect
+	github.com/go-logr/logr v0.4.0
+	github.com/go-openapi/spec v0.19.7 // indirect
+	github.com/go-openapi/swag v0.19.9 // indirect
 	github.com/go-redis/redis v6.15.2+incompatible
-	github.com/golang/example v0.0.0-20170904185048-46695d81d1fa
+	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/google/go-cmp v0.5.6
 	github.com/google/go-containerregistry v0.6.0
 	github.com/google/gops v0.3.23
+	github.com/gorilla/handlers v1.4.0 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
-	github.com/hashicorp/golang-lru v0.5.4
-	github.com/json-iterator/go v1.1.11
+	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.2.0
+	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
+	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
+	github.com/mattn/go-colorable v0.1.6 // indirect
+	github.com/mattn/go-runewidth v0.0.4 // indirect
+	github.com/miekg/dns v1.1.30 // indirect
 	github.com/mitchellh/mapstructure v1.2.2
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.15.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus-operator/prometheus-operator v0.42.2-0.20200928114327-fbd01683839a
 	github.com/prometheus/client_golang v1.11.0
-	github.com/prometheus/common v0.26.0
-	github.com/sony/sonyflake v0.0.0-20181109022403-6d5bd6181009
-	github.com/speps/go-hashids v2.0.0+incompatible
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
+	github.com/xenolf/lego v0.3.2-0.20160613233155-a9d8cec0e656 // indirect
+	github.com/yvasiyarov/go-metrics v0.0.0-20150112132944-c25f46c4b940 // indirect
+	github.com/yvasiyarov/gorelic v0.0.6 // indirect
+	github.com/yvasiyarov/newrelic_platform_go v0.0.0-20140908184405-b21fdbd4370f // indirect
+	go.uber.org/atomic v1.6.0 // indirect
+	go.uber.org/multierr v1.4.0 // indirect
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
+	google.golang.org/grpc v1.30.0 // indirect
+	gopkg.in/square/go-jose.v1 v1.1.2 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.0 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools v2.2.0+incompatible
-	istio.io/client-go v0.0.0-20201113183938-0734e976e785
-	istio.io/gogo-genproto v0.0.0-20201113182723-5b8563d8a012 // indirect
+	helm.sh/helm/v3 v3.6.3
 	k8s.io/api v0.22.1
 	k8s.io/apiextensions-apiserver v0.21.4
 	k8s.io/apimachinery v0.22.1
@@ -66,10 +81,7 @@ require (
 	k8s.io/klog/v2 v2.9.0
 	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e
 	k8s.io/kubectl v0.21.2
-	k8s.io/utils v0.0.0-20210802155522-efc7438f0176
-	kubesphere.io/api v0.0.0
-	kubesphere.io/client-go v0.0.0
-	kubesphere.io/monitoring-dashboard v0.2.2
+	rsc.io/letsencrypt v0.0.1 // indirect
 	sigs.k8s.io/application v0.8.4-0.20201016185654-c8e2959e57a0
 	sigs.k8s.io/controller-runtime v0.10.0
 	sigs.k8s.io/controller-tools v0.6.2

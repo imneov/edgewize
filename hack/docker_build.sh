@@ -24,17 +24,17 @@ TARGETARCH=${TARGETARCH:-$(kube::util::host_arch)}
 ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
   --build-arg TARGETARCH="${TARGETARCH}" \
   --build-arg TARGETOS="${TARGETOS}" \
-  -f build/ks-apiserver/Dockerfile \
-  -t "${REPO}"/ks-apiserver:"${TAG}" .
+  -f build/apiserver/Dockerfile \
+  -t "${REPO}"/edgewize-apiserver:"${TAG}" .
 
 
 ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
   --build-arg "TARGETARCH=${TARGETARCH}" \
   --build-arg "TARGETOS=${TARGETOS}" \
-  -f build/ks-controller-manager/Dockerfile \
-  -t "${REPO}"/ks-controller-manager:"${TAG}" .
+  -f build/controller-manager/Dockerfile \
+  -t "${REPO}"/edgewize-controller-manager:"${TAG}" .
 
 if [[ -z "${DRY_RUN:-}" ]]; then
-  ${CONTAINER_CLI} push "${REPO}"/ks-apiserver:"${TAG}"
-  ${CONTAINER_CLI} push "${REPO}"/ks-controller-manager:"${TAG}"
+  ${CONTAINER_CLI} push "${REPO}"/edgewize-apiserver:"${TAG}"
+  ${CONTAINER_CLI} push "${REPO}"/edgewize-controller-manager:"${TAG}"
 fi

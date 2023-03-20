@@ -22,14 +22,14 @@ import (
 	"context"
 	time "time"
 
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	versioned "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
+	internalinterfaces "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/edgewize-io/edgewize/pkg/client/listers/infra/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
-	infrav1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
-	versioned "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
-	internalinterfaces "kubesphere.io/kubesphere/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "kubesphere.io/kubesphere/pkg/client/listers/infra/v1alpha1"
 )
 
 // ClusterInformer provides access to a shared informer and lister for

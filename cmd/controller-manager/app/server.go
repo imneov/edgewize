@@ -21,6 +21,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/edgewize-io/edgewize/cmd/controller-manager/app/options"
+	"github.com/edgewize-io/edgewize/pkg/apis"
+	controllerconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
+	"github.com/edgewize-io/edgewize/pkg/informers"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
+	"github.com/edgewize-io/edgewize/pkg/utils/metrics"
+	"github.com/edgewize-io/edgewize/pkg/utils/term"
+	"github.com/edgewize-io/edgewize/pkg/version"
 	"github.com/google/gops/agent"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,14 +36,6 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog"
 	"k8s.io/klog/klogr"
-	"kubesphere.io/kubesphere/cmd/controller-manager/app/options"
-	"kubesphere.io/kubesphere/pkg/apis"
-	controllerconfig "kubesphere.io/kubesphere/pkg/apiserver/config"
-	"kubesphere.io/kubesphere/pkg/informers"
-	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
-	"kubesphere.io/kubesphere/pkg/utils/metrics"
-	"kubesphere.io/kubesphere/pkg/utils/term"
-	"kubesphere.io/kubesphere/pkg/version"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -47,11 +47,11 @@ func NewControllerManagerCommand() *cobra.Command {
 	if err == nil {
 		// make sure LeaderElection is not nil
 		s = &options.KubeSphereControllerManagerOptions{
-			KubernetesOptions:   conf.KubernetesOptions,
-			MultiClusterOptions: conf.MultiClusterOptions,
-			LeaderElection:      s.LeaderElection,
-			LeaderElect:         s.LeaderElect,
-			WebhookCertDir:      s.WebhookCertDir,
+			KubernetesOptions: conf.KubernetesOptions,
+			EdgeWizeOptions:   conf.EdgeWizeOptions,
+			LeaderElection:    s.LeaderElection,
+			LeaderElect:       s.LeaderElect,
+			WebhookCertDir:    s.WebhookCertDir,
 		}
 	} else {
 		klog.Fatal("Failed to load configuration from disk", err)

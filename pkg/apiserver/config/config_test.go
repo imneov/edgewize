@@ -21,13 +21,13 @@ import (
 	"os"
 	"testing"
 
+	"github.com/edgewize-io/edgewize/pkg/simple/client/edgewize"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v2"
 
-	"kubesphere.io/kubesphere/pkg/models/terminal"
-	"kubesphere.io/kubesphere/pkg/simple/client/cache"
-	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
-	"kubesphere.io/kubesphere/pkg/simple/client/multicluster"
+	"github.com/edgewize-io/edgewize/pkg/models/terminal"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/cache"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
 )
 
 func newTestConfig() (*Config, error) {
@@ -43,7 +43,7 @@ func newTestConfig() (*Config, error) {
 			Type:    "redis",
 			Options: map[string]interface{}{},
 		},
-		MultiClusterOptions: multicluster.NewOptions(),
+		EdgeWizeOptions: edgewize.NewOptions(),
 		TerminalOptions: &terminal.Options{
 			Image:   "alpine:3.15",
 			Timeout: 600,
@@ -99,12 +99,12 @@ func TestStripEmptyOptions(t *testing.T) {
 
 	config.CacheOptions = &cache.Options{Type: ""}
 
-	config.MultiClusterOptions = &multicluster.Options{Enable: false}
+	config.EdgeWizeOptions = &edgewize.Options{}
 
 	config.stripEmptyOptions()
 
 	if config.CacheOptions != nil ||
-		config.MultiClusterOptions != nil {
+		config.EdgeWizeOptions != nil {
 		t.Fatal("config stripEmptyOptions failed")
 	}
 }

@@ -22,12 +22,12 @@ import (
 	"context"
 	"time"
 
+	v1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	scheme "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
-	v1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
-	scheme "kubesphere.io/kubesphere/pkg/client/clientset/versioned/scheme"
 )
 
 // ClustersGetter has a method to return a ClusterInterface.

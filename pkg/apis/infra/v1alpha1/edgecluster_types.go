@@ -26,7 +26,6 @@ const (
 	RunningStatus      Status = "running"
 	InstallingStatus   Status = "installing"
 	UninstallingStatus Status = "uninstalling"
-	UninstalledStatus  Status = "uninstalled"
 	ErrorStatus        Status = "error"
 )
 
@@ -35,10 +34,14 @@ const (
 
 // EdgeClusterSpec defines the desired state of EdgeCluster
 type EdgeClusterSpec struct {
-	// Name is the edge cluster name
-	Name string `json:"name,omitempty"`
+	Alias string `json:"alias,omitempty"`
 
+	// Namespace is the target namespace where the edge cluster will be installed
 	Namespace string `json:"namespace,omitempty"`
+
+	// Cluster is the target cluster where the edge cluster will be installed (default "host"),
+	// it depends on the multi-cluster component.
+	Cluster string `json:"cluster,omitempty"`
 
 	// Distro is Kubernetes distro to use for the virtual cluster. Allowed distros: k3s, k0s, k8s, eks (default "k3s")
 	Distro string `json:"distro,omitempty"`
@@ -48,6 +51,13 @@ type EdgeClusterSpec struct {
 
 	// Location is the location of the current cluster. TODO
 	Location string `json:"location,omitempty"`
+
+	// Components will install in the edgecluster ,default is "edgewize,cloudcore,-fluent" TODO
+	//   -fluent means does not install fluent component
+	//   edgewize will always install
+	Components string `json:"components,omitempty"`
+
+	AdvertiseAddress []string `json:"advertiseAddress,omitempty"`
 }
 
 // EdgeClusterStatus defines the observed state of EdgeCluster
@@ -55,16 +65,24 @@ type EdgeClusterStatus struct {
 
 	// Status is the edge cluster release installation status
 	Status Status `json:"status,omitempty"`
+
+	// KubeConfig is the edge cluster kubeconfig, encode by base64
+	KubeConfig string `json:"kubeConfig,omitempty"`
+
+	EdgeWize Status `json:"edgewize,omitempty"`
+
+	CloudCore Status `json:"cloudcore,omitempty"`
 }
 
 //+genclient
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:resource:scope=Namespaced
-//+kubebuilder:printcolumn:name="Name",type=string,JSONPath=`.spec.name`
-//+kubebuilder:printcolumn:name="Namespace",type=string,JSONPath=`.spec.namespace`
+//+kubebuilder:printcolumn:name="NameSpace",type=string,JSONPath=`.spec.namespace`
 //+kubebuilder:printcolumn:name="Distro",type=string,JSONPath=`.spec.distro`
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
+//+kubebuilder:printcolumn:name="EdgeWize",type=string,JSONPath=`.status.edgewize`
+//+kubebuilder:printcolumn:name="CloudCore",type=string,JSONPath=`.status.cloudcore`
 
 // EdgeCluster is the Schema for the edgeclusters API
 type EdgeCluster struct {

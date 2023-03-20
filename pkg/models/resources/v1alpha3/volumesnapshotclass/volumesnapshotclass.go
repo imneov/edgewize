@@ -26,9 +26,9 @@ import (
 	"github.com/kubernetes-csi/external-snapshotter/client/v4/informers/externalversions"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"kubesphere.io/kubesphere/pkg/api"
-	"kubesphere.io/kubesphere/pkg/apiserver/query"
-	"kubesphere.io/kubesphere/pkg/models/resources/v1alpha3"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3"
 )
 
 const (

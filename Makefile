@@ -6,11 +6,11 @@
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
-GV="network:v1alpha1 servicemesh:v1alpha2 tenant:v1alpha1 tenant:v1alpha2 devops:v1alpha1 iam:v1alpha2 devops:v1alpha3 cluster:v1alpha1 storage:v1alpha1 auditing:v1alpha1 types:v1beta1 quota:v1alpha2 application:v1alpha1 notification:v2beta1 gateway:v1alpha1"
-MANIFESTS="application/* cluster/* iam/* network/v1alpha1 quota/* storage/* tenant/* gateway/*"
+GV="infra:v1alpha1"
+MANIFESTS="infra/*"
 
 # App Version
-APP_VERSION = v3.2.0
+APP_VERSION = v0.1.0
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -38,13 +38,13 @@ define ALL_HELP_INFO
 # Example:
 #   make
 #   make all
-#   make all WHAT=cmd/ks-apiserver
+#   make all WHAT=cmd/edgewize-apiserver
 #     Note: Use the -N -l options to disable compiler optimizations an inlining.
 #           Using these build options allows you to subsequently use source
 #           debugging tools like delve.
 endef
 .PHONY: all
-all: test ks-apiserver ks-controller-manager;$(info $(M)...Begin to test and build all of binary.) @ ## Test and build all of binary.
+all: test edgewize-apiserver edgewize-controller-manager;$(info $(M)...Begin to test and build all of binary.) @ ## Test and build all of binary.
 
 help:
 	@grep -hE '^[ a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -52,14 +52,14 @@ help:
 
 .PHONY: binary
 # Build all of binary
-binary: | ks-apiserver ks-controller-manager; $(info $(M)...Build all of binary.) @ ## Build all of binary.
+binary: | edgewize-apiserver edgewize-controller-manager; $(info $(M)...Build all of binary.) @ ## Build all of binary.
 
-# Build ks-apiserver binary
-ks-apiserver: ; $(info $(M)...Begin to build ks-apiserver binary.)  @ ## Build ks-apiserver.
-	 hack/gobuild.sh cmd/ks-apiserver;
+# Build edgewize-apiserver binary
+edgewize-apiserver: ; $(info $(M)...Begin to build edgewize-apiserver binary.)  @ ## Build edgewize-apiserver.
+	 hack/gobuild.sh cmd/edgewize-apiserver;
 
-# Build ks-controller-manager binary
-ks-controller-manager: ; $(info $(M)...Begin to build ks-controller-manager binary.)  @ ## Build ks-controller-manager.
+# Build edgewize-controller-manager binary
+edgewize-controller-manager: ; $(info $(M)...Begin to build edgewize-controller-manager binary.)  @ ## Build ks-controller-manager.
 	hack/gobuild.sh cmd/controller-manager
 
 # Run all verify scripts hack/verify-*.sh
@@ -86,6 +86,7 @@ vet: ;$(info $(M)...Begin to run go vet against code.)  @ ## Run go vet against 
 	go vet ./pkg/... ./cmd/...
 
 # Generate manifests e.g. CRD, RBAC etc.
+.PHONY: manifests
 manifests: ;$(info $(M)...Begin to generate manifests e.g. CRD, RBAC etc..)  @ ## Generate manifests e.g. CRD, RBAC etc.
 	hack/generate_manifests.sh ${CRD_OPTIONS} ${MANIFESTS}
 
@@ -123,19 +124,17 @@ container-cross-push: ; $(info $(M)...Begin to build and push.)  @ ## Build and 
 	hack/docker_build_multiarch.sh
 
 helm-package: ; $(info $(M)...Begin to helm-package.)  @ ## Helm-package.
-	ls config/crds/ | xargs -i cp -r config/crds/{} config/ks-core/crds/
-	helm package config/ks-core --app-version=${APP_VERSION} --version=0.1.0 -d ./bin
+	ls config/crds/ | xargs -i cp -r config/crds/{} config/edgewize/crds/
+	helm package config/edgewize --app-version=${APP_VERSION} --version=0.1.0 -d ./bin
 
 helm-deploy: ; $(info $(M)...Begin to helm-deploy.)  @ ## Helm-deploy.
 	ls config/crds/ | xargs -i cp -r config/crds/{} config/ks-core/crds/
 	- kubectl create ns kubesphere-controls-system
-	helm upgrade --install ks-core ./config/ks-core -n kubesphere-system --create-namespace
-	kubectl apply -f https://raw.githubusercontent.com/kubesphere/ks-installer/master/roles/ks-core/prepare/files/ks-init/role-templates.yaml
+	helm upgrade --install edgewize ./config/edgewize -n edgewize-system --create-namespace
 
 helm-uninstall: ; $(info $(M)...Begin to helm-uninstall.)  @ ## Helm-uninstall.
 	- kubectl delete ns kubesphere-controls-system
-	helm uninstall ks-core -n kubesphere-system
-	kubectl delete -f https://raw.githubusercontent.com/kubesphere/ks-installer/master/roles/ks-core/prepare/files/ks-init/role-templates.yaml
+	helm uninstall edgewize -n edgewize-system
 
 # Run tests
 ENVTEST_ASSETS_DIR=$(shell pwd)/testbin

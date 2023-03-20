@@ -25,19 +25,19 @@ import (
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/proxy"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 
-	infrav1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 
-	"kubesphere.io/kubesphere/pkg/apiserver/request"
-	"kubesphere.io/kubesphere/pkg/utils/edgeclusterclient"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/request"
+	"github.com/edgewize-io/edgewize/pkg/utils/edgeclusterclient"
 )
 
-const proxyURLFormat = "/api/v1/namespaces/kubesphere-system/services/:ks-apiserver:/proxy%s"
+// const proxyURLFormat = "/api/v1/namespaces/kubesphere-system/services/:ks-apiserver:/proxy%s"
+const proxyURLFormat = "/api/v1/namespaces/edgewize-system/services/:edgewize-apiserver:/proxy%s"
 
 // Dispatcher defines how to forward request to designated cluster based on cluster name
-// This should only be used in host cluster when multicluster mode enabled, use in any other cases may cause
+// This should only be used in host cluster when edgecluster mode enabled, use in any other cases may cause
 // unexpected behavior
 type Dispatcher interface {
 	Dispatch(w http.ResponseWriter, req *http.Request, handler http.Handler)
@@ -73,7 +73,7 @@ func (c *clusterDispatch) Dispatch(w http.ResponseWriter, req *http.Request, han
 
 	// request cluster is host cluster, no need go through agent
 	if c.IsHostCluster(cluster) {
-		req.URL.Path = strings.Replace(req.URL.Path, fmt.Sprintf("/clusters/%s", info.Cluster), "", 1)
+		req.URL.Path = strings.Replace(req.URL.Path, fmt.Sprintf("/edgeclusters/%s", info.Cluster), "", 1)
 		handler.ServeHTTP(w, req)
 		return
 	}
@@ -88,18 +88,12 @@ func (c *clusterDispatch) Dispatch(w http.ResponseWriter, req *http.Request, han
 		http.Error(w, fmt.Sprintf("cluster %s is not ready", cluster.Name), http.StatusBadRequest)
 		return
 	}
-	clusterConfig, err := clientcmd.RESTConfigFromKubeConfig(cluster.Spec.Connection.KubeConfig)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to create cluster config for %s: %s", cluster.Name, err), http.StatusBadRequest)
-		return
-	}
 
-	println(clusterConfig.BearerToken)
 	transport := http.DefaultTransport
 
 	// change request host to actually cluster hosts
 	u := *req.URL
-	u.Path = strings.Replace(u.Path, fmt.Sprintf("/clusters/%s", info.Cluster), "", 1)
+	u.Path = strings.Replace(u.Path, fmt.Sprintf("/edgeclusters/%s", info.Cluster), "", 1)
 
 	// if cluster connection is direct and kubesphere apiserver endpoint is empty
 	// we use kube-apiserver proxy way

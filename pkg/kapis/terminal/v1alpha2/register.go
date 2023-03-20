@@ -23,10 +23,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"kubesphere.io/kubesphere/pkg/apiserver/runtime"
-	"kubesphere.io/kubesphere/pkg/constants"
-	"kubesphere.io/kubesphere/pkg/models"
-	"kubesphere.io/kubesphere/pkg/models/terminal"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/runtime"
+	"github.com/edgewize-io/edgewize/pkg/constants"
+	"github.com/edgewize-io/edgewize/pkg/models"
+	"github.com/edgewize-io/edgewize/pkg/models/terminal"
 )
 
 const (

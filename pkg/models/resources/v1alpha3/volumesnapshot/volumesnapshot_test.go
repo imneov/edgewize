@@ -28,7 +28,7 @@ import (
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"kubesphere.io/kubesphere/pkg/apiserver/query"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
 )
 
 const (

@@ -17,11 +17,9 @@ limitations under the License.
 package apis
 
 import (
-	"kubesphere.io/api/application/v1alpha1"
 	appv1beta1 "sigs.k8s.io/application/api/v1beta1"
 )
 
 func init() {
 	AddToSchemes = append(AddToSchemes, appv1beta1.SchemeBuilder.AddToScheme)
-	AddToSchemes = append(AddToSchemes, v1alpha1.SchemeBuilder.AddToScheme)
 }

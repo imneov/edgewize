@@ -26,8 +26,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"kubesphere.io/kubesphere/pkg/api"
-	"kubesphere.io/kubesphere/pkg/apiserver/query"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
 )
 
 type Interface interface {
@@ -107,7 +107,7 @@ func DefaultObjectMetaCompare(left, right metav1.ObjectMeta, sortBy query.Field)
 	}
 }
 
-//  Default metadata filter
+// Default metadata filter
 func DefaultObjectMetaFilter(item metav1.ObjectMeta, filter query.Filter) bool {
 	switch filter.Field {
 	case query.FieldNames:

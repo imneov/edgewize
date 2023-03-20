@@ -19,14 +19,14 @@ limitations under the License.
 package fake
 
 import (
+	clientset "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/typed/infra/v1alpha1"
+	fakeinfrav1alpha1 "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/typed/infra/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/testing"
-	clientset "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
-	infrav1alpha1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/infra/v1alpha1"
-	fakeinfrav1alpha1 "kubesphere.io/kubesphere/pkg/client/clientset/versioned/typed/infra/v1alpha1/fake"
 )
 
 // NewSimpleClientset returns a clientset that will respond with the provided objects.

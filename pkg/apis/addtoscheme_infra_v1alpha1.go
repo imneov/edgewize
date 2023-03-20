@@ -17,7 +17,7 @@ limitations under the License.
 package apis
 
 import (
-	"kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 )
 
 func init() {

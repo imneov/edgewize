@@ -26,6 +26,8 @@ import (
 	"sync"
 	"time"
 
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/dispatch"
 	"github.com/emicklei/go-restful"
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -37,26 +39,22 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
-	infrav1alpha1 "kubesphere.io/kubesphere/pkg/apis/infra/v1alpha1"
-	"kubesphere.io/kubesphere/pkg/apiserver/dispatch"
 	runtimecache "sigs.k8s.io/controller-runtime/pkg/cache"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	apiserverconfig "kubesphere.io/kubesphere/pkg/apiserver/config"
-	"kubesphere.io/kubesphere/pkg/apiserver/filters"
-	"kubesphere.io/kubesphere/pkg/apiserver/request"
-	"kubesphere.io/kubesphere/pkg/informers"
-	"kubesphere.io/kubesphere/pkg/kapis/crd"
-	clusterkapisv1alpha1 "kubesphere.io/kubesphere/pkg/kapis/edgecluster/v1alpha1"
-	resourcesv1alpha2 "kubesphere.io/kubesphere/pkg/kapis/resources/v1alpha2"
-	resourcev1alpha3 "kubesphere.io/kubesphere/pkg/kapis/resources/v1alpha3"
-	terminalv1alpha2 "kubesphere.io/kubesphere/pkg/kapis/terminal/v1alpha2"
-	"kubesphere.io/kubesphere/pkg/kapis/version"
-	"kubesphere.io/kubesphere/pkg/simple/client/cache"
-	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
-	"kubesphere.io/kubesphere/pkg/utils/edgeclusterclient"
-	"kubesphere.io/kubesphere/pkg/utils/iputil"
-	"kubesphere.io/kubesphere/pkg/utils/metrics"
+	apiserverconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/filters"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/request"
+	"github.com/edgewize-io/edgewize/pkg/informers"
+	"github.com/edgewize-io/edgewize/pkg/kapis/crd"
+	clusterkapisv1alpha1 "github.com/edgewize-io/edgewize/pkg/kapis/edgecluster/v1alpha1"
+	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/kapis/resources/v1alpha3"
+	terminalv1alpha2 "github.com/edgewize-io/edgewize/pkg/kapis/terminal/v1alpha2"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/cache"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
+	"github.com/edgewize-io/edgewize/pkg/utils/edgeclusterclient"
+	"github.com/edgewize-io/edgewize/pkg/utils/iputil"
+	"github.com/edgewize-io/edgewize/pkg/utils/metrics"
 )
 
 var initMetrics sync.Once
@@ -138,17 +136,15 @@ func (s *APIServer) installMetricsAPI() {
 func (s *APIServer) installKubeSphereAPIs(stopCh <-chan struct{}) {
 
 	urlruntime.Must(resourcev1alpha3.AddToContainer(s.container, s.InformerFactory, s.RuntimeCache))
-	urlruntime.Must(resourcesv1alpha2.AddToContainer(s.container, s.KubernetesClient.Kubernetes(), s.InformerFactory,
-		s.KubernetesClient.Master()))
 	urlruntime.Must(terminalv1alpha2.AddToContainer(s.container, s.KubernetesClient.Kubernetes(), s.KubernetesClient.Config(), s.Config.TerminalOptions))
 	urlruntime.Must(clusterkapisv1alpha1.AddToContainer(s.container,
 		s.KubernetesClient.KubeSphere(),
-		s.InformerFactory.KubernetesSharedInformerFactory(),
-		s.InformerFactory.KubeSphereSharedInformerFactory(),
-		s.Config.MultiClusterOptions.ProxyPublishService,
-		s.Config.MultiClusterOptions.ProxyPublishAddress,
-		s.Config.MultiClusterOptions.AgentImage))
-	urlruntime.Must(version.AddToContainer(s.container, s.KubernetesClient.Kubernetes().Discovery()))
+		s.InformerFactory,
+		s.RuntimeCache,
+		s.Config.EdgeWizeOptions.ProxyPublishService,
+		s.Config.EdgeWizeOptions.ProxyPublishAddress,
+		s.Config.EdgeWizeOptions.AgentImage,
+		s.KubernetesClient.Kubernetes().Discovery()))
 }
 
 // installCRDAPIs Install CRDs to the KAPIs with List and Get options

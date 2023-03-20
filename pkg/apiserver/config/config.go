@@ -22,17 +22,17 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/edgewize-io/edgewize/pkg/simple/client/edgewize"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 
-	"kubesphere.io/kubesphere/pkg/constants"
-	"kubesphere.io/kubesphere/pkg/models/terminal"
-	"kubesphere.io/kubesphere/pkg/simple/client/cache"
-	"kubesphere.io/kubesphere/pkg/simple/client/k8s"
-	"kubesphere.io/kubesphere/pkg/simple/client/multicluster"
+	"github.com/edgewize-io/edgewize/pkg/constants"
+	"github.com/edgewize-io/edgewize/pkg/models/terminal"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/cache"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
 )
 
 // Package config saves configuration for running KubeSphere components
@@ -69,10 +69,10 @@ var (
 
 const (
 	// DefaultConfigurationName is the default name of configuration
-	defaultConfigurationName = "kubesphere"
+	defaultConfigurationName = "edgewize"
 
 	// DefaultConfigurationPath the default location of the configuration file
-	defaultConfigurationPath = "/etc/kubesphere"
+	defaultConfigurationPath = "/etc/edgewize"
 )
 
 type config struct {
@@ -132,19 +132,19 @@ func defaultConfig() *config {
 
 // Config defines everything needed for apiserver to deal with external services
 type Config struct {
-	KubernetesOptions   *k8s.KubernetesOptions `json:"kubernetes,omitempty" yaml:"kubernetes,omitempty" mapstructure:"kubernetes"`
-	CacheOptions        *cache.Options         `json:"cache,omitempty" yaml:"cache,omitempty" mapstructure:"cache"`
-	MultiClusterOptions *multicluster.Options  `json:"multicluster,omitempty" yaml:"multicluster,omitempty" mapstructure:"multicluster"`
-	TerminalOptions     *terminal.Options      `json:"terminal,omitempty" yaml:"terminal,omitempty" mapstructure:"terminal"`
+	KubernetesOptions *k8s.KubernetesOptions `json:"kubernetes,omitempty" yaml:"kubernetes,omitempty" mapstructure:"kubernetes"`
+	CacheOptions      *cache.Options         `json:"cache,omitempty" yaml:"cache,omitempty" mapstructure:"cache"`
+	EdgeWizeOptions   *edgewize.Options      `json:"edgewize,omitempty" yaml:"edgewize,omitempty" mapstructure:"edgewize"`
+	TerminalOptions   *terminal.Options      `json:"terminal,omitempty" yaml:"terminal,omitempty" mapstructure:"terminal"`
 }
 
 // newConfig creates a default non-empty Config
 func New() *Config {
 	return &Config{
-		KubernetesOptions:   k8s.NewKubernetesOptions(),
-		CacheOptions:        cache.NewCacheOptions(),
-		MultiClusterOptions: multicluster.NewOptions(),
-		TerminalOptions:     terminal.NewTerminalOptions(),
+		KubernetesOptions: k8s.NewKubernetesOptions(),
+		CacheOptions:      cache.NewCacheOptions(),
+		EdgeWizeOptions:   edgewize.NewOptions(),
+		TerminalOptions:   terminal.NewTerminalOptions(),
 	}
 }
 
@@ -192,10 +192,6 @@ func (conf *Config) stripEmptyOptions() {
 
 	if conf.CacheOptions != nil && conf.CacheOptions.Type == "" {
 		conf.CacheOptions = nil
-	}
-
-	if conf.MultiClusterOptions != nil && !conf.MultiClusterOptions.Enable {
-		conf.MultiClusterOptions = nil
 	}
 }
 

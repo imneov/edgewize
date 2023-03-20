@@ -25,7 +25,7 @@ import (
 	"net/http"
 	"strings"
 
-	"kubesphere.io/kubesphere/pkg/utils/iputil"
+	"github.com/edgewize-io/edgewize/pkg/utils/iputil"
 
 	"k8s.io/apimachinery/pkg/api/validation/path"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
@@ -36,8 +36,8 @@ import (
 	k8srequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/klog"
 
-	"kubesphere.io/kubesphere/pkg/api"
-	"kubesphere.io/kubesphere/pkg/constants"
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/constants"
 )
 
 type RequestInfoResolver interface {
@@ -144,8 +144,8 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 			requestInfo.IsKubernetesRequest = true
 		}
 	}()
-	// /edgeclusters/{cluster}/apis/
-	// /edgeclusters/{cluster}/kapis/
+	// /kapis/infra.edgewize.io/v1alpha1/clusters/{cluster}/apis/
+	// /kapis/infra.edgewize.io/v1alpha1/clusters/{cluster}/kapis/
 
 	currentParts := splitPath(req.URL.Path)
 	//if len(currentParts) < 3 {
@@ -155,7 +155,7 @@ func (r *RequestInfoFactory) NewRequestInfo(req *http.Request) (*RequestInfo, er
 	if len(currentParts) > 2 && r.APIPrefixes.Has(currentParts[2]) {
 		requestInfo.Cluster = currentParts[1]
 		currentParts = currentParts[2:]
-	} else {
+	} else if !r.APIPrefixes.Has(currentParts[0]) {
 		req.URL.Path = "/kapis/infra.edgewize.io/v1alpha1" + req.URL.Path
 		return &requestInfo, nil
 	}

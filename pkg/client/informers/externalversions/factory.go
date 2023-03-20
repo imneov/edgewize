@@ -23,13 +23,13 @@ import (
 	sync "sync"
 	time "time"
 
+	versioned "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
+	infra "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/infra"
+	internalinterfaces "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
-	versioned "kubesphere.io/kubesphere/pkg/client/clientset/versioned"
-	infra "kubesphere.io/kubesphere/pkg/client/informers/externalversions/infra"
-	internalinterfaces "kubesphere.io/kubesphere/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // SharedInformerOption defines the functional option type for SharedInformerFactory.
