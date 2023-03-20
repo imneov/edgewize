@@ -20,6 +20,20 @@ type Field string
 type Value string
 
 const (
+	StatusRunning       = "running"
+	StatusPaused        = "paused"
+	StatusPending       = "pending"
+	StatusUpdating      = "updating"
+	StatusStopped       = "stopped"
+	StatusFailed        = "failed"
+	StatusBound         = "bound"
+	StatusLost          = "lost"
+	StatusComplete      = "completed"
+	StatusWarning       = "warning"
+	StatusUnschedulable = "unschedulable"
+)
+
+const (
 	FieldName                = "name"
 	FieldNames               = "names"
 	FieldUID                 = "uid"
@@ -33,6 +47,7 @@ const (
 	FieldStatus              = "status"
 	FieldOwnerReference      = "ownerReference"
 	FieldOwnerKind           = "ownerKind"
+	FieldLastScheduleTime    = "lastScheduleTime"
 
 	FieldType = "type"
 )

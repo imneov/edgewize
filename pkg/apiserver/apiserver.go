@@ -139,11 +139,9 @@ func (s *APIServer) installKubeSphereAPIs(stopCh <-chan struct{}) {
 	urlruntime.Must(terminalv1alpha2.AddToContainer(s.container, s.KubernetesClient.Kubernetes(), s.KubernetesClient.Config(), s.Config.TerminalOptions))
 	urlruntime.Must(clusterkapisv1alpha1.AddToContainer(s.container,
 		s.KubernetesClient.KubeSphere(),
+		s.KubernetesClient.Kubernetes(),
 		s.InformerFactory,
 		s.RuntimeCache,
-		s.Config.EdgeWizeOptions.ProxyPublishService,
-		s.Config.EdgeWizeOptions.ProxyPublishAddress,
-		s.Config.EdgeWizeOptions.AgentImage,
 		s.KubernetesClient.Kubernetes().Discovery()))
 }
 

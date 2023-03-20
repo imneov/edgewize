@@ -26,6 +26,7 @@ import (
 	restfulspec "github.com/emicklei/go-restful-openapi"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
@@ -43,25 +44,23 @@ var GroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1alpha1"}
 
 func AddToContainer(container *restful.Container,
 	ksclient kubesphere.Interface,
+	k8sclient kubernetes.Interface,
 	informerFactory informers.InformerFactory,
 	cache cache.Cache,
-	proxyService string,
-	proxyAddress string,
-	agentImage string,
 	k8sDiscovery discovery.DiscoveryInterface) error {
 	k8sInformers := informerFactory.KubernetesSharedInformerFactory()
 	ksInformers := informerFactory.KubeSphereSharedInformerFactory()
 
 	webservice := runtime.NewWebService(GroupVersion)
-	handler := New(ksclient, k8sInformers, ksInformers, proxyService, proxyAddress, agentImage, resourcev1alpha3.NewResourceGetter(informerFactory, cache))
+	handler := New(ksclient, k8sclient, k8sInformers, ksInformers, resourcev1alpha3.NewResourceGetter(informerFactory, cache))
 
 	// returns deployment yaml for cluster agent
-	webservice.Route(webservice.GET("/edgeclusters/{cluster}/agent/deployment").
-		Doc("Return deployment yaml for cluster agent.").
-		Param(webservice.PathParameter("cluster", "Name of the cluster.").Required(true)).
-		To(handler.generateAgentDeployment).
-		Returns(http.StatusOK, api.StatusOK, nil).
-		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
+	//webservice.Route(webservice.GET("/edgeclusters/{cluster}/agent/deployment").
+	//	Doc("Return deployment yaml for cluster agent.").
+	//	Param(webservice.PathParameter("cluster", "Name of the cluster.").Required(true)).
+	//	To(handler.generateAgentDeployment).
+	//	Returns(http.StatusOK, api.StatusOK, nil).
+	//	Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
 
 	webservice.Route(webservice.POST("/edgeclusters/validation").
 		Doc("").
@@ -81,6 +80,13 @@ func AddToContainer(container *restful.Container,
 		Doc("").
 		Param(webservice.BodyParameter("cluster", "cluster specification")).
 		To(handler.listEdgeCluster).
+		Returns(http.StatusOK, api.StatusOK, nil).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
+
+	webservice.Route(webservice.GET("/nodes/join").
+		Doc("").
+		Param(webservice.BodyParameter("cluster", "cluster specification")).
+		To(handler.joinNode).
 		Returns(http.StatusOK, api.StatusOK, nil).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
 

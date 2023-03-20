@@ -19,6 +19,7 @@ package resource
 import (
 	"errors"
 
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/cronjob"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshotcontent"
 
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshotclass"
@@ -77,6 +78,7 @@ func NewResourceGetter(factory informers.InformerFactory, cache cache.Cache) *Re
 	namespacedResourceGetters[schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "ingresses"}] = ingress.New(factory.KubernetesSharedInformerFactory())
 	namespacedResourceGetters[schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"}] = networkpolicy.New(factory.KubernetesSharedInformerFactory())
 	namespacedResourceGetters[schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "jobs"}] = job.New(factory.KubernetesSharedInformerFactory())
+	namespacedResourceGetters[schema.GroupVersionResource{Group: "batch", Version: "v1beta1", Resource: "cronjobs"}] = cronjob.New(factory.KubernetesSharedInformerFactory())
 	namespacedResourceGetters[schema.GroupVersionResource{Group: "app.k8s.io", Version: "v1beta1", Resource: "applications"}] = application.New(cache)
 	clusterResourceGetters[schema.GroupVersionResource{Group: "", Version: "v1", Resource: "persistentvolumes"}] = persistentvolume.New(factory.KubernetesSharedInformerFactory())
 	namespacedResourceGetters[schema.GroupVersionResource{Group: "", Version: "v1", Resource: "persistentvolumeclaims"}] = persistentvolumeclaim.New(factory.KubernetesSharedInformerFactory(), factory.SnapshotSharedInformerFactory())
