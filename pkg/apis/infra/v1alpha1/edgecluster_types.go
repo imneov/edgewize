@@ -34,7 +34,6 @@ const (
 
 // EdgeClusterSpec defines the desired state of EdgeCluster
 type EdgeClusterSpec struct {
-	// TODO
 	Alias string `json:"alias,omitempty"`
 
 	// Namespace is the target namespace where the edge cluster will be installed
@@ -58,7 +57,7 @@ type EdgeClusterSpec struct {
 	//   edgewize will always install
 	Components string `json:"components,omitempty"`
 
-	AdvertiseAddress []string `json:"advertise_address,omitempty"`
+	AdvertiseAddress []string `json:"advertiseAddress,omitempty"`
 }
 
 // EdgeClusterStatus defines the observed state of EdgeCluster
@@ -68,7 +67,7 @@ type EdgeClusterStatus struct {
 	Status Status `json:"status,omitempty"`
 
 	// KubeConfig is the edge cluster kubeconfig, encode by base64
-	KubeConfig string `json:"kube_config,omitempty"`
+	KubeConfig string `json:"kubeConfig,omitempty"`
 
 	EdgeWize Status `json:"edgewize,omitempty"`
 
