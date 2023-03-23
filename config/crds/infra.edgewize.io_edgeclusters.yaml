@@ -52,12 +52,11 @@ spec:
           spec:
             description: EdgeClusterSpec defines the desired state of EdgeCluster
             properties:
-              advertise_address:
+              advertiseAddress:
                 items:
                   type: string
                 type: array
               alias:
-                description: TODO
                 type: string
               cluster:
                 description: Cluster is the target cluster where the edge cluster
@@ -66,8 +65,10 @@ spec:
                 type: string
               components:
                 description: Components will install in the edgecluster ,default is
-                  "edgewize,cloudcore,-fluent" TODO   -fluent means does not install
-                  fluent component   edgewize will always install
+                  "edgewize,cloudcore,-fluent"   -fluent means does not install fluent
+                  component   edgewize will always install
+                type: string
+              description:
                 type: string
               distro:
                 description: 'Distro is Kubernetes distro to use for the virtual cluster.
@@ -91,7 +92,7 @@ spec:
                 type: string
               edgewize:
                 type: string
-              kube_config:
+              kubeConfig:
                 description: KubeConfig is the edge cluster kubeconfig, encode by
                   base64
                 type: string
