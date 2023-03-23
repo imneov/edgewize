@@ -33,6 +33,7 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
@@ -160,7 +161,7 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 		},
 		Spec: infrav1alpha1.ClusterSpec{},
 	}
-	if err := r.Delete(ctx, member); err != nil {
+	if err := r.Delete(ctx, member); err != nil && !apierrors.IsNotFound(err) {
 		return ctrl.Result{}, err
 	}
 	if err := r.Status().Update(ctx, instance); err != nil {
@@ -174,6 +175,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.Ed
 	if instance.Name == "" || instance.Spec.Namespace == "" {
 		return ctrl.Result{}, errors.New("cluster name and namespace cannot be empty")
 	}
+	logger.V(3).Info("origin value", "distro", instance.Spec.Distro, "components", instance.Spec.Components, "advertiseaddress", instance.Spec.AdvertiseAddress)
 	if instance.Spec.Distro == "" {
 		instance.Spec.Distro = "k3s" // TODO constants
 	}
@@ -189,6 +191,38 @@ func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.Ed
 	if err := r.Update(ctx, instance); err != nil {
 		logger.Error(err, "update edge cluster error")
 		return ctrl.Result{}, err
+	}
+
+	member := &infrav1alpha1.Cluster{}
+	err := r.Get(ctx, types.NamespacedName{Name: instance.Name}, member)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.V(4).Info("cluster not found, create new cluster", "name", instance.Name)
+			member = &infrav1alpha1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: instance.Name,
+					Labels: map[string]string{
+						infrav1alpha1.MemberCluster: "",
+						infrav1alpha1.ClusterAlias:  instance.Spec.Alias,
+					},
+				},
+				Spec: infrav1alpha1.ClusterSpec{
+					Provider: "edgewize",
+					Connection: infrav1alpha1.Connection{
+						Type:       infrav1alpha1.ConnectionTypeDirect,
+						KubeConfig: []byte(instance.Status.KubeConfig),
+					},
+				},
+			}
+			if instance.Spec.Location != "" {
+				member.Labels[infrav1alpha1.ClusterLocation] = instance.Spec.Location
+			}
+			err := r.Create(ctx, member)
+			if err != nil {
+				logger.Error(err, "create cluster error", "name", instance.Name)
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
 	switch instance.Status.Status {
@@ -224,7 +258,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.Ed
 			if len(component) > 0 && component[0] != '-' {
 				switch component {
 				case "edgewize":
-					err = r.ReconcileEdgeWize(ctx, instance)
+					err = r.ReconcileEdgeWize(ctx, instance, member)
 					if err != nil {
 						logger.Error(err, "install edgewize agent error")
 						return ctrl.Result{}, err
@@ -274,7 +308,7 @@ func (r *Reconciler) GetKubeConfig(instance *infrav1alpha1.EdgeCluster) (*client
 	return config, nil
 }
 
-func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alpha1.EdgeCluster, member *infrav1alpha1.Cluster) error {
 	logger := log.FromContext(ctx, "ReconcileEdgeWize", instance.Name)
 	if instance.Status.KubeConfig == "" {
 		logger.V(4).Info("kubeconfig is null, skip install edgewize agent")
@@ -291,26 +325,8 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 		}
 		instance.Status.EdgeWize = status
 		if instance.Status.EdgeWize == infrav1alpha1.RunningStatus {
-			member := &infrav1alpha1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: instance.Name,
-					Labels: map[string]string{
-						infrav1alpha1.MemberCluster: "",
-						infrav1alpha1.ClusterAlias:  instance.Spec.Alias,
-					},
-				},
-				Spec: infrav1alpha1.ClusterSpec{
-					Provider: "edgewize",
-					Connection: infrav1alpha1.Connection{
-						Type:       infrav1alpha1.ConnectionTypeDirect,
-						KubeConfig: []byte(instance.Status.KubeConfig),
-					},
-				},
-			}
-			if instance.Spec.Location != "" {
-				member.Labels[infrav1alpha1.ClusterLocation] = instance.Spec.Location
-			}
-			err = r.Create(ctx, member)
+			member.Spec.Connection.KubeConfig = []byte(instance.Status.KubeConfig)
+			err = r.Update(ctx, member)
 			if err != nil {
 				return err
 			}
