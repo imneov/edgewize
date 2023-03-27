@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/edgewize-io/edgewize/pkg/informers"
+	"github.com/edgewize-io/edgewize/pkg/models/quotas"
 	v2 "github.com/edgewize-io/edgewize/pkg/models/registries/v2"
 	"github.com/emicklei/go-restful"
 	v1 "k8s.io/api/core/v1"
@@ -35,13 +37,15 @@ import (
 
 type Handler struct {
 	resourceGetterV1alpha3 *resourcev1alpha3.ResourceGetter
+	resourceQuotaGetter    quotas.ResourceQuotaGetter
 	componentsGetter       components.ComponentsGetter
 	registryHelper         v2.RegistryHelper
 }
 
-func New(resourceGetterV1alpha3 *resourcev1alpha3.ResourceGetter, componentsGetter components.ComponentsGetter) *Handler {
+func New(resourceGetterV1alpha3 *resourcev1alpha3.ResourceGetter, componentsGetter components.ComponentsGetter, informerFactory informers.InformerFactory) *Handler {
 	return &Handler{
 		resourceGetterV1alpha3: resourceGetterV1alpha3,
+		resourceQuotaGetter:    quotas.New(informerFactory.KubernetesSharedInformerFactory()),
 		componentsGetter:       componentsGetter,
 		registryHelper:         v2.NewRegistryHelper(),
 	}
@@ -209,4 +213,56 @@ func canonicalizeRegistryError(request *restful.Request, response *restful.Respo
 	} else {
 		api.HandleBadRequest(response, request, err)
 	}
+}
+
+func (r *Handler) handleGetClusterQuotas(_ *restful.Request, response *restful.Response) {
+	result, err := r.resourceQuotaGetter.GetClusterQuota()
+	if err != nil {
+		api.HandleInternalError(response, nil, err)
+		return
+	}
+	response.WriteAsJson(result)
+}
+
+func (r *Handler) handleGetNamespaceQuotas(request *restful.Request, response *restful.Response) {
+	namespace := request.PathParameter("namespace")
+	result, err := r.resourceQuotaGetter.GetNamespaceQuota(namespace)
+	if err != nil {
+		api.HandleInternalError(response, nil, err)
+		return
+	}
+	response.WriteAsJson(result)
+}
+
+func (r *Handler) handleGetNamespacedAbnormalWorkloads(request *restful.Request, response *restful.Response) {
+	namespace := request.PathParameter("namespace")
+
+	result := api.Workloads{
+		Namespace: namespace,
+		Count:     make(map[string]int),
+	}
+
+	for _, workloadType := range []string{api.ResourceKindDeployment, api.ResourceKindStatefulSet, api.ResourceKindDaemonSet, api.ResourceKindJob, api.ResourceKindPersistentVolumeClaim} {
+		var notReadyStatus string
+
+		switch workloadType {
+		case api.ResourceKindPersistentVolumeClaim:
+			notReadyStatus = strings.Join([]string{query.StatusPending, query.StatusLost}, "|")
+		case api.ResourceKindJob:
+			notReadyStatus = query.StatusFailed
+		default:
+			notReadyStatus = query.StatusUpdating
+		}
+		q := query.New()
+		q.Filters[query.FieldStatus] = query.Value(notReadyStatus)
+		res, err := r.resourceGetterV1alpha3.List(workloadType, namespace, q)
+		if err != nil {
+			api.HandleInternalError(response, nil, err)
+		}
+
+		result.Count[workloadType] = len(res.Items)
+	}
+
+	response.WriteAsJson(result)
+
 }

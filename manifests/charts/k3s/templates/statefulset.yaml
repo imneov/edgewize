@@ -158,7 +158,9 @@ spec:
             {{ $f }}
           {{- end }}
             --kube-controller-manager-arg=controllers=*,-nodeipam,-nodelifecycle,-persistentvolume-binder,-attachdetach,-persistentvolume-expander,-cloud-node-lifecycle,-ttl
+            --egress-selector-mode disabled
             --kube-apiserver-arg=endpoint-reconciler-type=none
+            --kube-apiserver-arg=kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP
           {{- if .Values.serviceCIDR }}
             --service-cidr={{ .Values.serviceCIDR }}
           {{- else }}

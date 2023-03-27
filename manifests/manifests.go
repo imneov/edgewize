@@ -35,6 +35,10 @@ import (
 //go:embed charts/cloudcore/crds/*
 //go:embed charts/cloudcore/templates/*
 
+//go:embed charts/fluent-operator/*
+//go:embed charts/fluent-operator/crds/*
+//go:embed charts/fluent-operator/templates/*
+
 var FS embed.FS
 
 // BuiltinOrDir returns a FS for the provided directory. If no directory is passed, the compiled in

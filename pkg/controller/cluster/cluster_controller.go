@@ -93,12 +93,13 @@ var hostCluster = &infrav1alpha1.Cluster{
 				"and deploy workloads on Member Clusters.",
 		},
 		Labels: map[string]string{
-			infrav1alpha1.HostCluster: "",
-			kubesphereManaged:         "true",
+			infrav1alpha1.HostClusterRole: "",
+			kubesphereManaged:             "true",
 		},
 	},
 	Spec: infrav1alpha1.ClusterSpec{
-		Provider: "edgewize",
+		HostCluster: "host",
+		Provider:    "edgewize",
 		Connection: infrav1alpha1.Connection{
 			Type: infrav1alpha1.ConnectionTypeDirect,
 		},
@@ -226,7 +227,7 @@ func (c *ClusterController) processNextItem() bool {
 
 // reconcileHostCluster will create a host cluster if there are no clusters labeled 'cluster-role.kubesphere.io/host'
 func (c *ClusterController) reconcileHostCluster() error {
-	clusters, err := c.clusterLister.List(labels.SelectorFromSet(labels.Set{infrav1alpha1.HostCluster: ""}))
+	clusters, err := c.clusterLister.List(labels.SelectorFromSet(labels.Set{infrav1alpha1.HostClusterRole: ""}))
 	if err != nil {
 		return err
 	}
@@ -472,7 +473,7 @@ func parseKubeConfigExpirationDate(kubeconfig []byte) (time.Time, error) {
 }
 
 func (c *ClusterController) updateKubeConfigExpirationDateCondition(cluster *infrav1alpha1.Cluster) error {
-	if _, ok := cluster.Labels[infrav1alpha1.HostCluster]; ok {
+	if _, ok := cluster.Labels[infrav1alpha1.HostClusterRole]; ok {
 		return nil
 	}
 	// we don't need to check member clusters which using proxy mode, their certs are managed and will be renewed by tower.

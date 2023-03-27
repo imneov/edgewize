@@ -39,9 +39,9 @@ type EdgeClusterSpec struct {
 	// Namespace is the target namespace where the edge cluster will be installed
 	Namespace string `json:"namespace,omitempty"`
 
-	// Cluster is the target cluster where the edge cluster will be installed (default "host"),
+	// HostCluster is the cluster in which the edge cluster will be created and hosted (default to "host")
 	// it depends on the multi-cluster component.
-	Cluster string `json:"cluster,omitempty"`
+	HostCluster string `json:"hostCluster,omitempty"`
 
 	// Distro is Kubernetes distro to use for the virtual cluster. Allowed distros: k3s, k0s, k8s, eks (default "k3s")
 	Distro string `json:"distro,omitempty"`
@@ -54,7 +54,7 @@ type EdgeClusterSpec struct {
 	// Location is the location of the current cluster. TODO
 	Location string `json:"location,omitempty"`
 
-	// Components will install in the edgecluster ,default is "edgewize,cloudcore,-fluent"
+	// Components will install in the edgecluster ,default is "edgewize,cloudcore,-fluent-operator"
 	//   -fluent means does not install fluent component
 	//   edgewize will always install
 	Components string `json:"components,omitempty"`
@@ -74,6 +74,8 @@ type EdgeClusterStatus struct {
 	EdgeWize Status `json:"edgewize,omitempty"`
 
 	CloudCore Status `json:"cloudcore,omitempty"`
+
+	FluentOperator Status `json:"fluentOperator,omitempty"`
 }
 
 //+genclient

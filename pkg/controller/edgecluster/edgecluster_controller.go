@@ -48,7 +48,7 @@ import (
 
 const (
 	controllerName     = "edgecluster-controller"
-	DefaultComponents  = "edgewize,cloudcore,-fluent"
+	DefaultComponents  = "edgewize,cloudcore,-fluent-operator"
 	ComponentEdgeWize  = "edgewize"
 	ComponentCloudCore = "cloudcore"
 )
@@ -159,11 +159,31 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 		ObjectMeta: metav1.ObjectMeta{
 			Name: instance.Name,
 		},
-		Spec: infrav1alpha1.ClusterSpec{},
 	}
 	if err := r.Delete(ctx, member); err != nil && !apierrors.IsNotFound(err) {
 		return ctrl.Result{}, err
 	}
+
+	// remove pvc and namespace
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("data-%s-0", instance.Name),
+			Namespace: instance.Spec.Namespace,
+		},
+	}
+	if err := r.Delete(ctx, pvc); err != nil && !apierrors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: instance.Spec.Namespace,
+		},
+	}
+	if err := r.Delete(ctx, ns); err != nil && !apierrors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+
 	if err := r.Status().Update(ctx, instance); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -202,12 +222,13 @@ func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.Ed
 				ObjectMeta: metav1.ObjectMeta{
 					Name: instance.Name,
 					Labels: map[string]string{
-						infrav1alpha1.MemberCluster: "",
-						infrav1alpha1.ClusterAlias:  instance.Spec.Alias,
+						infrav1alpha1.MemberClusterRole: "",
+						infrav1alpha1.ClusterAlias:      instance.Spec.Alias,
 					},
 				},
 				Spec: infrav1alpha1.ClusterSpec{
-					Provider: "edgewize",
+					HostCluster: instance.Spec.HostCluster,
+					Provider:    "edgewize",
 					Connection: infrav1alpha1.Connection{
 						Type:       infrav1alpha1.ConnectionTypeDirect,
 						KubeConfig: []byte(instance.Status.KubeConfig),
@@ -265,6 +286,12 @@ func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.Ed
 					}
 				case "cloudcore":
 					err = r.ReconcileCloudCore(ctx, instance)
+					if err != nil {
+						logger.Error(err, "install cloudcore error")
+						return ctrl.Result{}, err
+					}
+				case "fluent-operator":
+					err = r.ReconcileFluentOperator(ctx, instance)
 					if err != nil {
 						logger.Error(err, "install cloudcore error")
 						return ctrl.Result{}, err
@@ -333,7 +360,7 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 		}
 		return nil
 	case infrav1alpha1.ErrorStatus:
-		logger.V(4).Info("edgewize install error")
+		logger.Info("edgewize install error")
 	}
 	return nil
 }
@@ -363,7 +390,29 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 		instance.Status.CloudCore = status
 		return nil
 	case infrav1alpha1.ErrorStatus:
-		logger.V(4).Info("edgewize install error")
+		logger.Info("edgewize install error")
+	}
+	return nil
+}
+
+func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	logger := log.FromContext(ctx, "ReconcileCloudCore", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.Info("kubeconfig is null, skip install fluent-operator")
+		return nil
+	}
+	switch instance.Status.FluentOperator {
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
+		values := chartutil.Values{}
+		status, err := InstallChart("fluent-operator", "fluent-operator", "fluent", instance.Name, values)
+		if err != nil {
+			instance.Status.CloudCore = infrav1alpha1.ErrorStatus
+			return err
+		}
+		instance.Status.CloudCore = status
+		return nil
+	case infrav1alpha1.ErrorStatus:
+		logger.Info("fluent-operator install error")
 	}
 	return nil
 }

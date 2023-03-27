@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha3
 
 import (
+	"github.com/edgewize-io/edgewize/pkg/constants"
 	"github.com/emicklei/go-restful"
 	restfulspec "github.com/emicklei/go-restful-openapi"
 	v1 "k8s.io/api/core/v1"
@@ -54,7 +55,20 @@ func Resource(resource string) schema.GroupResource {
 func AddToContainer(c *restful.Container, informerFactory informers.InformerFactory, cache cache.Cache) error {
 
 	webservice := runtime.NewWebService(GroupVersion)
-	handler := New(resourcev1alpha3.NewResourceGetter(informerFactory, cache), components.NewComponentsGetter(informerFactory.KubernetesSharedInformerFactory()))
+	handler := New(resourcev1alpha3.NewResourceGetter(informerFactory, cache), components.NewComponentsGetter(informerFactory.KubernetesSharedInformerFactory()), informerFactory)
+
+	webservice.Route(webservice.GET("/quotas").
+		To(handler.handleGetClusterQuotas).
+		Doc("get whole cluster's resource usage").
+		Returns(http.StatusOK, api.StatusOK, api.ResourceQuota{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.ClusterResourcesTag}))
+
+	webservice.Route(webservice.GET("/namespaces/{namespace}/quotas").
+		Doc("get specified namespace's resource quota and usage").
+		Param(webservice.PathParameter("namespace", "the name of the project")).
+		Returns(http.StatusOK, api.StatusOK, api.ResourceQuota{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.NamespaceResourcesTag}).
+		To(handler.handleGetNamespaceQuotas))
 
 	webservice.Route(webservice.GET("/{resources}").
 		To(handler.handleListResources).
@@ -142,6 +156,18 @@ func AddToContainer(c *restful.Container, informerFactory informers.InformerFact
 		Metadata(restfulspec.KeyOpenAPITags, []string{tagNamespacedResource}).
 		Doc("List repository tags, this is an experimental API, use it by your own caution.").
 		Returns(http.StatusOK, ok, v2.RepositoryTags{}))
+
+	webservice.Route(webservice.GET("/abnormalworkloads").
+		Doc("get abnormal workloads' count of whole cluster").
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.ClusterResourcesTag}).
+		Returns(http.StatusOK, api.StatusOK, api.Workloads{}).
+		To(handler.handleGetNamespacedAbnormalWorkloads))
+	webservice.Route(webservice.GET("/namespaces/{namespace}/abnormalworkloads").
+		Doc("get abnormal workloads' count of specified namespace").
+		Param(webservice.PathParameter("namespace", "the name of the project")).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.NamespaceResourcesTag}).
+		Returns(http.StatusOK, api.StatusOK, api.Workloads{}).
+		To(handler.handleGetNamespacedAbnormalWorkloads))
 
 	c.Add(webservice)
 

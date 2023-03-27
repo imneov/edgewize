@@ -182,7 +182,7 @@ func (c *clusterClients) IsClusterReady(cluster *infrav1alpha1.Cluster) bool {
 }
 
 func (c *clusterClients) IsHostCluster(cluster *infrav1alpha1.Cluster) bool {
-	if _, ok := cluster.Labels[infrav1alpha1.HostCluster]; ok {
+	if _, ok := cluster.Labels[infrav1alpha1.HostClusterRole]; ok {
 		return true
 	}
 	return false

@@ -58,21 +58,21 @@ spec:
                 type: array
               alias:
                 type: string
-              cluster:
-                description: Cluster is the target cluster where the edge cluster
-                  will be installed (default "host"), it depends on the multi-cluster
-                  component.
-                type: string
               components:
                 description: Components will install in the edgecluster ,default is
-                  "edgewize,cloudcore,-fluent"   -fluent means does not install fluent
-                  component   edgewize will always install
+                  "edgewize,cloudcore,-fluent-operator"   -fluent means does not install
+                  fluent component   edgewize will always install
                 type: string
               description:
                 type: string
               distro:
                 description: 'Distro is Kubernetes distro to use for the virtual cluster.
                   Allowed distros: k3s, k0s, k8s, eks (default "k3s")'
+                type: string
+              hostCluster:
+                description: HostCluster is the target cluster where the edge cluster
+                  will be installed (default "host"), it depends on the multi-cluster
+                  component.
                 type: string
               location:
                 description: Location is the location of the current cluster. TODO
@@ -91,6 +91,8 @@ spec:
               cloudcore:
                 type: string
               edgewize:
+                type: string
+              fluentOperator:
                 type: string
               kubeConfig:
                 description: KubeConfig is the edge cluster kubeconfig, encode by

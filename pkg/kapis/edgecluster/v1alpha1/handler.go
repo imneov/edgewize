@@ -94,7 +94,7 @@ func (h *handler) updateKubeConfig(request *restful.Request, response *restful.R
 		return
 	}
 	cluster := obj.DeepCopy()
-	if _, ok := cluster.Labels[infrav1alpha1.HostCluster]; ok {
+	if _, ok := cluster.Labels[infrav1alpha1.HostClusterRole]; ok {
 		api.HandleBadRequest(response, request, fmt.Errorf("update kubeconfig of the host cluster is not allowed"))
 		return
 	}

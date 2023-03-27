@@ -27,8 +27,8 @@ const (
 	ResourcesSingularCluster = "cluster"
 	ResourcesPluralCluster   = "clusters"
 
-	HostCluster   = "cluster-role.edgewize.io/host"
-	MemberCluster = "cluster-role.edgewize.io/member"
+	HostClusterRole   = "cluster-role.edgewize.io/host"
+	MemberClusterRole = "cluster-role.edgewize.io/member"
 	// Description of which region the cluster been placed
 	ClusterRegion   = "infra.edgewize.io/region"
 	ClusterLocation = "infra.edgewize.io/location"
@@ -45,6 +45,8 @@ type ClusterSpec struct {
 
 	// Connection holds info to connect to the member cluster
 	Connection Connection `json:"connection,omitempty"`
+
+	HostCluster string `json:"hostCluster,omitempty"`
 }
 
 type ConnectionType string

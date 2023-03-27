@@ -93,6 +93,8 @@ spec:
                       apiserver endpoint required
                     type: string
                 type: object
+              hostCluster:
+                type: string
               provider:
                 description: Provider of the cluster, this field is just for description
                 type: string
