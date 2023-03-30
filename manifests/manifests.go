@@ -30,7 +30,6 @@ import (
 //go:embed charts/edgewize/*
 //go:embed charts/edgewize/crds/*
 //go:embed charts/edgewize/templates/*
-//go:embed charts/edgewize/templates/monitor/*
 //go:embed charts/edgewize/templates/monitor/prometheus/*
 //go:embed charts/edgewize/templates/monitor/prometheus-operator/*
 //go:embed charts/edgewize/templates/monitor/kube-state-metrics/*

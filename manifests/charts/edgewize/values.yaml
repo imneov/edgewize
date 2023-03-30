@@ -198,7 +198,7 @@ whizard_adapter:
     tag: "v1.3.0"
     digest: ""
     pullPolicy: Always
-    pullSecrets: [ ]
+    pullSecrets: []
 
 whizard_agent_proxy:
   image:
@@ -207,8 +207,9 @@ whizard_agent_proxy:
     tag: "v0.5.0-rc.2"
     digest: ""
     pullPolicy: Always
-    pullSecrets: [ ]
-  tenant: "" # TODO fill with edgecluster Name
+    pullSecrets: []
+  tenant: ""
+  gateway_address: ""
 
 # TODO use NodePort for Test
 # Config for PrometheusAgent in EdgeCluster

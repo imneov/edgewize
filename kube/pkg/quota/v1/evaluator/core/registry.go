@@ -19,7 +19,7 @@ package core
 import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/clock"
+	"k8s.io/utils/clock"
 
 	quota "github.com/edgewize-io/edgewize/kube/pkg/quota/v1"
 	"github.com/edgewize-io/edgewize/kube/pkg/quota/v1/generic"
