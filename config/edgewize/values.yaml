@@ -43,6 +43,7 @@ config:
   multicluster: {}
   monitoring: {}
   notification: {}
+  alerting: {}
 
 serviceAccount:
   # Specifies whether a service account should be created

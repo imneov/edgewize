@@ -30,6 +30,14 @@ import (
 //go:embed charts/edgewize/*
 //go:embed charts/edgewize/crds/*
 //go:embed charts/edgewize/templates/*
+//go:embed charts/edgewize/templates/monitor/*
+//go:embed charts/edgewize/templates/monitor/prometheus/*
+//go:embed charts/edgewize/templates/monitor/prometheus-operator/*
+//go:embed charts/edgewize/templates/monitor/kube-state-metrics/*
+//go:embed charts/edgewize/templates/monitor/kubernetes/*
+//go:embed charts/edgewize/templates/monitor/whizard-adapter/*
+//go:embed charts/edgewize/templates/monitor/whizard-agent-proxy/*
+//go:embed charts/edgewize/templates/monitor/fluentbit-plugin/*
 
 //go:embed charts/cloudcore/*
 //go:embed charts/cloudcore/crds/*

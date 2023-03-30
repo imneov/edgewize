@@ -17,7 +17,7 @@ limitations under the License.
 package restclient
 
 import (
-	"k8s.io/client-go/rest"
+	rest "k8s.io/client-go/rest"
 	iamv1alpha2 "kubesphere.io/client-go/restclient/versioned/iam/v1alpha2"
 )
 

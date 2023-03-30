@@ -18,6 +18,7 @@ package app
 
 import (
 	"github.com/edgewize-io/edgewize/cmd/controller-manager/app/options"
+	"github.com/edgewize-io/edgewize/pkg/controller/alerting"
 	"github.com/edgewize-io/edgewize/pkg/controller/cluster"
 	"github.com/edgewize-io/edgewize/pkg/controller/edgecluster"
 	"github.com/edgewize-io/edgewize/pkg/informers"
@@ -31,6 +32,9 @@ import (
 var allControllers = []string{
 	"edgecluster",
 	"cluster",
+	"rulegroup",
+	"clusterrulegroup",
+	"globalrulegroup",
 }
 
 // setup all available controllers one by one
@@ -39,19 +43,48 @@ func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory i
 
 	kubesphereInformer := informerFactory.KubeSphereSharedInformerFactory()
 
-	clusterController := cluster.NewClusterController(
-		client.Kubernetes(),
-		client.KubeSphere(),
-		client.Config(),
-		kubesphereInformer.Infra().V1alpha1().Clusters(),
-		cmOptions.EdgeWizeOptions.ClusterControllerResyncPeriod,
-		cmOptions.EdgeWizeOptions.HostClusterName,
-	)
-	addController(mgr, "cluster", clusterController)
+	if cmOptions.InHostCluster() {
+		clusterController := cluster.NewClusterController(
+			client.Kubernetes(),
+			client.KubeSphere(),
+			client.Config(),
+			kubesphereInformer.Infra().V1alpha1().Clusters(),
+			cmOptions.EdgeWizeOptions.ClusterControllerResyncPeriod,
+			cmOptions.EdgeWizeOptions.HostClusterName,
+		)
+		addController(mgr, "cluster", clusterController)
 
-	// "edgecluster" controller
-	edgeclusterReconciler := &edgecluster.Reconciler{}
-	addControllerWithSetup(mgr, "edgecluster", edgeclusterReconciler)
+		// "edgecluster" controller
+		edgeclusterReconciler := &edgecluster.Reconciler{}
+		addControllerWithSetup(mgr, "edgecluster", edgeclusterReconciler)
+	}
+
+	// controllers for alerting
+	alertingOptionsEnable := cmOptions.AlertingOptions != nil && (cmOptions.AlertingOptions.PrometheusEndpoint != "" || cmOptions.AlertingOptions.ThanosRulerEndpoint != "")
+	if alertingOptionsEnable {
+		if !cmOptions.InHostCluster() {
+			// "rulegroup" controller
+			if cmOptions.IsControllerEnabled("rulegroup") {
+				rulegroupReconciler := &alerting.RuleGroupReconciler{}
+				addControllerWithSetup(mgr, "rulegroup", rulegroupReconciler)
+			}
+			// "clusterrulegroup" controller
+			if cmOptions.IsControllerEnabled("clusterrulegroup") {
+				clusterrulegroupReconciler := &alerting.ClusterRuleGroupReconciler{}
+				addControllerWithSetup(mgr, "clusterrulegroup", clusterrulegroupReconciler)
+			}
+			// "globalrulegroup" controller
+			if cmOptions.IsControllerEnabled("globalrulegroup") {
+				globalrulegroupReconciler := &alerting.GlobalRuleGroupReconciler{}
+				addControllerWithSetup(mgr, "globalrulegroup", globalrulegroupReconciler)
+			}
+		}
+
+		if cmOptions.InHostCluster() {
+			prometheusRuleReconcilers := &alerting.GlobalPrometheusRuleReconcilers{}
+			addControllerWithSetup(mgr, "prometheusrules", prometheusRuleReconcilers)
+		}
+	}
 
 	// log all controllers process result
 	for _, name := range allControllers {

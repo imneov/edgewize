@@ -3,7 +3,7 @@
 # that can be found in the LICENSE file.
 
 # Download dependencies
-FROM alpine:3.11 as base_os_context
+FROM alpine:3.16.2 as base_os_context
 
 ARG TARGETARCH
 ARG TARGETOS
@@ -37,7 +37,7 @@ RUN mv /tmp/ingress-nginx ${OUTDIR}/var/helm-charts/
 
 # Build
 
-FROM golang:1.16.3 as build_context
+FROM golang:1.19.4 as build_context
 
 ENV OUTDIR=/out
 RUN mkdir -p ${OUTDIR}/usr/local/bin/
@@ -55,7 +55,7 @@ RUN mv /workspace/config/watches.yaml ${OUTDIR}/var/helm-charts/
 
 # Final Image
 
-FROM alpine:3.11 
+FROM alpine:3.16.2
 
 COPY --from=base_os_context /out/ /
 COPY --from=build_context /out/ /

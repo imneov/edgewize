@@ -66,7 +66,6 @@ spec:
           {{- if .Values.apiserver.extraVolumeMounts }}
           {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
-        {{- if eq .Values.role "host" }}
         - name: edgewize-controller-manager
           image: {{ template "edgewize-controller-manager.image" . }}
           imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
@@ -77,6 +76,8 @@ spec:
           command: {{- include "common.tplvalues.render" (dict "value" .Values.controller.command "context" $) | nindent 12 }}
           {{- end }}
           env:
+            - name: "ROLE"
+              value: {{ .Values.role }}
             {{- if .Values.controller.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
@@ -89,10 +90,11 @@ spec:
             - mountPath: /etc/localtime
               name: host-time
               readOnly: true
+            - mountPath: /tmp/k8s-webhook-server/serving-certs
+              name: webhook-secret
           {{- if .Values.controller.extraVolumeMounts }}
           {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
-        {{- end}}
       volumes:
         - name: edgewize-config
           configMap:
@@ -102,6 +104,10 @@ spec:
           hostPath:
             path: /etc/localtime
             type: ""
+        - name: webhook-secret
+          secret:
+            defaultMode: 420
+            secretName: edgewize-controller-manager-webhook-cert
         {{- if .Values.controller.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraVolumes "context" $) | nindent 8 }}
         {{- end }}

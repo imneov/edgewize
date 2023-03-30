@@ -19,7 +19,7 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
 // GatewaySpec defines the desired state of Gateway
@@ -38,6 +38,10 @@ type ControllerSpec struct {
 	Config map[string]string `json:"config,omitempty"`
 	// +optional
 	Scope Scope `json:"scope,omitempty"`
+	// +optional
+	TCP map[string]string `json:"tcp,omitempty"`
+	// +optional
+	UDP map[string]string `json:"udp,omitempty"`
 }
 
 type ServiceSpec struct {
@@ -54,11 +58,16 @@ type DeploymentSpec struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// +optional
+	Affinity corev1.Affinity `json:"affinity,omitempty"`
 }
 
 type Scope struct {
-	Enabled   bool   `json:"enabled,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
+	Enabled           bool   `json:"enabled,omitempty"`
+	Namespace         string `json:"namespace,omitempty"`
+	NamespaceSelector string `json:"namespaceSelector,omitempty"`
 }
 
 //+kubebuilder:object:root=true

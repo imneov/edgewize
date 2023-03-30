@@ -31,8 +31,10 @@ import (
 
 	"github.com/edgewize-io/edgewize/pkg/constants"
 	"github.com/edgewize-io/edgewize/pkg/models/terminal"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/alerting"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/cache"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/monitoring/prometheus"
 )
 
 // Package config saves configuration for running KubeSphere components
@@ -136,6 +138,8 @@ type Config struct {
 	CacheOptions      *cache.Options         `json:"cache,omitempty" yaml:"cache,omitempty" mapstructure:"cache"`
 	EdgeWizeOptions   *edgewize.Options      `json:"edgewize,omitempty" yaml:"edgewize,omitempty" mapstructure:"edgewize"`
 	TerminalOptions   *terminal.Options      `json:"terminal,omitempty" yaml:"terminal,omitempty" mapstructure:"terminal"`
+	MonitoringOptions *prometheus.Options    `json:"monitoring,omitempty" yaml:"monitoring,omitempty" mapstructure:"monitoring"`
+	AlertingOptions   *alerting.Options      `json:"alerting,omitempty" yaml:"alerting,omitempty" mapstructure:"alerting"`
 }
 
 // newConfig creates a default non-empty Config

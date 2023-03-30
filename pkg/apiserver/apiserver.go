@@ -50,11 +50,16 @@ import (
 	clusterkapisv1alpha1 "github.com/edgewize-io/edgewize/pkg/kapis/edgecluster/v1alpha1"
 	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/kapis/resources/v1alpha3"
 	terminalv1alpha2 "github.com/edgewize-io/edgewize/pkg/kapis/terminal/v1alpha2"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/alerting"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/cache"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
 	"github.com/edgewize-io/edgewize/pkg/utils/edgeclusterclient"
 	"github.com/edgewize-io/edgewize/pkg/utils/iputil"
 	"github.com/edgewize-io/edgewize/pkg/utils/metrics"
+
+	alertingv2beta1 "github.com/edgewize-io/edgewize/pkg/kapis/alerting/v2beta1"
+	monitoringv1alpha3 "github.com/edgewize-io/edgewize/pkg/kapis/monitoring/v1alpha3"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/monitoring"
 )
 
 var initMetrics sync.Once
@@ -87,6 +92,12 @@ type APIServer struct {
 	RuntimeClient runtimeclient.Client
 
 	ClusterClient edgeclusterclient.ClusterClients
+
+	MonitoringClient monitoring.Interface
+
+	MetricsClient monitoring.Interface
+
+	AlertingClient alerting.RuleClient
 }
 
 func (s *APIServer) PrepareRun(stopCh <-chan struct{}) error {
@@ -143,6 +154,19 @@ func (s *APIServer) installKubeSphereAPIs(stopCh <-chan struct{}) {
 		s.InformerFactory,
 		s.RuntimeCache,
 		s.KubernetesClient.Kubernetes().Discovery()))
+	urlruntime.Must(monitoringv1alpha3.AddToContainer(
+		s.container,
+		s.KubernetesClient.Kubernetes(),
+		s.MonitoringClient,
+		s.MetricsClient,
+		s.InformerFactory,
+		s.RuntimeClient,
+	))
+	urlruntime.Must(alertingv2beta1.AddToContainer(
+		s.container,
+		s.InformerFactory,
+		s.AlertingClient,
+	))
 }
 
 // installCRDAPIs Install CRDs to the KAPIs with List and Get options
@@ -340,6 +364,23 @@ func (s *APIServer) waitForResourceSync(ctx context.Context) error {
 		},
 		apiextensionsGVRs, stopCh); err != nil {
 		return err
+	}
+
+	if promFactory := s.InformerFactory.PrometheusSharedInformerFactory(); promFactory != nil {
+		prometheusGVRs := map[schema.GroupVersion][]string{
+			{Group: "monitoring.coreos.com", Version: "v1"}: {
+				"prometheuses",
+				"prometheusrules",
+				"thanosrulers",
+			},
+		}
+		if err := waitForCacheSync(s.KubernetesClient.Kubernetes().Discovery(),
+			promFactory, func(resource schema.GroupVersionResource) (interface{}, error) {
+				return promFactory.ForResource(resource)
+			},
+			prometheusGVRs, stopCh); err != nil {
+			return err
+		}
 	}
 
 	go s.RuntimeCache.Start(ctx)

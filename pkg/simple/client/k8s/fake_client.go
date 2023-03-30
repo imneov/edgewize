@@ -45,20 +45,6 @@ type FakeClient struct {
 	KubeConfig *rest.Config
 }
 
-func NewFakeClientSets(k8sClient kubernetes.Interface, discoveryClient *discovery.DiscoveryClient,
-	kubeSphereClient kubesphere.Interface, snapshotClient snapshotclient.Interface,
-	apiextensionsclient apiextensionsclient.Interface, masterURL string, kubeConfig *rest.Config) Client {
-	return &FakeClient{
-		K8sClient:          k8sClient,
-		DiscoveryClient:    discoveryClient,
-		KubeSphereClient:   kubeSphereClient,
-		SnapshotClient:     snapshotClient,
-		ApiExtensionClient: apiextensionsclient,
-		MasterURL:          masterURL,
-		KubeConfig:         kubeConfig,
-	}
-}
-
 func (n *FakeClient) Kubernetes() kubernetes.Interface {
 	return n.K8sClient
 }

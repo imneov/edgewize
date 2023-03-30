@@ -19,6 +19,7 @@ package options
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -34,8 +35,11 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog"
 
+	"github.com/edgewize-io/edgewize/pkg/simple/client/alerting"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
 )
+
+const ClusterRoleEnv = "ROLE"
 
 type KubeSphereControllerManagerOptions struct {
 	KubernetesOptions *k8s.KubernetesOptions
@@ -43,6 +47,7 @@ type KubeSphereControllerManagerOptions struct {
 	LeaderElect       bool
 	LeaderElection    *leaderelection.LeaderElectionConfig
 	WebhookCertDir    string
+	AlertingOptions   *alerting.Options
 
 	// KubeSphere is using sigs.k8s.io/application as fundamental object to implement Application Management.
 	// There are other projects also built on sigs.k8s.io/application, when KubeSphere installed along side
@@ -65,6 +70,11 @@ type KubeSphereControllerManagerOptions struct {
 
 	// Enable gops or not.
 	GOPSEnabled bool
+
+	// Cluster Role for Controller Manager to enable or disable controllers
+	// 'host' means all alert rule groups controllers will be disabled
+	// not equals to 'host' means all cluster controllers will be disabled
+	Role string
 }
 
 func NewKubeSphereControllerManagerOptions() *KubeSphereControllerManagerOptions {
@@ -80,6 +90,7 @@ func NewKubeSphereControllerManagerOptions() *KubeSphereControllerManagerOptions
 		WebhookCertDir:      "",
 		ApplicationSelector: "",
 		ControllerGates:     []string{"*"},
+		Role:                os.Getenv(ClusterRoleEnv),
 	}
 
 	return s
@@ -170,6 +181,10 @@ func (o *KubeSphereControllerManagerOptions) IsControllerEnabled(name string) bo
 	}
 
 	return hasStar
+}
+
+func (o *KubeSphereControllerManagerOptions) InHostCluster() bool {
+	return o.Role == "host"
 }
 
 func (s *KubeSphereControllerManagerOptions) bindLeaderElectionFlags(l *leaderelection.LeaderElectionConfig, fs *pflag.FlagSet) {

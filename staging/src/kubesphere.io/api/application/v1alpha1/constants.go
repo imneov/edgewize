@@ -60,6 +60,20 @@ const (
 
 	ApplicationInstance = "app.kubesphere.io/instance"
 
-	RepoSyncPeriod          = "app.kubesphere.io/sync-period"
-	OriginWorkspaceLabelKey = "kubesphere.io/workspace-origin"
+	RepoSyncPeriod            = "app.kubesphere.io/sync-period"
+	OriginWorkspaceLabelKey   = "kubesphere.io/workspace-origin"
+	ClusterNameAnnotationKey  = "app.kubesphere.io/deployed-cluster"
+	OperatorAppReleaseDateKey = "application.kubesphere.io/release-date"
+
+	// custom resource status
+	StatusCreating = "Creating"
+	StatusCreated  = "Created"
+	StatusFailed   = "Failed"
+	StatusError    = "Error"
+	StatusUnknown  = "Unknown"
+	StatusDeleted  = "Deleted"
+	StatusUpdated  = "Updated"
+
+	OperatorApplicationIdPrefix = "app-"
+	AppLicenseRequired          = "app.kubesphere.io/license"
 )

@@ -4,10 +4,10 @@
 
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true"
+CRD_OPTIONS ?= "crd:allowDangerousTypes=true"
 
-GV="infra:v1alpha1"
-MANIFESTS="infra/*"
+GV="infra:v1alpha1 alerting:v2beta1"
+MANIFESTS="infra/* alerting/v2beta1"
 
 # App Version
 APP_VERSION = v0.1.0

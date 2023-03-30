@@ -156,7 +156,7 @@ type WechatReceiver struct {
 	ToTag   []string `json:"toTag,omitempty"`
 }
 
-//ReceiverSpec defines the desired state of Receiver
+// ReceiverSpec defines the desired state of Receiver
 type ReceiverSpec struct {
 	DingTalk *DingTalkReceiver `json:"dingtalk,omitempty"`
 	Email    *EmailReceiver    `json:"email,omitempty"`
@@ -195,3 +195,5 @@ type ReceiverList struct {
 func init() {
 	SchemeBuilder.Register(&Receiver{}, &ReceiverList{})
 }
+
+func (_ *Receiver) Hub() {}

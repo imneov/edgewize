@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	alertingv2beta1 "github.com/edgewize-io/edgewize/pkg/apis/alerting/v2beta1"
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -31,6 +32,7 @@ var scheme = runtime.NewScheme()
 var codecs = serializer.NewCodecFactory(scheme)
 
 var localSchemeBuilder = runtime.SchemeBuilder{
+	alertingv2beta1.AddToScheme,
 	infrav1alpha1.AddToScheme,
 }
 

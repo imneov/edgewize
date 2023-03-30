@@ -32,4 +32,5 @@ kustomize/network/etcd
 apiserver.local.config
 tmp/
 kubesphere.yaml
+edgewize.yaml
 testbin/

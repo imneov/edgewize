@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 
+	alertingv2beta1 "github.com/edgewize-io/edgewize/pkg/apis/alerting/v2beta1"
+
 	"github.com/edgewize-io/edgewize/cmd/controller-manager/app/options"
 	"github.com/edgewize-io/edgewize/pkg/apis"
 	controllerconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
@@ -34,8 +36,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
-	"k8s.io/klog"
-	"k8s.io/klog/klogr"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -52,6 +53,8 @@ func NewControllerManagerCommand() *cobra.Command {
 			LeaderElection:    s.LeaderElection,
 			LeaderElect:       s.LeaderElect,
 			WebhookCertDir:    s.WebhookCertDir,
+			AlertingOptions:   conf.AlertingOptions,
+			Role:              os.Getenv(options.ClusterRoleEnv),
 		}
 	} else {
 		klog.Fatal("Failed to load configuration from disk", err)
@@ -155,7 +158,9 @@ func run(s *options.KubeSphereControllerManagerOptions, ctx context.Context) err
 		kubernetesClient.Kubernetes(),
 		kubernetesClient.KubeSphere(),
 		kubernetesClient.Snapshot(),
-		kubernetesClient.ApiExtensions())
+		kubernetesClient.ApiExtensions(),
+		kubernetesClient.Prometheus(),
+	)
 
 	mgrOptions := manager.Options{
 		CertDir: s.WebhookCertDir,
@@ -176,7 +181,7 @@ func run(s *options.KubeSphereControllerManagerOptions, ctx context.Context) err
 	}
 
 	klog.V(0).Info("setting up manager")
-	ctrl.SetLogger(klogr.New())
+	ctrl.SetLogger(klog.NewKlogr())
 	// Use 8443 instead of 443 cause we need root permission to bind port 443
 	mgr, err := manager.New(kubernetesClient.Config(), mgrOptions)
 	if err != nil {
@@ -203,6 +208,21 @@ func run(s *options.KubeSphereControllerManagerOptions, ctx context.Context) err
 	// Start cache data after all informer is registered
 	klog.V(0).Info("Starting cache resource from apiserver...")
 	informerFactory.Start(ctx.Done())
+
+	if !s.InHostCluster() {
+		rulegroup := alertingv2beta1.RuleGroup{}
+		if err := rulegroup.SetupWebhookWithManager(mgr); err != nil {
+			klog.Fatalf("Unable to setup RuleGroup webhook: %v", err)
+		}
+		clusterrulegroup := alertingv2beta1.ClusterRuleGroup{}
+		if err := clusterrulegroup.SetupWebhookWithManager(mgr); err != nil {
+			klog.Fatalf("Unable to setup ClusterRuleGroup webhook: %v", err)
+		}
+		globalrulegroup := alertingv2beta1.GlobalRuleGroup{}
+		if err := globalrulegroup.SetupWebhookWithManager(mgr); err != nil {
+			klog.Fatalf("Unable to setup GlobalRuleGroup webhook: %v", err)
+		}
+	}
 
 	klog.V(2).Info("registering metrics to the webhook server")
 	// Add an extra metric endpoint, so we can use the the same metric definition with ks-apiserver

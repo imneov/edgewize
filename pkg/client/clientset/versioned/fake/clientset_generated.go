@@ -20,6 +20,8 @@ package fake
 
 import (
 	clientset "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
+	alertingv2beta1 "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/typed/alerting/v2beta1"
+	fakealertingv2beta1 "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/typed/alerting/v2beta1/fake"
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/typed/infra/v1alpha1"
 	fakeinfrav1alpha1 "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/typed/infra/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -74,7 +76,15 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var _ clientset.Interface = &Clientset{}
+var (
+	_ clientset.Interface = &Clientset{}
+	_ testing.FakeClient  = &Clientset{}
+)
+
+// AlertingV2beta1 retrieves the AlertingV2beta1Client
+func (c *Clientset) AlertingV2beta1() alertingv2beta1.AlertingV2beta1Interface {
+	return &fakealertingv2beta1.FakeAlertingV2beta1{Fake: &c.Fake}
+}
 
 // InfraV1alpha1 retrieves the InfraV1alpha1Client
 func (c *Clientset) InfraV1alpha1() infrav1alpha1.InfraV1alpha1Interface {
