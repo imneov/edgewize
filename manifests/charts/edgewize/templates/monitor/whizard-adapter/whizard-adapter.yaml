@@ -91,6 +91,7 @@ spec:
             - --default-whizard-storage=kubesphere-monitoring-system.remote
             - --web-enabled=true
             - --kubesphere-adapter-enabled=true
+            - --edgecluster-adapter-enabled=true
           image: {{ template "edgewize-whizard-adapter.image" . }}
           imagePullPolicy: {{ .Values.whizard_adapter.image.pullPolicy }}
           livenessProbe:

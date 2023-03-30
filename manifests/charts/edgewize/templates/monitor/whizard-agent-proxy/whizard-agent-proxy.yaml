@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - args:
-            - --gateway.address=http://gateway-whizard-operated.kubesphere-monitoring-system.svc:9090 # 根据 host 集群中 whizard gateway 暴露的地址和端口修改，为了向部署在 Host 集群的 Whizard 通过 remote-write 写入监控数据以及查询监控、告警等数据
+            - --gateway.address={{ .Values.whizard_agent_proxy.gateway_address | default "http://gateway-whizard-operated.kubesphere-monitoring-system.svc:9090" }}
             - --tenant={{ .Values.whizard_agent_proxy.tenant }}
           image: {{ template "edgewize-whizard-adapter.image" . }}
           name: agent-proxy

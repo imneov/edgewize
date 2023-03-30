@@ -345,6 +345,7 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
 		values := chartutil.Values{}
 		values["role"] = "member"
+		SetMonitorComponent(values, instance)
 		status, err := InstallChart("edgewize", "edgewize", "edgewize-system", instance.Name, values)
 		if err != nil {
 			instance.Status.EdgeWize = infrav1alpha1.ErrorStatus
@@ -466,4 +467,23 @@ func CheckKubeConfig(name string, config []byte) error {
 		}
 	}
 	return nil
+}
+
+func SetMonitorComponent(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
+	values["whizard_agent_proxy"] = map[string]interface{}{
+		"tenant": instance.Name,
+	}
+
+	if len(instance.Spec.AdvertiseAddress) > 0 {
+		values["prometheus"] = map[string]interface{}{
+			"endpoint": instance.Spec.AdvertiseAddress[0],
+		}
+
+		values["config"] = map[string]interface{}{
+			"alerting": map[string]interface{}{
+				"thanosRulerEndpoint": fmt.Sprintf("http://%s:30990", instance.Spec.AdvertiseAddress[0]),
+			},
+			"gateway_address": fmt.Sprintf("http://%s:9090", instance.Spec.AdvertiseAddress[0]),
+		}
+	}
 }
