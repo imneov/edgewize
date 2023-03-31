@@ -195,7 +195,7 @@ whizard_adapter:
   image:
     registry: ""
     repository: chenzheng820/whizard-adapter
-    tag: "v1.3.0"
+    tag: "v1.4.0"
     digest: ""
     pullPolicy: Always
     pullSecrets: []
