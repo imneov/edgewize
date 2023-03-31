@@ -1,0 +1,19 @@
+{{- if ne .Values.role "host" }}
+apiVersion: fluentbit.fluent.io/v1alpha2
+kind: ClusterOutput
+metadata:
+  name: prometheus-remote-write-edge
+  labels:
+    fluentbit.fluent.io/enabled: "true"
+    node-role.kubernetes.io/edge: "true"
+spec:
+  matchRegex: (?:kubeedge|service)\.(.*)
+  prometheusRemoteWrite:
+    host: {{ .Values.prometheus.endpoint }} # TODO use edgecluster Prometheus Agent IP
+    port: {{ .Values.prometheus.nodePort }}
+    uri: /api/v1/write
+    addLabels :
+      app : fluentbit
+      node: "${NODE_NAME}"
+      job : kubeedge
+{{- end }}

@@ -15,6 +15,7 @@ metadata:
 type: Opaque
 
 ---
+{{- if ne .Values.role "host" }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
@@ -183,3 +184,4 @@ webhooks:
           - globalrulegroups
         scope: '*'
     sideEffects: None
+{{- end }}

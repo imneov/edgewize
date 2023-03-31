@@ -27,7 +27,6 @@ spec:
   type: ClusterIP
 {{- end}}
 ---
-{{- if eq .Values.role "host" }}
 
 apiVersion: v1
 kind: Service
@@ -48,4 +47,3 @@ spec:
     # version: {{ .Chart.AppVersion }}
   sessionAffinity: None
   type: ClusterIP
-{{- end}}

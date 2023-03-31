@@ -1,0 +1,132 @@
+{{- if ne .Values.role "host" }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: whizard-adapter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: whizard-adapter
+subjects:
+  - kind: ServiceAccount
+    name: whizard-adapter
+    namespace: kubesphere-monitoring-system
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: whizard-adapter
+rules:
+  - apiGroups:
+      - cluster.kubesphere.io
+    resources:
+      - clusters
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - infra.edgewize.io
+    resources:
+      - clusters
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - monitoring.whizard.io
+    resources:
+      - tenants
+      - services
+      - storages
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whizard-adapter
+  namespace: kubesphere-monitoring-system
+  labels:
+    app: whizard-adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: whizard-adapter
+  template:
+    metadata:
+      labels:
+        app: whizard-adapter
+    spec:
+      serviceAccountName: whizard-adapter
+      containers:
+        - name: adapter
+          args:
+            - --default-whizard-configmap=kubesphere-monitoring-system.whizard-config
+            - --default-whizard-service=kubesphere-monitoring-system.whizard
+            - --default-whizard-storage=kubesphere-monitoring-system.remote
+            - --web-enabled=true
+            - --kubesphere-adapter-enabled=true
+            - --edgecluster-adapter-enabled=true
+          image: {{ template "edgewize-whizard-adapter.image" . }}
+          imagePullPolicy: {{ .Values.whizard_adapter.image.pullPolicy }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9091
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 9091
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: whizard-adapter
+  namespace: kubesphere-monitoring-system
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: whizard-adapter
+  name: whizard-adapter
+  namespace: kubesphere-monitoring-system
+spec:
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: whizard-adapter
+  type: ClusterIP
+{{- end }}
