@@ -17,20 +17,17 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .spec.name
+      name: Name
+      type: string
     - jsonPath: .spec.namespace
-      name: NameSpace
+      name: Namespace
       type: string
     - jsonPath: .spec.distro
       name: Distro
       type: string
     - jsonPath: .status.status
       name: Status
-      type: string
-    - jsonPath: .status.edgewize
-      name: EdgeWize
-      type: string
-    - jsonPath: .status.cloudcore
-      name: CloudCore
       type: string
     name: v1alpha1
     schema:
@@ -52,30 +49,20 @@ spec:
           spec:
             description: EdgeClusterSpec defines the desired state of EdgeCluster
             properties:
-              advertiseAddress:
-                items:
-                  type: string
-                type: array
-              alias:
-                type: string
-              components:
-                description: Components will install in the edgecluster ,default is
-                  "edgewize,cloudcore,-fluent-operator"   -fluent means does not install
-                  fluent component   edgewize will always install
-                type: string
-              description:
+              cluster:
+                description: Cluster is the target cluster where the edge cluster
+                  will be installed (default "host"), it depends on the multi-cluster
+                  component.
                 type: string
               distro:
                 description: 'Distro is Kubernetes distro to use for the virtual cluster.
                   Allowed distros: k3s, k0s, k8s, eks (default "k3s")'
                 type: string
-              hostCluster:
-                description: HostCluster is the target cluster where the edge cluster
-                  will be installed (default "host"), it depends on the multi-cluster
-                  component.
-                type: string
               location:
                 description: Location is the location of the current cluster. TODO
+                type: string
+              name:
+                description: Name is the name of the edge cluster.
                 type: string
               namespace:
                 description: Namespace is the target namespace where the edge cluster
@@ -88,16 +75,6 @@ spec:
           status:
             description: EdgeClusterStatus defines the observed state of EdgeCluster
             properties:
-              cloudcore:
-                type: string
-              edgewize:
-                type: string
-              fluentOperator:
-                type: string
-              kubeConfig:
-                description: KubeConfig is the edge cluster kubeconfig, encode by
-                  base64
-                type: string
               status:
                 description: Status is the edge cluster release installation status
                 type: string

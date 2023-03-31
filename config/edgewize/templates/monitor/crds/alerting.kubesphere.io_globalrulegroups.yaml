@@ -1,10 +1,10 @@
-
+{{- if ne .Values.role "host" }}
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: ""
+    controller-gen.kubebuilder.io/version: (unknown)
   creationTimestamp: null
   name: globalrulegroups.alerting.kubesphere.io
 spec:
@@ -280,9 +280,4 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
+{{- end }}

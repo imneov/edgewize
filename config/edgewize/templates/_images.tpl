@@ -10,6 +10,14 @@ Return the proper image name
 {{ include "common.images.image" (dict "imageRoot" .Values.controller.image "global" .Values.global) }}
 {{- end -}}
 
+{{- define "edgewize-whizard-adapter.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.whizard_adapter.image "global" .Values.global) }}
+{{- end -}}
+
+{{- define "edgewize-whizard-agent-proxy.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.whizard_agent_proxy.image "global" .Values.global) }}
+{{- end -}}
+
 
 {{- define "common.images.image" -}}
 {{- $registryName := .global.imageRegistry -}}
