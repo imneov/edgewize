@@ -54,7 +54,7 @@ type EdgeClusterSpec struct {
 	// Location is the location of the current cluster. TODO
 	Location string `json:"location,omitempty"`
 
-	// Components will install in the edgecluster ,default is "edgewize,cloudcore,-fluent-operator"
+	// Components will install in the edgecluster ,default is "edgewize-monitor,edgewize,cloudcore,-fluent-operator"
 	//   -fluent means does not install fluent component
 	//   edgewize will always install
 	Components string `json:"components,omitempty"`
@@ -76,18 +76,20 @@ type EdgeClusterStatus struct {
 	CloudCore Status `json:"cloudcore,omitempty"`
 
 	FluentOperator Status `json:"fluentOperator,omitempty"`
+
+	EdgewizeMonitor Status `json:"edgewizeMonitor,omitempty"`
 }
 
-//+genclient
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Namespaced
-//+kubebuilder:printcolumn:name="NameSpace",type=string,JSONPath=`.spec.namespace`
-//+kubebuilder:printcolumn:name="Distro",type=string,JSONPath=`.spec.distro`
-//+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
-//+kubebuilder:printcolumn:name="EdgeWize",type=string,JSONPath=`.status.edgewize`
-//+kubebuilder:printcolumn:name="CloudCore",type=string,JSONPath=`.status.cloudcore`
-
+// +genclient
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Namespaced
+// +kubebuilder:printcolumn:name="NameSpace",type=string,JSONPath=`.spec.namespace`
+// +kubebuilder:printcolumn:name="Distro",type=string,JSONPath=`.spec.distro`
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
+// +kubebuilder:printcolumn:name="EdgeWize",type=string,JSONPath=`.status.edgewize`
+// +kubebuilder:printcolumn:name="CloudCore",type=string,JSONPath=`.status.cloudcore`
+// +kubebuilder:printcolumn:name="EdgewizeMonitor",type=string,JSONPath=`.status.edgewizeMonitor`
 // EdgeCluster is the Schema for the edgeclusters API
 type EdgeCluster struct {
 	metav1.TypeMeta   `json:",inline"`

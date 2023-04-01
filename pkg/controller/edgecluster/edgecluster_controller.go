@@ -21,9 +21,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+
+	"k8s.io/client-go/util/retry"
 
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	controllerutils "github.com/edgewize-io/edgewize/pkg/controller/utils/controller"
@@ -48,7 +52,7 @@ import (
 
 const (
 	controllerName     = "edgecluster-controller"
-	DefaultComponents  = "edgewize,cloudcore,-fluent-operator"
+	DefaultComponents  = "edgewize,edgewize-monitor,cloudcore,-fluent-operator"
 	ComponentEdgeWize  = "edgewize"
 	ComponentCloudCore = "cloudcore"
 )
@@ -102,8 +106,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !sliceutil.HasString(instance.ObjectMeta.Finalizers, finalizer) {
 			logger.V(4).Info("edge cluster is created, add finalizer and update", "req", req, "finalizer", finalizer)
-			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, finalizer)
-			if err := r.Update(rootCtx, instance); err != nil {
+			if err := r.UpdateEdgeCluster(rootCtx, req.NamespacedName, func(_instance *infrav1alpha1.EdgeCluster) error {
+				_instance.ObjectMeta.Finalizers = append(_instance.ObjectMeta.Finalizers, finalizer)
+				return r.Update(rootCtx, _instance)
+			}); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
@@ -113,12 +119,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			if _, err := r.undoReconcile(ctx, instance); err != nil {
 				return ctrl.Result{}, err
 			}
-			// remove our finalizer from the list and update it.
-			instance.ObjectMeta.Finalizers = sliceutil.RemoveString(instance.ObjectMeta.Finalizers, func(item string) bool {
-				return item == finalizer
-			})
-			logger.V(4).Info("update edge cluster")
-			if err := r.Update(rootCtx, instance); err != nil {
+			if err := r.UpdateEdgeCluster(rootCtx, req.NamespacedName, func(_instance *infrav1alpha1.EdgeCluster) error {
+				// remove our finalizer from the list and update it.
+				_instance.ObjectMeta.Finalizers = sliceutil.RemoveString(_instance.ObjectMeta.Finalizers, func(item string) bool {
+					return item == finalizer
+				})
+				logger.V(4).Info("update edge cluster")
+				return r.Update(rootCtx, _instance)
+			}); err != nil {
 				logger.Error(err, "update edge cluster failed")
 				return ctrl.Result{}, err
 			}
@@ -126,7 +134,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		// Our finalizer has finished, so the reconciler can do nothing.
 		return ctrl.Result{}, nil
 	}
-	if _, err := r.doReconcile(ctx, instance); err != nil {
+	if _, err := r.doReconcile(ctx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -190,25 +198,31 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (ctrl.Result, error) {
+func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, instance *infrav1alpha1.EdgeCluster) (ctrl.Result, error) {
 	logger := log.FromContext(ctx, "doReconcile", instance.Name)
 	if instance.Name == "" || instance.Spec.Namespace == "" {
 		return ctrl.Result{}, errors.New("cluster name and namespace cannot be empty")
 	}
-	logger.V(3).Info("origin value", "distro", instance.Spec.Distro, "components", instance.Spec.Components, "advertiseaddress", instance.Spec.AdvertiseAddress)
-	if instance.Spec.Distro == "" {
-		instance.Spec.Distro = "k3s" // TODO constants
-	}
-	if instance.Spec.Components == "" {
-		instance.Spec.Components = DefaultComponents
-	} else if !strings.Contains(instance.Spec.Components, ComponentEdgeWize) {
-		instance.Spec.Components = fmt.Sprintf("%s,%s", ComponentEdgeWize, instance.Spec.Components)
-	}
-	if instance.Spec.AdvertiseAddress == nil {
-		instance.Spec.AdvertiseAddress = []string{}
-	}
-	logger.V(3).Info("set default value", "distro", instance.Spec.Distro, "components", instance.Spec.Components, "advertiseaddress", instance.Spec.AdvertiseAddress)
-	if err := r.Update(ctx, instance); err != nil {
+	if err := r.UpdateEdgeCluster(ctx, nn, func(_instance *infrav1alpha1.EdgeCluster) error {
+		logger.V(3).Info("origin value", "distro", _instance.Spec.Distro, "components", _instance.Spec.Components, "advertiseaddress", _instance.Spec.AdvertiseAddress)
+		if _instance.Spec.Distro == "" {
+			_instance.Spec.Distro = "k3s" // TODO constants
+		}
+		if _instance.Spec.Components == "" {
+			_instance.Spec.Components = DefaultComponents
+		} else if !strings.Contains(_instance.Spec.Components, ComponentEdgeWize) {
+			_instance.Spec.Components = fmt.Sprintf("%s,%s", ComponentEdgeWize, _instance.Spec.Components)
+		}
+		if _instance.Spec.AdvertiseAddress == nil {
+			_instance.Spec.AdvertiseAddress = []string{}
+		}
+		logger.V(3).Info("set default value", "distro", _instance.Spec.Distro, "components", _instance.Spec.Components, "advertiseaddress", _instance.Spec.AdvertiseAddress)
+		_err := r.Update(ctx, _instance)
+		if _err != nil {
+			logger.V(2).Info("retry to update EdgeCluster", "err", _err.Error())
+		}
+		return _err
+	}); err != nil {
 		logger.Error(err, "update edge cluster error")
 		return ctrl.Result{}, err
 	}
@@ -246,9 +260,13 @@ func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.Ed
 		}
 	}
 
+	if err := r.Get(ctx, nn, instance); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
 	switch instance.Status.Status {
 	case "", infrav1alpha1.InstallingStatus:
-		logger.V(2).Info("install edge cluster")
+		logger.V(1).Info("install edge cluster", "name", instance.Name)
 		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, "", nil)
 		if err != nil {
 			logger.Error(err, "install edge cluster error")
@@ -284,6 +302,12 @@ func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.Ed
 						logger.Error(err, "install edgewize agent error")
 						return ctrl.Result{}, err
 					}
+				case "edgewize-monitor":
+					err = r.ReconcileEdgewizeMonitor(ctx, instance)
+					if err != nil {
+						logger.Error(err, "install edgewize monitor error")
+						return ctrl.Result{}, err
+					}
 				case "cloudcore":
 					err = r.ReconcileCloudCore(ctx, instance)
 					if err != nil {
@@ -312,6 +336,16 @@ func (r *Reconciler) doReconcile(ctx context.Context, instance *infrav1alpha1.Ed
 	return ctrl.Result{}, nil
 }
 
+func (r *Reconciler) UpdateEdgeCluster(ctx context.Context, nn types.NamespacedName, updateFunc func(*infrav1alpha1.EdgeCluster) error) error {
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() (err error) {
+		instance := &infrav1alpha1.EdgeCluster{}
+		if err := r.Get(ctx, nn, instance); err != nil {
+			return client.IgnoreNotFound(err)
+		}
+		return updateFunc(instance)
+	})
+}
+
 func (r *Reconciler) GetKubeConfig(instance *infrav1alpha1.EdgeCluster) (*clientcmdapi.Config, error) {
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{
@@ -335,6 +369,30 @@ func (r *Reconciler) GetKubeConfig(instance *infrav1alpha1.EdgeCluster) (*client
 	return config, nil
 }
 
+func (r *Reconciler) ReconcileEdgewizeMonitor(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	logger := log.FromContext(ctx, "ReconcileEdgewizeMonitor", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.V(4).Info("kubeconfig is null, skip install edgewize monitor")
+		return nil
+	}
+
+	switch instance.Status.EdgeWize {
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
+		values := chartutil.Values{}
+		SetMonitorComponent(values, instance)
+		status, err := InstallChart("edgewize-monitor", "edgewize-monitor", "kubesphere-monitoring-system", instance.Name, values)
+		if err != nil {
+			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
+			return err
+		}
+		instance.Status.EdgewizeMonitor = status
+		return nil
+	case infrav1alpha1.ErrorStatus:
+		logger.Info("edgewize-monitor install error")
+	}
+	return nil
+}
+
 func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alpha1.EdgeCluster, member *infrav1alpha1.Cluster) error {
 	logger := log.FromContext(ctx, "ReconcileEdgeWize", instance.Name)
 	if instance.Status.KubeConfig == "" {
@@ -345,7 +403,7 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
 		values := chartutil.Values{}
 		values["role"] = "member"
-		SetMonitorComponent(values, instance)
+		SetAlertOptions(values, instance)
 		status, err := InstallChart("edgewize", "edgewize", "edgewize-system", instance.Name, values)
 		if err != nil {
 			instance.Status.EdgeWize = infrav1alpha1.ErrorStatus
@@ -405,6 +463,7 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	switch instance.Status.FluentOperator {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
 		values := chartutil.Values{}
+		SetClusterOutput(values, instance)
 		status, err := InstallChart("fluent-operator", "fluent-operator", "fluent", instance.Name, values)
 		if err != nil {
 			instance.Status.CloudCore = infrav1alpha1.ErrorStatus
@@ -470,15 +529,20 @@ func CheckKubeConfig(name string, config []byte) error {
 }
 
 func SetMonitorComponent(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
-	values["whizard_agent_proxy"] = map[string]interface{}{
-		"tenant": instance.Name,
+	values["prometheus"] = map[string]interface{}{
+		"nodePort": getPrometheusAgentPort(instance.ResourceVersion),
 	}
 
+	proxyConf := map[string]interface{}{"tenant": instance.Name}
 	if len(instance.Spec.AdvertiseAddress) > 0 {
-		values["prometheus"] = map[string]interface{}{
-			"endpoint": instance.Spec.AdvertiseAddress[0],
-		}
+		proxyConf["gateway_address"] = fmt.Sprintf("http://%s:30990", instance.Spec.AdvertiseAddress[0])
+	}
 
+	values["whizard_agent_proxy"] = proxyConf
+}
+
+func SetAlertOptions(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
+	if len(instance.Spec.AdvertiseAddress) > 0 {
 		values["config"] = map[string]interface{}{
 			"alerting": map[string]interface{}{
 				"thanosRulerEndpoint": fmt.Sprintf("http://%s:30990", instance.Spec.AdvertiseAddress[0]),
@@ -486,4 +550,28 @@ func SetMonitorComponent(values chartutil.Values, instance *infrav1alpha1.EdgeCl
 			"gateway_address": fmt.Sprintf("http://%s:9090", instance.Spec.AdvertiseAddress[0]),
 		}
 	}
+}
+
+func SetClusterOutput(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
+	if len(instance.Spec.AdvertiseAddress) > 0 {
+		values["fluentbit"] = map[string]interface{}{
+			"output": map[string]interface{}{
+				"prometheus": map[string]interface{}{
+					"host": instance.Spec.AdvertiseAddress[0],
+					"port": getPrometheusAgentPort(instance.ResourceVersion),
+				},
+			},
+		}
+	}
+}
+
+// TODO remove
+func getPrometheusAgentPort(rv string) int {
+	basePort := 30991
+	seed, err := strconv.Atoi(rv)
+	if err != nil {
+		return basePort
+	}
+	rand.Seed(int64(seed))
+	return rand.Intn(3000) + basePort
 }

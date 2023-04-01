@@ -30,13 +30,6 @@ import (
 //go:embed charts/edgewize/*
 //go:embed charts/edgewize/crds/*
 //go:embed charts/edgewize/templates/*
-//go:embed charts/edgewize/templates/monitor/prometheus/*
-//go:embed charts/edgewize/templates/monitor/prometheus-operator/*
-//go:embed charts/edgewize/templates/monitor/kube-state-metrics/*
-//go:embed charts/edgewize/templates/monitor/kubernetes/*
-//go:embed charts/edgewize/templates/monitor/whizard-adapter/*
-//go:embed charts/edgewize/templates/monitor/whizard-agent-proxy/*
-//go:embed charts/edgewize/templates/monitor/fluentbit-plugin/*
 
 //go:embed charts/cloudcore/*
 //go:embed charts/cloudcore/crds/*
@@ -45,6 +38,15 @@ import (
 //go:embed charts/fluent-operator/*
 //go:embed charts/fluent-operator/crds/*
 //go:embed charts/fluent-operator/templates/*
+
+//go:embed charts/edgewize-monitor/*
+//go:embed charts/edgewize-monitor/crds/*
+//go:embed charts/edgewize-monitor/templates/*
+//go:embed charts/edgewize-monitor/templates/kube-state-metrics/*
+//go:embed charts/edgewize-monitor/templates/kubernetes/*
+//go:embed charts/edgewize-monitor/templates/prometheus/*
+//go:embed charts/edgewize-monitor/templates/prometheus-operator/*
+//go:embed charts/edgewize-monitor/templates/whizard-agent-proxy/*
 
 var FS embed.FS
 

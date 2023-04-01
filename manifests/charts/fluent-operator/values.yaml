@@ -152,6 +152,9 @@ fluentbit:
 # You can configure the opensearch-related configuration here
     stdout:
       enable: false
+    prometheus:
+      host: 172.31.73.2
+      port: 30991
 
   #Configure the default filters in FluentBit.
   # The `filter` will filter and parse the collected log information and output the logs into a uniform format. You can choose whether to turn this on or not.
