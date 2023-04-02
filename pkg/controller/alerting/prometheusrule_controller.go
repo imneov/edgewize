@@ -57,7 +57,7 @@ type GlobalPrometheusRuleReconcilers struct {
 
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules/finalizers,verbs=update
-// +kubebuilder:rbac:groups=cluster.edgewize.io,resources=clusters,verbs=get
+// +kubebuilder:rbac:groups=infra.edgewize.io,resources=clusters,verbs=get
 func (r *GlobalPrometheusRuleReconcilers) createReconcileFunc(clusterName string, mgr ctrl.Manager) reconcile.Func {
 	sourceClient := mgr.GetClient() // source cluster client
 	log := mgr.GetLogger()
@@ -293,7 +293,7 @@ type clusterReconciler struct {
 	enqueueRequestForObject   *enqueueRequestForObject
 }
 
-// +kubebuilder:rbac:groups=cluster.edgewize.io,resources=clusters,verbs=get;list;watch
+// +kubebuilder:rbac:groups=infra.edgewize.io,resources=clusters,verbs=get;list;watch
 func (r *clusterReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	logger := r.Log.WithValues("cluster", req.NamespacedName)
 

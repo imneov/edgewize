@@ -1,0 +1,22 @@
+# Default values for edgewize-monitor.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  imageRegistry: dockerproxy.com
+  tag: dev
+  imagePullSecrets: []
+
+whizard_agent_proxy:
+  image:
+    registry: ""
+    repository: kubesphere/whizard-monitoring-agent-proxy
+    tag: "v0.5.0-rc.2"
+    digest: ""
+    pullPolicy: Always
+    pullSecrets: []
+  tenant: ""
+  gateway_address: ""
+
+# Config for PrometheusAgent in EdgeCluster
+prometheus:
+  nodePort: 30991

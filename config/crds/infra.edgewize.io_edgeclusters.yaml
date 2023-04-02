@@ -1,10 +1,9 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: ""
+    controller-gen.kubebuilder.io/version: (unknown)
   creationTimestamp: null
   name: edgeclusters.infra.edgewize.io
 spec:
@@ -31,6 +30,9 @@ spec:
       type: string
     - jsonPath: .status.cloudcore
       name: CloudCore
+      type: string
+    - jsonPath: .status.edgewizeMonitor
+      name: EdgewizeMonitor
       type: string
     name: v1alpha1
     schema:
@@ -60,8 +62,8 @@ spec:
                 type: string
               components:
                 description: Components will install in the edgecluster ,default is
-                  "edgewize,cloudcore,-fluent-operator"   -fluent means does not install
-                  fluent component   edgewize will always install
+                  "edgewize-monitor,edgewize,cloudcore,-fluent-operator" -fluent means
+                  does not install fluent component edgewize will always install
                 type: string
               description:
                 type: string
@@ -70,9 +72,9 @@ spec:
                   Allowed distros: k3s, k0s, k8s, eks (default "k3s")'
                 type: string
               hostCluster:
-                description: HostCluster is the target cluster where the edge cluster
-                  will be installed (default "host"), it depends on the multi-cluster
-                  component.
+                description: HostCluster is the cluster in which the edge cluster
+                  will be created and hosted (default to "host") it depends on the
+                  multi-cluster component.
                 type: string
               location:
                 description: Location is the location of the current cluster. TODO
@@ -92,6 +94,8 @@ spec:
                 type: string
               edgewize:
                 type: string
+              edgewizeMonitor:
+                type: string
               fluentOperator:
                 type: string
               kubeConfig:
@@ -107,9 +111,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
