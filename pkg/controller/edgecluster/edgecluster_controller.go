@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"k8s.io/client-go/util/retry"
 
@@ -52,7 +53,7 @@ import (
 
 const (
 	controllerName     = "edgecluster-controller"
-	DefaultComponents  = "edgewize,edgewize-monitor,cloudcore,-fluent-operator"
+	DefaultComponents  = "edgewize,edgewize-monitor,cloudcore,fluent-operator"
 	ComponentEdgeWize  = "edgewize"
 	ComponentCloudCore = "cloudcore"
 )
@@ -277,6 +278,10 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 		if instance.Status.KubeConfig == "" {
 			config, err := r.GetKubeConfig(instance)
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					logger.V(4).Info("edge cluster kube config not found, retry after 500ms")
+					return ctrl.Result{RequeueAfter: time.Millisecond * 500}, nil
+				}
 				logger.Error(err, "get edge cluster kube config error")
 				return ctrl.Result{}, err
 			}

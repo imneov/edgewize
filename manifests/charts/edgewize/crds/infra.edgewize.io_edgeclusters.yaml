@@ -62,8 +62,8 @@ spec:
                 type: string
               components:
                 description: Components will install in the edgecluster ,default is
-                  "edgewize-monitor,edgewize,cloudcore,-fluent-operator" -fluent means
-                  does not install fluent component edgewize will always install
+                  "edgewize-monitor,edgewize,cloudcore,fluent-operator" -xxx means
+                  does not install xxx edgewize will always install
                 type: string
               description:
                 type: string

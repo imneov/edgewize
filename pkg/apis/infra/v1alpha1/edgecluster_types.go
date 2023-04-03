@@ -54,8 +54,8 @@ type EdgeClusterSpec struct {
 	// Location is the location of the current cluster. TODO
 	Location string `json:"location,omitempty"`
 
-	// Components will install in the edgecluster ,default is "edgewize-monitor,edgewize,cloudcore,-fluent-operator"
-	//   -fluent means does not install fluent component
+	// Components will install in the edgecluster ,default is "edgewize-monitor,edgewize,cloudcore,fluent-operator"
+	//   -xxx means does not install xxx
 	//   edgewize will always install
 	Components string `json:"components,omitempty"`
 
