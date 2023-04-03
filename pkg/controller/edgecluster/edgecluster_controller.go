@@ -573,5 +573,5 @@ func getPrometheusAgentPort(rv string) int {
 		return basePort
 	}
 	rand.Seed(int64(seed))
-	return rand.Intn(3000) + basePort
+	return rand.Intn(1200) + basePort
 }
