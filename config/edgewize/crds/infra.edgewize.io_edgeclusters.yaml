@@ -1,10 +1,9 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: ""
+    controller-gen.kubebuilder.io/version: (unknown)
   creationTimestamp: null
   name: edgeclusters.infra.edgewize.io
 spec:
@@ -17,17 +16,23 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.name
-      name: Name
-      type: string
     - jsonPath: .spec.namespace
-      name: Namespace
+      name: NameSpace
       type: string
     - jsonPath: .spec.distro
       name: Distro
       type: string
     - jsonPath: .status.status
       name: Status
+      type: string
+    - jsonPath: .status.edgewize
+      name: EdgeWize
+      type: string
+    - jsonPath: .status.cloudcore
+      name: CloudCore
+      type: string
+    - jsonPath: .status.edgewizeMonitor
+      name: EdgewizeMonitor
       type: string
     name: v1alpha1
     schema:
@@ -49,20 +54,30 @@ spec:
           spec:
             description: EdgeClusterSpec defines the desired state of EdgeCluster
             properties:
-              cluster:
-                description: Cluster is the target cluster where the edge cluster
-                  will be installed (default "host"), it depends on the multi-cluster
-                  component.
+              advertiseAddress:
+                items:
+                  type: string
+                type: array
+              alias:
+                type: string
+              components:
+                description: Components will install in the edgecluster ,default is
+                  "edgewize-monitor,edgewize,cloudcore,fluent-operator" -xxx means
+                  does not install xxx edgewize will always install
+                type: string
+              description:
                 type: string
               distro:
                 description: 'Distro is Kubernetes distro to use for the virtual cluster.
                   Allowed distros: k3s, k0s, k8s, eks (default "k3s")'
                 type: string
+              hostCluster:
+                description: HostCluster is the cluster in which the edge cluster
+                  will be created and hosted (default to "host") it depends on the
+                  multi-cluster component.
+                type: string
               location:
                 description: Location is the location of the current cluster. TODO
-                type: string
-              name:
-                description: Name is the name of the edge cluster.
                 type: string
               namespace:
                 description: Namespace is the target namespace where the edge cluster
@@ -75,6 +90,18 @@ spec:
           status:
             description: EdgeClusterStatus defines the observed state of EdgeCluster
             properties:
+              cloudcore:
+                type: string
+              edgewize:
+                type: string
+              edgewizeMonitor:
+                type: string
+              fluentOperator:
+                type: string
+              kubeConfig:
+                description: KubeConfig is the edge cluster kubeconfig, encode by
+                  base64
+                type: string
               status:
                 description: Status is the edge cluster release installation status
                 type: string
@@ -84,9 +111,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
