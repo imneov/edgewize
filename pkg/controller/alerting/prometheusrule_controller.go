@@ -301,8 +301,8 @@ func (r *clusterReconciler) Reconcile(ctx context.Context, req reconcile.Request
 	err := r.Client.Get(ctx, req.NamespacedName, cluster)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			// remove the prometheusrule reconciler
 			r.prometheusRuleReconcilers.removeReconciler(cluster.Name)
+			logger.Info("remove cluster from ClusterReconciler", "cluster", cluster.Name)
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
