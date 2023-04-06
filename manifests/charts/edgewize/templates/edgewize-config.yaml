@@ -25,7 +25,7 @@ data:
     alerting:
       endpoint: {{ .Values.config.alerting.endpoint | default "" }}
       prometheusEndpoint: {{ .Values.config.alerting.prometheusEndpoint | default "" }}
-      thanosRulerEndpoint: {{ .Values.config.alerting.thanosRulerEndpoint | default "http://query-frontend-whizard-operated.kubesphere-monitoring-system.svc:10902" }}
+      thanosRulerEndpoint: {{ .Values.config.alerting.thanosRulerEndpoint | default "http://whizard-agent-proxy.kubesphere-monitoring-system.svc:9090" }}
       thanosRuleResourceLabels:  {{ .Values.config.alerting.thanosRuleResourceLabels | default "" }}
     notification:
       endpoint: {{ .Values.config.notification.endpoint | default "http://notification-manager-svc.edgewize-monitoring-system.svc:19093" }}

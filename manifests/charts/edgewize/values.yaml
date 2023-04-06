@@ -42,7 +42,6 @@ config:
   jwtSecret: "edgewize"
   multicluster: {}
   monitoring: {}
-  # alerting.thanosRulerEndpoint is required for Edge cluster
   alerting: {}
   notification: {}
 
@@ -145,7 +144,7 @@ controller:
   image:
     registry: ""
     repository: chenzheng820/edgewize-controller-manager
-    tag: "v1.4.0"
+    tag: "v1.5.0"
     digest: ""
     pullPolicy: Always
     ## Optionally specify an array of imagePullSecrets.
