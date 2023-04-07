@@ -67,9 +67,8 @@ type EdgeJoinResponse struct {
 func (h *handler) joinNode(request *restful.Request, response *restful.Response) {
 	nodeName := request.QueryParameter("node_name")
 	version := request.QueryParameter("version")
-	region := request.QueryParameter("region")
 	hasDefaultTaint, _ := strconv.ParseBool(request.QueryParameter("add_default_taint"))
-	withNodePort, _ := strconv.ParseBool(request.QueryParameter("with_nodeport"))
+	//withNodePort, _ := strconv.ParseBool(request.QueryParameter("with_nodeport"))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -134,11 +133,8 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 		return
 	}
 
-	if region == "" {
-		region = "zh"
-	}
 	if version == "" {
-		version = "v1.12.1"
+		version = "v1.13.0"
 	} else if version[0] != 'v' {
 		version = fmt.Sprintf("v%s", version)
 	}
@@ -179,39 +175,37 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 	certPort := modules.CloudHub.HTTPS.Port
 	tunnelPort := modules.CloudStream.TunnelPort
 
-	if withNodePort {
-		ccService, err := h.k8sclient.CoreV1().Services(KubeEdgeNamespace).Get(ctx, CloudCoreService, metav1.GetOptions{})
-		if err != nil {
-			klog.Infof("EdgeNodeJoin: Read cloudcore service error [+%v]\n", err)
-			response.AddHeader("Content-Type", "text/json")
-			response.WriteHeader(http.StatusInternalServerError)
-			response.WriteAsJson(&EdgeJoinResponse{
-				Code:    http.StatusInternalServerError,
-				Status:  StatusFailure,
-				Message: fmt.Sprintf("Read cloudcore service error [+%v]", err),
-			})
-			return
-		}
+	ccService, err := h.k8sclient.CoreV1().Services(KubeEdgeNamespace).Get(ctx, CloudCoreService, metav1.GetOptions{})
+	if err != nil {
+		klog.Infof("EdgeNodeJoin: Read cloudcore service error [+%v]\n", err)
+		response.AddHeader("Content-Type", "text/json")
+		response.WriteHeader(http.StatusInternalServerError)
+		response.WriteAsJson(&EdgeJoinResponse{
+			Code:    http.StatusInternalServerError,
+			Status:  StatusFailure,
+			Message: fmt.Sprintf("Read cloudcore service error [+%v]", err),
+		})
+		return
+	}
 
-		ports := ccService.Spec.Ports
-		for _, port := range ports {
-			switch port.Name {
-			case "cloudhub":
-				{
-					webSocketPort = port.NodePort
-				}
-			case "cloudhub-quic":
-				{
-					quicPort = port.NodePort
-				}
-			case "cloudhub-https":
-				{
-					certPort = port.NodePort
-				}
-			case "tunnelport":
-				{
-					tunnelPort = port.NodePort
-				}
+	ports := ccService.Spec.Ports
+	for _, port := range ports {
+		switch port.Name {
+		case "cloudhub":
+			{
+				webSocketPort = port.Port
+			}
+		case "cloudhub-quic":
+			{
+				quicPort = port.Port
+			}
+		case "cloudhub-https":
+			{
+				certPort = port.Port
+			}
+		case "tunnelport":
+			{
+				tunnelPort = port.Port
 			}
 		}
 	}
@@ -221,11 +215,7 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 	if hasDefaultTaint {
 		withEdgeTaint = " --with-edge-taint"
 	}
-	if region == "zh" {
-		cmd = fmt.Sprintf("arch=$(uname -m); curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && chmod +x keadm && ./keadm join --kubeedge-version=%s --region=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s", uri, version, strings.ReplaceAll(version, "v", ""), region, advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, string(secret.Data["tokendata"]), withEdgeTaint)
-	} else {
-		cmd = fmt.Sprintf("arch=$(uname -m); if [ $arch == 'x86_64' ]; then arch='amd64'; fi; curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && chmod +x keadm && ./keadm join --kubeedge-version=%s --region=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s", uri, version, strings.ReplaceAll(version, "v", ""), region, advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, string(secret.Data["tokendata"]), withEdgeTaint)
-	}
+	cmd = fmt.Sprintf("arch=$(uname -m); curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && chmod +x keadm && ./keadm join --kubeedge-version=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s  --remote-runtime-endpoint=unix:///var/run/docker.sock --runtimetype=docker", uri, version, strings.ReplaceAll(version, "v", ""), advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, string(secret.Data["tokendata"]), withEdgeTaint)
 
 	resp := EdgeJoinResponse{
 		Code:   http.StatusOK,

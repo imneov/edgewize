@@ -17,7 +17,6 @@ limitations under the License.
 package edgecluster
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -31,7 +30,6 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
-	controllerutils "github.com/edgewize-io/edgewize/pkg/controller/utils/controller"
 	"github.com/edgewize-io/edgewize/pkg/helm"
 	"github.com/edgewize-io/edgewize/pkg/utils/sliceutil"
 	"github.com/go-logr/logr"
@@ -41,10 +39,13 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/homedir"
+	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -52,10 +53,13 @@ import (
 )
 
 const (
-	controllerName     = "edgecluster-controller"
-	DefaultComponents  = "edgewize,edgewize-monitor,cloudcore,fluent-operator"
-	ComponentEdgeWize  = "edgewize"
-	ComponentCloudCore = "cloudcore"
+	CurrentNamespace            = "edgewize-system"
+	controllerName              = "edgecluster-controller"
+	DefaultComponents           = "edgewize,edgewize-monitor,cloudcore,fluent-operator"
+	DefaultDistro               = "k3s"
+	ComponentEdgeWize           = "edgewize"
+	ComponentCloudCore          = "cloudcore"
+	EdgeWizeNameSpaceConfigName = "edgewize-namespaces-config"
 )
 
 // Reconciler reconciles a Workspace object
@@ -79,7 +83,14 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.MaxConcurrentReconciles <= 0 {
 		r.MaxConcurrentReconciles = 1
 	}
-	_ = os.MkdirAll(filepath.Join(homedir.HomeDir(), ".kube"), 0644)
+	err := os.MkdirAll(filepath.Join(homedir.HomeDir(), ".kube", "external"), 0644)
+	if err != nil {
+		klog.Error("create .kube directory error", err)
+	}
+	err = r.SaveExternalKubeConfig()
+	if err != nil {
+		klog.Error("load external kubeconfig error", err)
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(controllerName).
 		WithOptions(controller.Options{
@@ -135,12 +146,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		// Our finalizer has finished, so the reconciler can do nothing.
 		return ctrl.Result{}, nil
 	}
-	if _, err := r.doReconcile(ctx, req.NamespacedName, instance); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	r.Recorder.Event(instance, corev1.EventTypeNormal, controllerutils.SuccessSynced, controllerutils.MessageResourceSynced)
-	return ctrl.Result{}, nil
+	return r.doReconcile(ctx, req.NamespacedName, instance)
 }
 
 func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (ctrl.Result, error) {
@@ -207,7 +213,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 	if err := r.UpdateEdgeCluster(ctx, nn, func(_instance *infrav1alpha1.EdgeCluster) error {
 		logger.V(3).Info("origin value", "distro", _instance.Spec.Distro, "components", _instance.Spec.Components, "advertiseaddress", _instance.Spec.AdvertiseAddress)
 		if _instance.Spec.Distro == "" {
-			_instance.Spec.Distro = "k3s" // TODO constants
+			_instance.Spec.Distro = DefaultDistro
 		}
 		if _instance.Spec.Components == "" {
 			_instance.Spec.Components = DefaultComponents
@@ -267,8 +273,12 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 
 	switch instance.Status.Status {
 	case "", infrav1alpha1.InstallingStatus:
+		kubeconfig, err := r.LoadExternalKubeConfig(ctx, instance.Spec.Namespace)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 		logger.V(1).Info("install edge cluster", "name", instance.Name)
-		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, "", nil)
+		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig, true, nil)
 		if err != nil {
 			logger.Error(err, "install edge cluster error")
 			return ctrl.Result{}, err
@@ -279,8 +289,8 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 			config, err := r.GetKubeConfig(instance)
 			if err != nil {
 				if apierrors.IsNotFound(err) {
-					logger.V(4).Info("edge cluster kube config not found, retry after 500ms")
-					return ctrl.Result{RequeueAfter: time.Millisecond * 500}, nil
+					logger.Info("edge cluster kube config not found, retry after 500ms")
+					return ctrl.Result{RequeueAfter: time.Second * 1}, nil
 				}
 				logger.Error(err, "get edge cluster kube config error")
 				return ctrl.Result{}, err
@@ -292,7 +302,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 			}
 			instance.Status.KubeConfig = string(data)
 		}
-		err := CheckKubeConfig(instance.Name, []byte(instance.Status.KubeConfig))
+		err := SaveToLocal(instance.Name, []byte(instance.Status.KubeConfig))
 		if err != nil {
 			logger.Error(err, "write edge cluster kube config to file error")
 			return ctrl.Result{}, err
@@ -352,14 +362,43 @@ func (r *Reconciler) UpdateEdgeCluster(ctx context.Context, nn types.NamespacedN
 }
 
 func (r *Reconciler) GetKubeConfig(instance *infrav1alpha1.EdgeCluster) (*clientcmdapi.Config, error) {
+	// 读取外部 kubeconfig 创建 k8s client
+	file := filepath.Join(homedir.HomeDir(), ".kube", "external", instance.Spec.Namespace)
 	secret := &corev1.Secret{}
-	key := types.NamespacedName{
-		Namespace: instance.Spec.Namespace,
-		Name:      fmt.Sprintf("vc-%s", instance.Name),
-	}
-	err := r.Get(context.Background(), key, secret)
-	if err != nil {
-		return nil, err
+	service := &corev1.Service{}
+	if _, err := os.Stat(file); err == nil {
+		config, err := clientcmd.BuildConfigFromFlags("", file)
+		if err != nil {
+			return nil, err
+		}
+		clientset, err := kubernetes.NewForConfig(config)
+		if err != nil {
+			return nil, err
+		}
+
+		secret, err = clientset.CoreV1().Secrets(instance.Spec.Namespace).Get(context.Background(), fmt.Sprintf("vc-%s", instance.Name), metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		service, err = clientset.CoreV1().Services(instance.Spec.Namespace).Get(context.Background(), instance.Name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+		key := types.NamespacedName{
+			Namespace: instance.Spec.Namespace,
+			Name:      fmt.Sprintf("vc-%s", instance.Name),
+		}
+		err = r.Get(context.Background(), key, secret)
+		if err != nil {
+			return nil, err
+		}
+		key.Name = instance.Name
+		err = r.Get(context.Background(), key, service)
+		if err != nil {
+			return nil, err
+		}
 	}
 	data, ok := secret.Data["config"]
 	if !ok {
@@ -369,8 +408,12 @@ func (r *Reconciler) GetKubeConfig(instance *infrav1alpha1.EdgeCluster) (*client
 	if err != nil {
 		return nil, err
 	}
-	// my-vcluster is the default name of cluster kubeconfig
-	config.Clusters["my-vcluster"].Server = fmt.Sprintf("https://%s.%s:443", instance.Name, instance.Spec.Namespace)
+	cluster := config.Contexts[config.CurrentContext].Cluster
+	if service.Spec.Ports != nil && len(service.Spec.Ports) > 0 {
+		config.Clusters[cluster].Server = fmt.Sprintf("https://%s:%d", service.Spec.ClusterIP, service.Spec.Ports[0].Port)
+	} else {
+		return config, errors.New("edge cluster service port does not exist")
+	}
 	return config, nil
 }
 
@@ -385,7 +428,7 @@ func (r *Reconciler) ReconcileEdgewizeMonitor(ctx context.Context, instance *inf
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
 		values := chartutil.Values{}
 		SetMonitorComponent(values, instance)
-		status, err := InstallChart("edgewize-monitor", "edgewize-monitor", "kubesphere-monitoring-system", instance.Name, values)
+		status, err := InstallChart("edgewize-monitor", "edgewize-monitor", "kubesphere-monitoring-system", instance.Name, true, values)
 		if err != nil {
 			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
 			return err
@@ -408,7 +451,7 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
 		values := chartutil.Values{}
 		values["role"] = "member"
-		status, err := InstallChart("edgewize", "edgewize", "edgewize-system", instance.Name, values)
+		status, err := InstallChart("edgewize", "edgewize", CurrentNamespace, instance.Name, true, values)
 		if err != nil {
 			instance.Status.EdgeWize = infrav1alpha1.ErrorStatus
 			return err
@@ -445,7 +488,7 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 				},
 			},
 		}
-		status, err := InstallChart("cloudcore", "cloudcore", "kubeedge", instance.Name, values)
+		status, err := InstallChart("cloudcore", "cloudcore", "kubeedge", instance.Name, true, values)
 		if err != nil {
 			instance.Status.CloudCore = infrav1alpha1.ErrorStatus
 			return err
@@ -468,7 +511,7 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
 		values := chartutil.Values{}
 		SetClusterOutput(values, instance)
-		status, err := InstallChart("fluent-operator", "fluent-operator", "fluent", instance.Name, values)
+		status, err := InstallChart("fluent-operator", "fluent-operator", "fluent", instance.Name, true, values)
 		if err != nil {
 			instance.Status.CloudCore = infrav1alpha1.ErrorStatus
 			return err
@@ -481,14 +524,14 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	return nil
 }
 
-func InstallChart(file, name, namespace, kubeconfig string, values chartutil.Values) (infrav1alpha1.Status, error) {
+func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool, values chartutil.Values) (infrav1alpha1.Status, error) {
 	chartStatus, err := helm.Status(file, name, namespace, kubeconfig)
 	if err != nil {
 		return "", err
 	}
 	switch chartStatus {
 	case release.StatusUnknown, release.StatusUninstalled:
-		err = helm.Install(file, name, namespace, kubeconfig, values)
+		err = helm.Install(file, name, namespace, kubeconfig, createNamespace, values)
 		if err != nil {
 			return "", err
 		}
@@ -508,28 +551,6 @@ func InstallChart(file, name, namespace, kubeconfig string, values chartutil.Val
 func SaveToLocal(name string, config []byte) error {
 	path := filepath.Join(homedir.HomeDir(), ".kube", name)
 	return os.WriteFile(path, config, 0644)
-}
-
-func CheckKubeConfig(name string, config []byte) error {
-	path := filepath.Join(homedir.HomeDir(), ".kube", name)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		err = SaveToLocal(name, config)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	if bytes.Compare(data, config) != 0 {
-		err = SaveToLocal(name, config)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func SetMonitorComponent(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
@@ -567,4 +588,57 @@ func getPrometheusAgentPort(rv string) int {
 	}
 	rand.Seed(int64(seed))
 	return rand.Intn(1200) + basePort
+}
+
+// 从 ConfigMap 加载外部的 kubeconfig 到本地目录
+func (r *Reconciler) LoadExternalKubeConfig(ctx context.Context, name string) (string, error) {
+	file := filepath.Join(homedir.HomeDir(), ".kube", "external", name)
+	if _, err := os.Stat(file); err == nil {
+		return name, err
+	}
+	cm := &corev1.ConfigMap{}
+	key := types.NamespacedName{
+		Namespace: CurrentNamespace,
+		Name:      EdgeWizeNameSpaceConfigName,
+	}
+	err := r.Get(ctx, key, cm)
+	if err != nil {
+		return "", client.IgnoreNotFound(err)
+	}
+	config, ok := cm.Data[name]
+	if !ok {
+		return "", nil
+	}
+	path := filepath.Join("external", name)
+	err = SaveToLocal(path, []byte(config))
+	if err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// 保存外部的 kubeconfig 到本地目录
+func (r *Reconciler) SaveExternalKubeConfig() error {
+
+	// 创建一个 kubernetes clientset
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+
+	cm, err := clientset.CoreV1().ConfigMaps(CurrentNamespace).Get(context.Background(), EdgeWizeNameSpaceConfigName, metav1.GetOptions{})
+	if err != nil {
+		return client.IgnoreNotFound(err)
+	}
+	for namespace, kubeconfig := range cm.Data {
+		err = SaveToLocal(filepath.Join("external", namespace), []byte(kubeconfig))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

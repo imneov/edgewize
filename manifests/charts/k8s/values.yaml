@@ -108,7 +108,7 @@ hostpathMapper:
 # Syncer configuration
 syncer:
   # Image to use for the syncer
-  image: wuxs/vcluster:edge
+  image: kubesphere/vcluster:v0.13
   extraArgs: []
   volumeMounts:
     - mountPath: /pki

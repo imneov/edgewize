@@ -1,8 +1,8 @@
 ## @param global.imageRegistry Global Docker image registry
 ## @param global.tag Global Docker image tag
 global:
-  imageRegistry: dockerproxy.com
-  tag: dev
+  imageRegistry: registry.cn-beijing.aliyuncs.com
+  tag: v0.1.0
   imagePullSecrets: []
 
 ## @section Common parameters
@@ -92,10 +92,10 @@ apiserver:
   replicaCount: 1
   image:
     registry: ""
-    repository: wuxs/edgewize-apiserver
-    tag: "dev"
+    repository: kubesphere/edgewize-apiserver
+    tag: "v0.1.0"
     digest: ""
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
     ## Secrets must be manually created in the namespace.
     ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -144,10 +144,10 @@ controller:
   replicaCount: 1
   image:
     registry: ""
-    repository: wuxs/edgewize-controller-manager
-    tag: "dev"
+    repository: kubesphere/edgewize-controller-manager
+    tag: "v0.1.0"
     digest: ""
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
     ## Secrets must be manually created in the namespace.
     ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -194,10 +194,10 @@ agent:
 whizard_adapter:
   image:
     registry: ""
-    repository: chenzheng820/whizard-adapter
+    repository: kubesphere/whizard-adapter
     tag: "v1.4.0"
     digest: ""
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
     pullSecrets: []
 
 whizard_agent_proxy:
@@ -206,7 +206,7 @@ whizard_agent_proxy:
     repository: kubesphere/whizard-monitoring-agent-proxy
     tag: "v0.5.0-rc.2"
     digest: ""
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
     pullSecrets: []
   tenant: ""
   gateway_address: ""
