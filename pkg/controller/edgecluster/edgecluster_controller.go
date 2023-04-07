@@ -20,10 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -55,7 +53,7 @@ import (
 const (
 	CurrentNamespace            = "edgewize-system"
 	controllerName              = "edgecluster-controller"
-	DefaultComponents           = "edgewize,edgewize-monitor,cloudcore,fluent-operator"
+	DefaultComponents           = "edgewize,whizard-edge-agent,cloudcore,fluent-operator"
 	DefaultDistro               = "k3s"
 	ComponentEdgeWize           = "edgewize"
 	ComponentCloudCore          = "cloudcore"
@@ -317,10 +315,10 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 						logger.Error(err, "install edgewize agent error")
 						return ctrl.Result{}, err
 					}
-				case "edgewize-monitor":
-					err = r.ReconcileEdgewizeMonitor(ctx, instance)
+				case "whizard-edge-agent":
+					err = r.ReconcileWhizardEdgeAgent(ctx, instance)
 					if err != nil {
-						logger.Error(err, "install edgewize monitor error")
+						logger.Error(err, "install whizard-edge-agent error")
 						return ctrl.Result{}, err
 					}
 				case "cloudcore":
@@ -417,10 +415,10 @@ func (r *Reconciler) GetKubeConfig(instance *infrav1alpha1.EdgeCluster) (*client
 	return config, nil
 }
 
-func (r *Reconciler) ReconcileEdgewizeMonitor(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
-	logger := log.FromContext(ctx, "ReconcileEdgewizeMonitor", instance.Name)
+func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	logger := log.FromContext(ctx, "ReconcileWhizardEdgeAgent", instance.Name)
 	if instance.Status.KubeConfig == "" {
-		logger.V(4).Info("kubeconfig is null, skip install edgewize monitor")
+		logger.V(4).Info("kubeconfig is null, skip install whizard-edge-agent")
 		return nil
 	}
 
@@ -428,7 +426,7 @@ func (r *Reconciler) ReconcileEdgewizeMonitor(ctx context.Context, instance *inf
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
 		values := chartutil.Values{}
 		SetMonitorComponent(values, instance)
-		status, err := InstallChart("edgewize-monitor", "edgewize-monitor", "kubesphere-monitoring-system", instance.Name, true, values)
+		status, err := InstallChart("whizard-edge-agent", "whizard-edge-agent", "kubesphere-monitoring-system", instance.Name, true, values)
 		if err != nil {
 			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
 			return err
@@ -436,7 +434,7 @@ func (r *Reconciler) ReconcileEdgewizeMonitor(ctx context.Context, instance *inf
 		instance.Status.EdgewizeMonitor = status
 		return nil
 	case infrav1alpha1.ErrorStatus:
-		logger.Info("edgewize-monitor install error")
+		logger.Info("whizard-edge-agent install error")
 	}
 	return nil
 }
@@ -555,7 +553,7 @@ func SaveToLocal(name string, config []byte) error {
 
 func SetMonitorComponent(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
 	values["prometheus"] = map[string]interface{}{
-		"nodePort": getPrometheusAgentPort(instance.ResourceVersion),
+		"nodePort": getPrometheusAgentPort(),
 	}
 
 	proxyConf := map[string]interface{}{"tenant": instance.Name}
@@ -572,7 +570,7 @@ func SetClusterOutput(values chartutil.Values, instance *infrav1alpha1.EdgeClust
 			"output": map[string]interface{}{
 				"prometheus": map[string]interface{}{
 					"host": instance.Spec.AdvertiseAddress[0],
-					"port": getPrometheusAgentPort(instance.ResourceVersion),
+					"port": getPrometheusAgentPort(),
 				},
 			},
 		}
@@ -580,14 +578,8 @@ func SetClusterOutput(values chartutil.Values, instance *infrav1alpha1.EdgeClust
 }
 
 // TODO remove
-func getPrometheusAgentPort(rv string) int {
-	basePort := 30991
-	seed, err := strconv.Atoi(rv)
-	if err != nil {
-		return basePort
-	}
-	rand.Seed(int64(seed))
-	return rand.Intn(1200) + basePort
+func getPrometheusAgentPort() int {
+	return 30991
 }
 
 // 从 ConfigMap 加载外部的 kubeconfig 到本地目录

@@ -302,7 +302,7 @@ func (r *clusterReconciler) Reconcile(ctx context.Context, req reconcile.Request
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			r.prometheusRuleReconcilers.removeReconciler(cluster.Name)
-			logger.Info("remove cluster from ClusterReconciler", "cluster", cluster.Name)
+			logger.Info("remove cluster from ClusterReconciler", "cluster", req.NamespacedName)
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err

@@ -39,14 +39,14 @@ import (
 //go:embed charts/fluent-operator/crds/*
 //go:embed charts/fluent-operator/templates/*
 
-//go:embed charts/edgewize-monitor/*
-//go:embed charts/edgewize-monitor/crds/*
-//go:embed charts/edgewize-monitor/templates/*
-//go:embed charts/edgewize-monitor/templates/kube-state-metrics/*
-//go:embed charts/edgewize-monitor/templates/kubernetes/*
-//go:embed charts/edgewize-monitor/templates/prometheus/*
-//go:embed charts/edgewize-monitor/templates/prometheus-operator/*
-//go:embed charts/edgewize-monitor/templates/whizard-agent-proxy/*
+//go:embed charts/whizard-edge-agent/*
+//go:embed charts/whizard-edge-agent/crds/*
+//go:embed charts/whizard-edge-agent/templates/*
+//go:embed charts/whizard-edge-agent/templates/kube-state-metrics/*
+//go:embed charts/whizard-edge-agent/templates/kubernetes/*
+//go:embed charts/whizard-edge-agent/templates/prometheus/*
+//go:embed charts/whizard-edge-agent/templates/prometheus-operator/*
+//go:embed charts/whizard-edge-agent/templates/whizard-agent-proxy/*
 
 var FS embed.FS
 
