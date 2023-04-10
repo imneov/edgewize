@@ -1,0 +1,37 @@
+name: "Request Help"
+description: Stuck? Ask for help!
+title: "help request: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        _The more information you share, the faster we can help you._
+
+        Prior to opening the issue, please make sure that you:
+        
+        - Check [CONTRIBUTING guideline](https://github.com/edgewize-io/edgewize/blob/master/CONTRIBUTING.md) first and here is the list to help us investigate the problem.
+        - Search the [open issues](https://github.com/edgewize-io/edgewize/issues) and [discussion forum](https://github.com/edgewize-io/edgewize/discussions) to avoid duplicating the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the issue
+      description: Describe the issue you are facing and what you need help with.
+    validations:
+      required: true
+
+  - type: textarea
+    id: how-to-install
+    attributes:
+      label: How did you install edgewize?
+      description: In some cases, this is very important.
+    validations:
+      required: false
+
+  - type: textarea
+    id: addtional-context
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.
+    validations:
+      required: false

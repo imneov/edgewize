@@ -56,7 +56,7 @@ binary: | edgewize-apiserver edgewize-controller-manager; $(info $(M)...Build al
 
 # Build edgewize-apiserver binary
 edgewize-apiserver: ; $(info $(M)...Begin to build edgewize-apiserver binary.)  @ ## Build edgewize-apiserver.
-	 hack/gobuild.sh cmd/edgewize-apiserver;
+	hack/gobuild.sh cmd/edgewize-apiserver;
 
 # Build edgewize-controller-manager binary
 edgewize-controller-manager: ; $(info $(M)...Begin to build edgewize-controller-manager binary.)  @ ## Build ks-controller-manager.
@@ -124,16 +124,16 @@ container-cross-push: ; $(info $(M)...Begin to build and push.)  @ ## Build and 
 	hack/docker_build_multiarch.sh
 
 helm-package: ; $(info $(M)...Begin to helm-package.)  @ ## Helm-package.
-	ls config/crds/ | xargs -i cp -r config/crds/{} config/edgewize/crds/
-	helm package config/edgewize --app-version=${APP_VERSION} --version=0.1.0 -d ./bin
+	ls config/crds/infra.edgewize.io* | xargs -i cp -r config/crds/{} charts/edgewize/crds/
+	helm package charts/edgewize --app-version=${APP_VERSION} --version=0.1.0 -d ./bin
 
 helm-deploy: ; $(info $(M)...Begin to helm-deploy.)  @ ## Helm-deploy.
-	ls config/crds/ | xargs -i cp -r config/crds/{} config/ks-core/crds/
-	- kubectl create ns kubesphere-controls-system
-	helm upgrade --install edgewize ./config/edgewize -n edgewize-system --create-namespace
+	ls config/crds/ | xargs -i cp -r config/crds/{} charts/edgewize/crds/
+	- kubectl create ns edgewize-system
+	helm upgrade --install edgewize ./charts/edgewize -n edgewize-system --create-namespace
 
 helm-uninstall: ; $(info $(M)...Begin to helm-uninstall.)  @ ## Helm-uninstall.
-	- kubectl delete ns kubesphere-controls-system
+	- kubectl delete ns edgewize-system
 	helm uninstall edgewize -n edgewize-system
 
 # Run tests

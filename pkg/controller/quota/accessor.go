@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -30,12 +31,10 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 
+	utilquota "github.com/edgewize-io/edgewize/kube/pkg/quota/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
-	etcd "k8s.io/apiserver/pkg/storage/etcd3"
-
-	utilquota "github.com/edgewize-io/edgewize/kube/pkg/quota/v1"
 )
 
 // Following code copied from github.com/openshift/apiserver-library-go/pkg/admission/quota/clusterresourcequota
@@ -103,7 +102,7 @@ func (a *accessor) UpdateQuotaStatus(newQuota *corev1.ResourceQuota) error {
 	})
 
 	klog.V(6).Infof("update resource quota: %+v", updatedQuota)
-	err = a.client.Status().Update(ctx, updatedQuota, &client.UpdateOptions{})
+	err = a.client.Status().Update(ctx, updatedQuota, &client.SubResourceUpdateOptions{})
 	if err != nil {
 		klog.Errorf("failed to update resource quota: %v", err)
 		return err
@@ -113,7 +112,7 @@ func (a *accessor) UpdateQuotaStatus(newQuota *corev1.ResourceQuota) error {
 	return nil
 }
 
-var etcdVersioner = etcd.APIObjectVersioner{}
+var etcdVersioner = storage.APIObjectVersioner{}
 
 // checkCache compares the passed quota against the value in the look-aside cache and returns the newer
 // if the cache is out of date, it deletes the stale entry.  This only works because of etcd resourceVersions

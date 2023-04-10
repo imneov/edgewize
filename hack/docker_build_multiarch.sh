@@ -27,13 +27,13 @@ PLATFORMS=linux/amd64,linux/arm64
 ${CONTAINER_CLI} ${CONTAINER_BUILDER} \
   --platform ${PLATFORMS} \
   ${PUSH} \
-  -f build/ks-apiserver/Dockerfile \
-  -t "${REPO}"/ks-apiserver:"${TAG}" .
+  -f build/apiserver/Dockerfile \
+  -t "${REPO}"/edgewize-apiserver:"${TAG}" .
 
 # shellcheck disable=SC2086 # intended splitting of CONTAINER_BUILDER
 ${CONTAINER_CLI} ${CONTAINER_BUILDER} \
   --platform ${PLATFORMS} \
   ${PUSH} \
-  -f build/ks-controller-manager/Dockerfile \
-  -t "${REPO}"/ks-controller-manager:"${TAG}" .
+  -f build/edgewize-controller-manager/Dockerfile \
+  -t "${REPO}"/edgewize-controller-manager:"${TAG}" .
 

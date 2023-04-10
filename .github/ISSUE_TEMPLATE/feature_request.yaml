@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest an idea for this project
+body:
+  - type: markdown
+    attributes:
+      value: |
+        _The more information you share, the faster we can help you._
+
+        Prior to opening the issue, please make sure that you:
+        
+        - Check [CONTRIBUTING guideline](https://github.com/edgewize-io/edgewize/blob/master/CONTRIBUTING.md) first and here is the list to help us investigate the problem.
+        - Search the [open issues](https://github.com/edgewize-io/edgewize/issues) and [discussion forum](https://github.com/edgewize-io/edgewize/discussions) to avoid duplicating the issue.
+  - type: textarea
+    id: description
+    attributes:
+      label: Is your feature request related to a problem? Please describe.
+      description: |
+        A clear and concise description of what the problem is.
+        Ex. I'm always frustrated when [...]
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: addtional-context
+    attributes:
+      label: Additional context
+      description: Add any other context or screenshots about the feature request here.
+    validations:
+      required: false

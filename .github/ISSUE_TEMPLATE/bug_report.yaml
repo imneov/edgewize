@@ -1,0 +1,69 @@
+name: Bug Report
+description: Create a report with a procedure for reproducing the bug
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report this bug!
+
+        _The more information you share, the faster we can identify and fix the bug._
+
+        Prior to opening the issue, please make sure that you:
+        
+        - Check [CONTRIBUTING guideline](https://github.com/edgewize-io/edgewize/blob/master/CONTRIBUTING.md) first and here is the list to help us investigate the problem.
+        - Search the [open issues](https://github.com/edgewize-io/edgewize/issues) and [discussion forum](https://github.com/edgewize-io/edgewize/discussions) to avoid duplicating the issue.
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the issue
+      description: A clear and concise description of what the bug is
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Your Environment
+      description: |
+        - EdgeWize version: 
+        - Container Runtime: 
+        - Operating system: `cat /etc/os-release`
+        - Kernel version: `uname -r`
+
+        Tip: If you hit the problem with older edgewize version, try latest version first.
+      value: |
+        - EdgeWize version:
+        - Container Runtime:
+        - Operating system:
+        - Kernel version:
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: how-to-install
+    attributes:
+      label: How did you install edgewize?
+      description: In some cases, this is very important.
+    validations:
+      required: false
+  - type: textarea
+    id: addtional-context
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.
+    validations:
+      required: false

@@ -30,11 +30,6 @@ RUN tar xvzf /tmp/kustomize_${KUSTOMIZE_VERSION}_${TARGETOS}_${TARGETARCH}.tar.g
 RUN mv /tmp/kustomize ${OUTDIR}/usr/local/bin/
 
 
-# Install Nginx Ingress Helm Chart
-ADD https://github.com/kubernetes/ingress-nginx/releases/download/helm-chart-${INGRESS_NGINX_VERSION}/ingress-nginx-${INGRESS_NGINX_VERSION}.tgz /tmp
-RUN tar xvzf /tmp/ingress-nginx-${INGRESS_NGINX_VERSION}.tgz -C /tmp
-RUN mv /tmp/ingress-nginx ${OUTDIR}/var/helm-charts/
-
 # Build
 
 FROM golang:1.19.4 as build_context
@@ -48,10 +43,6 @@ ADD . /workspace/
 
 RUN make edgewize-controller-manager
 RUN mv /workspace/bin/cmd/controller-manager ${OUTDIR}/usr/local/bin/
-
-# Copy gateway config and helm chart
-RUN mv /workspace/config/gateway ${OUTDIR}/var/helm-charts/
-RUN mv /workspace/config/watches.yaml ${OUTDIR}/var/helm-charts/
 
 # Final Image
 
