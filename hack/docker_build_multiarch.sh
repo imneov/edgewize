@@ -34,6 +34,6 @@ ${CONTAINER_CLI} ${CONTAINER_BUILDER} \
 ${CONTAINER_CLI} ${CONTAINER_BUILDER} \
   --platform ${PLATFORMS} \
   ${PUSH} \
-  -f build/edgewize-controller-manager/Dockerfile \
+  -f build/controller-manager/Dockerfile \
   -t "${REPO}"/edgewize-controller-manager:"${TAG}" .
 
