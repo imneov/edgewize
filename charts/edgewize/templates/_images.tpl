@@ -15,7 +15,7 @@ Return the proper image name
 {{- $repositoryName := .imageRoot.repository -}}
 {{- $separator := ":" -}}
 {{- $termination := .global.tag | toString -}}
-{{- if .imageRoot.registry }}
+{{- if and .imageRoot.registry (ne .imageRoot.registry "") }}
     {{- $registryName = .imageRoot.registry -}}
 {{- end -}}
 {{- if .imageRoot.tag }}
@@ -25,7 +25,11 @@ Return the proper image name
     {{- $separator = "@" -}}
     {{- $termination = .imageRoot.digest | toString -}}
 {{- end -}}
-{{- printf "%s/%s%s%s" $registryName $repositoryName $separator $termination -}}
+{{- if $registryName }}
+    {{- printf "%s/%s%s%s" $registryName $repositoryName $separator $termination -}}
+{{- else -}}
+    {{- printf "%s%s%s" $repositoryName $separator $termination -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
