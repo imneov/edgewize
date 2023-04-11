@@ -53,7 +53,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Build and Push Image for EdgeWize
-        timeout-minutes: 60
+        timeout-minutes: 120
         run: |
           tag=$(cat VERSION | tr -d " \t\n\r")
           make container-cross-push -e REPO=${{ env.REGISTRY_REPO }} -e TAG=$tag
