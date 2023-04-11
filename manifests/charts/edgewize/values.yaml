@@ -92,7 +92,7 @@ apiserver:
   image:
     registry: ""
     repository: kubesphere/edgewize-apiserver
-    tag: "v0.1.0"
+    tag: "latest"
     digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
@@ -144,7 +144,7 @@ controller:
   image:
     registry: ""
     repository: kubesphere/edgewize-controller-manager
-    tag: "v0.1.0"
+    tag: "latest"
     digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
