@@ -1,7 +1,7 @@
 ## @param global.imageRegistry Global Docker image registry
 ## @param global.tag Global Docker image tag
 global:
-  imageRegistry: registry.cn-beijing.aliyuncs.com
+  imageRegistry:
   tag: v0.1.0
   imagePullSecrets: []
 
