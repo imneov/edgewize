@@ -24,7 +24,6 @@ env:
 jobs:
   operator-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     name: Build Image for EdgeWize
     steps:
       - name: Install Go
