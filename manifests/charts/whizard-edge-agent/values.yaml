@@ -1,14 +1,13 @@
 # Default values for whizard-edge-agent.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-global:
-  imageRegistry: registry.cn-beijing.aliyuncs.com
-  tag: v0.1.0
-  imagePullSecrets: []
+#global:
+#  imageRegistry: registry.cn-beijing.aliyuncs.com
+#  tag: v0.1.0
+#  imagePullSecrets: []
 
 whizard_agent_proxy:
   image:
-    registry: ""
     repository: kubesphere/whizard-monitoring-agent-proxy
     tag: "v0.5.0"
     digest: ""
@@ -20,3 +19,5 @@ whizard_agent_proxy:
 # Config for PrometheusAgent in EdgeCluster
 prometheus:
   nodePort: 30991
+
+defaultImageRegistry: ""
