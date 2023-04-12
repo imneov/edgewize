@@ -125,7 +125,7 @@ container-cross-push: ; $(info $(M)...Begin to build and push.)  @ ## Build and 
 
 helm-package: ; $(info $(M)...Begin to helm-package.)  @ ## Helm-package.
 	ls config/crds/infra.edgewize.io* | xargs -i cp -r {} charts/edgewize/crds/
-	helm package charts/edgewize --app-version=${APP_VERSION} --version=0.1.0 -d ./bin
+	helm package charts/edgewize --app-version=${APP_VERSION} --version=${APP_VERSION} -d ./bin
 
 helm-deploy: ; $(info $(M)...Begin to helm-deploy.)  @ ## Helm-deploy.
 	ls config/crds/ | xargs -i cp -r config/crds/{} charts/edgewize/crds/
