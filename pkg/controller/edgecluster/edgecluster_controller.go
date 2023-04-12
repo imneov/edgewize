@@ -276,7 +276,14 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 			return ctrl.Result{}, err
 		}
 		logger.V(1).Info("install edge cluster", "name", instance.Name)
-		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig, true, nil)
+		imageRegistry := os.Getenv("IMAGE_REGISTRY")
+		if imageRegistry != "" && !strings.HasSuffix(imageRegistry, "/") {
+			imageRegistry += "/"
+		}
+		values := chartutil.Values{
+			"defaultImageRegistry": imageRegistry,
+		}
+		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig, true, values)
 		if err != nil {
 			logger.Error(err, "install edge cluster error")
 			return ctrl.Result{}, err
@@ -447,7 +454,15 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 	}
 	switch instance.Status.EdgeWize {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
-		values := chartutil.Values{}
+		imageRegistry := os.Getenv("IMAGE_REGISTRY")
+		if imageRegistry != "" && strings.HasSuffix(imageRegistry, "/") {
+			imageRegistry = imageRegistry[:len(imageRegistry)-1]
+		}
+		values := chartutil.Values{
+			"global": map[string]interface{}{
+				"imageRegistry": imageRegistry,
+			},
+		}
 		values["role"] = "member"
 		status, err := InstallChart("edgewize", "edgewize", CurrentNamespace, instance.Name, true, values)
 		if err != nil {
@@ -477,7 +492,13 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 	}
 	switch instance.Status.CloudCore {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
-		values := chartutil.Values{}
+		imageRegistry := os.Getenv("IMAGE_REGISTRY")
+		if imageRegistry != "" && !strings.HasSuffix(imageRegistry, "/") {
+			imageRegistry += "/"
+		}
+		values := chartutil.Values{
+			"defaultImageRegistry": imageRegistry,
+		}
 		//cloudCore.modules.cloudHub.advertiseAddress=xxx
 		values["cloudCore"] = map[string]interface{}{
 			"modules": map[string]interface{}{
@@ -507,7 +528,13 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	}
 	switch instance.Status.FluentOperator {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
-		values := chartutil.Values{}
+		imageRegistry := os.Getenv("IMAGE_REGISTRY")
+		if imageRegistry != "" && !strings.HasSuffix(imageRegistry, "/") {
+			imageRegistry += "/"
+		}
+		values := chartutil.Values{
+			"defaultImageRegistry": imageRegistry,
+		}
 		SetClusterOutput(values, instance)
 		status, err := InstallChart("fluent-operator", "fluent-operator", "fluent", instance.Name, true, values)
 		if err != nil {

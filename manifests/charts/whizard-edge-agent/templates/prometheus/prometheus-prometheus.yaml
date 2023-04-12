@@ -33,7 +33,7 @@ spec:
         weight: 100
   evaluationInterval: 1m
   externalLabels: {}
-  image: prom/prometheus:v2.39.1
+  image: {{ .Values.defaultImageRegistry }}prom/prometheus:v2.39.1
   nodeSelector:
     kubernetes.io/os: linux
   podMetadata:

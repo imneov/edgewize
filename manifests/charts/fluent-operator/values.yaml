@@ -12,7 +12,7 @@ operator:
 # The init container is to get the actual storage path of the docker log files so that it can be mounted to collect the logs.
 # see https://github.com/fluent/fluent-operator/blob/master/manifests/setup/fluent-operator-deployment.yaml#L26
   initcontainer:
-    repository: "docker"
+    repository: "library/docker"
     tag: "20.10"
   container:
     repository: "kubesphere/fluent-operator"
@@ -215,3 +215,6 @@ fluentd:
 nameOverride: ""
 fullnameOverride: ""
 namespaceOverride: ""
+
+
+defaultImageRegistry: ""

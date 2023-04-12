@@ -23,7 +23,7 @@ spec:
         - args:
             - --gateway.address={{ .Values.whizard_agent_proxy.gateway_address | default "http://gateway-whizard-operated.kubesphere-monitoring-system.svc:9090" }}
             - --tenant={{ .Values.whizard_agent_proxy.tenant }}
-          image: {{ template "edgewize-whizard-agent-proxy.image" . }}
+          image: {{ .Values.defaultImageRegistry }}{{ .Values.whizard_agent_proxy.image.repository }}:{{ .Values.whizard_agent_proxy.image.tag }}
           name: agent-proxy
           ports:
             - containerPort: 9090

@@ -3,6 +3,8 @@
 # Declare variables to be passed into your templates.
 appVersion: "1.13.0"
 
+defaultImageRegistry: ""
+
 cloudCore:
   replicaCount: 1
   hostNetWork: "false"
