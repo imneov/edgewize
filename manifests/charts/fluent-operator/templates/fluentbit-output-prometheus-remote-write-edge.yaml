@@ -1,4 +1,4 @@
-
+{{- if .Values.fluentbit.kubeedge.enable -}}
 apiVersion: fluentbit.fluent.io/v1alpha2
 kind: ClusterOutput
 metadata:
@@ -9,10 +9,11 @@ metadata:
 spec:
   matchRegex: (?:kubeedge|service)\.(.*)
   prometheusRemoteWrite:
-    host: {{ .Values.fluentbit.output.prometheus.host }}
-    port: {{ .Values.fluentbit.output.prometheus.port }}
+    host: {{ .Values.fluentbit.kubeedge.prometheusRemoteWrite.host }}
+    port: {{ .Values.fluentbit.kubeedge.prometheusRemoteWrite.port }}
     uri: /api/v1/write
-    addLabels :
+    addLabels : 
       app : fluentbit
-      node: "${NODE_NAME}" # 此处 ${NODE_NAME} 为字面量，需要传入
+      node: ${NODE_NAME}
       job : kubeedge
+{{- end }}
