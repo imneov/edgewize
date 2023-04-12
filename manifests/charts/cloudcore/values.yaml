@@ -8,7 +8,7 @@ cloudCore:
   hostNetWork: "false"
   image:
     repository: "kubesphere/cloudcore"
-    tag: "v1.13.0"
+    tag: "v1.13.0-edgewize"
     pullPolicy: "IfNotPresent"
     pullSecrets: []
   securityContext:
