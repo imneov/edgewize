@@ -7,7 +7,7 @@ cloudCore:
   replicaCount: 1
   hostNetWork: "false"
   image:
-    repository: "kubeedge/cloudcore"
+    repository: "kubesphere/cloudcore"
     tag: "v1.13.0"
     pullPolicy: "IfNotPresent"
     pullSecrets: []
