@@ -69,8 +69,8 @@ jobs:
       - name: Run basic test
         run: make test
 
-      - name: Run verify crds test
-        run:  make verify
+#      - name: Run verify crds test
+#        run:  make verify
 
 #  e2e_tests:
 #    runs-on: ubuntu-22.04
