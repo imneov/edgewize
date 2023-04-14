@@ -59,7 +59,7 @@ cloudCore:
       enable: "false"
   service:
     enable: "true"
-    type: "ClusterIP"
+    type: "NodePort" # TODO
     cloudhubNodePort: "30000"
     cloudhubQuicNodePort: "30001"
     cloudhubHttpsNodePort: "30002"
