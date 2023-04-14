@@ -215,7 +215,7 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 	if hasDefaultTaint {
 		withEdgeTaint = " --with-edge-taint"
 	}
-	cmd = fmt.Sprintf("arch=$(uname -m); curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && chmod +x keadm && ./keadm join --kubeedge-version=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s  --remote-runtime-endpoint=unix:///var/run/docker.sock --runtimetype=docker", uri, version, strings.ReplaceAll(version, "v", ""), advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, string(secret.Data["tokendata"]), withEdgeTaint)
+	cmd = fmt.Sprintf("arch=$(uname -m); curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && chmod +x keadm && ./keadm join --kubeedge-version=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s ", uri, version, strings.ReplaceAll(version, "v", ""), advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, string(secret.Data["tokendata"]), withEdgeTaint)
 
 	resp := EdgeJoinResponse{
 		Code:   http.StatusOK,
