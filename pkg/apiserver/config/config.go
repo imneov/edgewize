@@ -197,6 +197,19 @@ func (conf *Config) stripEmptyOptions() {
 	if conf.CacheOptions != nil && conf.CacheOptions.Type == "" {
 		conf.CacheOptions = nil
 	}
+
+	if conf.EdgeWizeOptions != nil && len(conf.EdgeWizeOptions.HostClusterName) == 0 {
+		conf.EdgeWizeOptions = nil
+	}
+
+	if conf.MonitoringOptions != nil && conf.MonitoringOptions.Endpoint == "" {
+		conf.MonitoringOptions = nil
+	}
+
+	if conf.AlertingOptions != nil && conf.AlertingOptions.Endpoint == "" &&
+		conf.AlertingOptions.PrometheusEndpoint == "" && conf.AlertingOptions.ThanosRulerEndpoint == "" {
+		conf.AlertingOptions = nil
+	}
 }
 
 // GetFromConfigMap returns KubeSphere ruuning config by the given ConfigMap.

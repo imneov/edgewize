@@ -41,7 +41,7 @@ func TestStorageResourceQuota(t *testing.T) {
 	created := &ResourceQuota{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ResourceQuota",
-			APIVersion: "quota.kubesphere.io/v1alpha2",
+			APIVersion: "quota.edgewize.io/v1alpha2",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",

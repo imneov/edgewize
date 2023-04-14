@@ -19,26 +19,14 @@ package resource
 import (
 	"errors"
 
-	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/cronjob"
-	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshotcontent"
-
-	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshotclass"
-
-	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/persistentvolume"
-
-	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-
 	"github.com/edgewize-io/edgewize/pkg/api"
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
 	"github.com/edgewize-io/edgewize/pkg/informers"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3"
-	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/application"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/cluster"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/configmap"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/cronjob"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/customresourcedefinition"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/daemonset"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/deployment"
@@ -47,6 +35,7 @@ import (
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/namespace"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/networkpolicy"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/node"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/persistentvolume"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/persistentvolumeclaim"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/pod"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/secret"
@@ -54,6 +43,12 @@ import (
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/serviceaccount"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/statefulset"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshot"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshotclass"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshotcontent"
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
 var ErrResourceNotSupported = errors.New("resource is not supported")
@@ -79,7 +74,6 @@ func NewResourceGetter(factory informers.InformerFactory, cache cache.Cache) *Re
 	namespacedResourceGetters[schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"}] = networkpolicy.New(factory.KubernetesSharedInformerFactory())
 	namespacedResourceGetters[schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "jobs"}] = job.New(factory.KubernetesSharedInformerFactory())
 	namespacedResourceGetters[schema.GroupVersionResource{Group: "batch", Version: "v1beta1", Resource: "cronjobs"}] = cronjob.New(factory.KubernetesSharedInformerFactory())
-	namespacedResourceGetters[schema.GroupVersionResource{Group: "app.k8s.io", Version: "v1beta1", Resource: "applications"}] = application.New(cache)
 	clusterResourceGetters[schema.GroupVersionResource{Group: "", Version: "v1", Resource: "persistentvolumes"}] = persistentvolume.New(factory.KubernetesSharedInformerFactory())
 	namespacedResourceGetters[schema.GroupVersionResource{Group: "", Version: "v1", Resource: "persistentvolumeclaims"}] = persistentvolumeclaim.New(factory.KubernetesSharedInformerFactory(), factory.SnapshotSharedInformerFactory())
 	namespacedResourceGetters[snapshotv1.SchemeGroupVersion.WithResource("volumesnapshots")] = volumesnapshot.New(factory.SnapshotSharedInformerFactory())
