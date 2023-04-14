@@ -594,8 +594,8 @@ func SetMonitorComponent(values chartutil.Values, instance *infrav1alpha1.EdgeCl
 func SetClusterOutput(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
 	if len(instance.Spec.AdvertiseAddress) > 0 {
 		values["fluentbit"] = map[string]interface{}{
-			"output": map[string]interface{}{
-				"prometheus": map[string]interface{}{
+			"kubeedge": map[string]interface{}{
+				"prometheusRemoteWrite": map[string]interface{}{
 					"host": instance.Spec.AdvertiseAddress[0],
 					"port": getPrometheusAgentPort(),
 				},
