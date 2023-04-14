@@ -9,6 +9,7 @@ on:
       - 'v*'
     paths:
       - ".github/workflows/build-edgewize-image.yaml"
+      - ".github/workflows/main.yaml"
       - "cmd/**"
       - "hack/**"
       - "kube/**"
@@ -24,6 +25,7 @@ on:
       - 'release-*'
     paths:
       - ".github/workflows/build-edgewize-image.yaml"
+      - ".github/workflows/main.yaml"
       - "cmd/**"
       - "hack/**"
       - "kube/**"
