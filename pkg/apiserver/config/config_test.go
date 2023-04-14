@@ -21,7 +21,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/edgewize-io/edgewize/pkg/simple/client/alerting"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/edgewize"
+	"github.com/edgewize-io/edgewize/pkg/simple/client/monitoring/prometheus"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v2"
 
@@ -98,9 +100,13 @@ func TestStripEmptyOptions(t *testing.T) {
 	var config Config
 
 	config.CacheOptions = &cache.Options{Type: ""}
-
+	config.MonitoringOptions = &prometheus.Options{Endpoint: ""}
 	config.EdgeWizeOptions = &edgewize.Options{}
-
+	config.AlertingOptions = &alerting.Options{
+		Endpoint:            "",
+		PrometheusEndpoint:  "",
+		ThanosRulerEndpoint: "",
+	}
 	config.stripEmptyOptions()
 
 	if config.CacheOptions != nil ||

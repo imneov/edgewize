@@ -74,7 +74,7 @@ func (s *ServerRunOptions) Flags() (fss cliflag.NamedFlagSets) {
 	s.GenericServerRunOptions.AddFlags(fs, s.GenericServerRunOptions)
 	s.KubernetesOptions.AddFlags(fss.FlagSet("kubernetes"), s.KubernetesOptions)
 
-	s.EdgeWizeOptions.AddFlags(fss.FlagSet("multicluster"), s.EdgeWizeOptions)
+	s.EdgeWizeOptions.AddFlags(fss.FlagSet("edgewize"), s.EdgeWizeOptions)
 
 	fs = fss.FlagSet("klog")
 	local := flag.NewFlagSet("klog", flag.ExitOnError)
