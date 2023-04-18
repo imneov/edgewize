@@ -61,6 +61,7 @@ require (
 	k8s.io/kubectl v0.26.1
 	k8s.io/metrics v0.26.1
 	k8s.io/utils v0.0.0-20230202215443-34013725500c
+	kubesphere.io/api v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/application v0.8.4-0.20201016185654-c8e2959e57a0
 	sigs.k8s.io/controller-runtime v0.14.4
 	sigs.k8s.io/controller-tools v0.11.1
@@ -85,8 +86,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/containerd/containerd v1.6.16 // indirect
-	github.com/coreos/go-semver v0.3.0 // indirect
-	github.com/coreos/go-systemd/v22 v22.4.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/docker/cli v20.10.22+incompatible // indirect
@@ -117,7 +116,6 @@ require (
 	github.com/go-openapi/strfmt v0.21.3 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/go-openapi/validate v0.22.0 // indirect
-	github.com/go-resty/resty/v2 v2.5.0 // indirect
 	github.com/gobuffalo/flect v0.3.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -170,7 +168,6 @@ require (
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/onsi/ginkgo/v2 v2.8.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
@@ -196,9 +193,6 @@ require (
 	github.com/yvasiyarov/go-metrics v0.0.0-20150112132944-c25f46c4b940 // indirect
 	github.com/yvasiyarov/gorelic v0.0.7 // indirect
 	github.com/yvasiyarov/newrelic_platform_go v0.0.0-20160601141957-9c099fbc30e9 // indirect
-	go.etcd.io/etcd/api/v3 v3.5.5 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.5 // indirect
-	go.etcd.io/etcd/client/v3 v3.5.5 // indirect
 	go.mongodb.org/mongo-driver v1.11.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.37.0 // indirect
 	go.opentelemetry.io/otel v1.11.2 // indirect
@@ -212,8 +206,6 @@ require (
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/goleak v1.2.0 // indirect
-	go.uber.org/multierr v1.7.0 // indirect
-	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/exp v0.0.0-20230124195608-d38c7dcee874 // indirect
 	golang.org/x/oauth2 v0.4.0 // indirect

@@ -170,12 +170,16 @@ storage:
   # If this is disabled, vcluster will use an emptyDir instead
   # of a PersistentVolumeClaim
   persistence: true
+  provisioning: "dynamic" # static or dynamic, default is dynamic
   # Size of the persistent volume claim
   size: 5Gi
   # Optional StorageClass used for the pvc
   # if empty default StorageClass defined in your host cluster will be used
   #className:
-  
+  selector:
+    matchLabels:
+      "edgecluster.edgewize.io/name": $name
+
 # Extra volumes that should be created for the StatefulSet
 volumes: []
 

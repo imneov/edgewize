@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edgewize-values-config
+data:
+  vcluster: |
+  {{ toYaml .Values.values.vcluster | nindent 4 }}

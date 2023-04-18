@@ -191,20 +191,27 @@ controller:
 agent:
   replicaCount: 1
 
-whizard_agent_proxy:
-  image:
-    registry: ""
-    repository: kubesphere/whizard-monitoring-agent-proxy
-    tag: "v0.5.0"
-    digest: ""
-    pullPolicy: IfNotPresent
-    pullSecrets: []
-  tenant: ""
-  gateway_address: ""
+values:
+  vcluster: # for k3s, k8s ,k0s
+    storage:
+      persistence: true
+      provisioning: "dynamic" # static or dynamic, default is dynamic
+      selector:
+        matchLabels:
+          edgecluster.edgewize.io/name: $name
+  whizard-edge-agent:
+    whizard_agent_proxy:
+      image:
+        repository: kubesphere/whizard-monitoring-agent-proxy
+        tag: "v0.5.0"
+        digest: ""
+        pullPolicy: IfNotPresent
+        pullSecrets: [ ]
+      tenant: ""
+      gateway_address: ""
 
-# TODO use NodePort for Test
-# Config for PrometheusAgent in EdgeCluster
-prometheus:
-  nodePort: 30991
-  # fill node IP into endpoint
-  endpoint: ""
+    # Config for PrometheusAgent in EdgeCluster
+    prometheus:
+      nodePort: 30991
+      # endpoint: ""
+    defaultImageRegistry: ""
