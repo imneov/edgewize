@@ -44,6 +44,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog"
+	ksclusterv1alpha1 "kubesphere.io/api/cluster/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -58,6 +59,7 @@ const (
 	ComponentEdgeWize           = "edgewize"
 	ComponentCloudCore          = "cloudcore"
 	EdgeWizeNameSpaceConfigName = "edgewize-namespaces-config"
+	EdgeWizeValuesConfigName    = "edgewize-values-config"
 )
 
 // Reconciler reconciles a Workspace object
@@ -85,6 +87,10 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err != nil {
 		klog.Error("create .kube directory error", err)
 	}
+	err = os.MkdirAll(filepath.Join(homedir.HomeDir(), ".kube", "member"), 0644)
+	if err != nil {
+		klog.Error("create .kube directory error", err)
+	}
 	err = r.SaveExternalKubeConfig()
 	if err != nil {
 		klog.Error("load external kubeconfig error", err)
@@ -101,6 +107,9 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=infra.edgewize.io,resources=edgeclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=infra.edgewize.io,resources=edgeclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=infra.edgewize.io,resources=edgeclusters/finalizers,verbs=update
+// +kubebuilder:rbac:groups=cluster.kubesphere.io,resources=clusters,verbs=get;list;watch
+// +kubebuilder:rbac:groups=cluster.kubesphere.io,resources=clusters/status,verbs=get
+
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Logger.WithValues("edgecluster", req.NamespacedName)
 	logger.V(4).Info("receive request", "req", req)
@@ -275,14 +284,24 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+		// 获取 member 集群 kubeconfig
+		if kubeconfig == "" && instance.Spec.HostCluster != "host" {
+			kubeconfig, err = r.LoadMemberKubeConfig(ctx, instance.Spec.HostCluster)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 		logger.V(1).Info("install edge cluster", "name", instance.Name)
 		imageRegistry := os.Getenv("IMAGE_REGISTRY")
 		if imageRegistry != "" && !strings.HasSuffix(imageRegistry, "/") {
 			imageRegistry += "/"
 		}
-		values := chartutil.Values{
-			"defaultImageRegistry": imageRegistry,
+		values, err := r.GetValuesFromConfigMap(ctx, "vcluster")
+		if err != nil {
+			logger.Error(err, "get vcluster values error")
+			return ctrl.Result{}, err
 		}
+		values["defaultImageRegistry"] = imageRegistry
 		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig, true, values)
 		if err != nil {
 			logger.Error(err, "install edge cluster error")
@@ -609,11 +628,12 @@ func getPrometheusAgentPort() int {
 	return 30991
 }
 
-// 从 ConfigMap 加载外部的 kubeconfig 到本地目录
+// LoadExternalKubeConfig 从 ConfigMap 加载外部的 kubeconfig 保存到本地目录
 func (r *Reconciler) LoadExternalKubeConfig(ctx context.Context, name string) (string, error) {
-	file := filepath.Join(homedir.HomeDir(), ".kube", "external", name)
+	path := filepath.Join("external", name)
+	file := filepath.Join(homedir.HomeDir(), ".kube", path)
 	if _, err := os.Stat(file); err == nil {
-		return name, err
+		return path, err
 	}
 	cm := &corev1.ConfigMap{}
 	key := types.NamespacedName{
@@ -628,7 +648,6 @@ func (r *Reconciler) LoadExternalKubeConfig(ctx context.Context, name string) (s
 	if !ok {
 		return "", nil
 	}
-	path := filepath.Join("external", name)
 	err = SaveToLocal(path, []byte(config))
 	if err != nil {
 		return "", err
@@ -636,7 +655,29 @@ func (r *Reconciler) LoadExternalKubeConfig(ctx context.Context, name string) (s
 	return path, nil
 }
 
-// 保存外部的 kubeconfig 到本地目录
+// LoadMemberKubeConfig 获取 member 集群的 kubeconfig 并保存到本地目录
+func (r *Reconciler) LoadMemberKubeConfig(ctx context.Context, name string) (string, error) {
+	path := filepath.Join("member", name)
+	file := filepath.Join(homedir.HomeDir(), ".kube", path)
+	if _, err := os.Stat(file); err == nil {
+		return path, err
+	}
+	cluster := &ksclusterv1alpha1.Cluster{}
+	key := types.NamespacedName{
+		Name: name,
+	}
+	err := r.Get(ctx, key, cluster)
+	if err != nil {
+		return "", client.IgnoreNotFound(err)
+	}
+	err = SaveToLocal(path, cluster.Spec.Connection.KubeConfig)
+	if err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// SaveExternalKubeConfig 保存外部的 kubeconfig 到本地目录
 func (r *Reconciler) SaveExternalKubeConfig() error {
 
 	// 创建一个 kubernetes clientset
@@ -660,4 +701,26 @@ func (r *Reconciler) SaveExternalKubeConfig() error {
 		}
 	}
 	return nil
+}
+
+func (r *Reconciler) GetValuesFromConfigMap(ctx context.Context, component string) (chartutil.Values, error) {
+	configmap := &corev1.ConfigMap{}
+	key := types.NamespacedName{
+		Namespace: CurrentNamespace,
+		Name:      EdgeWizeValuesConfigName,
+	}
+	err := r.Get(ctx, key, configmap)
+	if err != nil {
+		return nil, err
+	}
+	values := make(map[string]interface{})
+	if content := configmap.Data[component]; content != "" {
+		strings.Replace(content, "$name", component, 1) // TODO
+		values, err = chartutil.ReadValues([]byte(content))
+		if err != nil {
+			return nil, err
+		}
+		return values, nil
+	}
+	return values, nil
 }
