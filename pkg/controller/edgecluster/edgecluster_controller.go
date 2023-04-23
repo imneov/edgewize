@@ -32,7 +32,6 @@ import (
 	"github.com/edgewize-io/edgewize/pkg/utils/sliceutil"
 	"github.com/go-logr/logr"
 	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/release"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -187,24 +186,24 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 	}
 
 	// remove pvc and namespace
-	pvc := &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("data-%s-0", instance.Name),
-			Namespace: instance.Spec.Namespace,
-		},
-	}
-	if err := r.Delete(ctx, pvc); err != nil && !apierrors.IsNotFound(err) {
-		return ctrl.Result{}, err
-	}
-
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: instance.Spec.Namespace,
-		},
-	}
-	if err := r.Delete(ctx, ns); err != nil && !apierrors.IsNotFound(err) {
-		return ctrl.Result{}, err
-	}
+	//pvc := &corev1.PersistentVolumeClaim{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      fmt.Sprintf("data-%s-0", instance.Name),
+	//		Namespace: instance.Spec.Namespace,
+	//	},
+	//}
+	//if err := r.Delete(ctx, pvc); err != nil && !apierrors.IsNotFound(err) {
+	//	return ctrl.Result{}, err
+	//}
+	//
+	//ns := &corev1.Namespace{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name: instance.Spec.Namespace,
+	//	},
+	//}
+	//if err := r.Delete(ctx, ns); err != nil && !apierrors.IsNotFound(err) {
+	//	return ctrl.Result{}, err
+	//}
 
 	if err := r.Status().Update(ctx, instance); err != nil {
 		return ctrl.Result{}, err
@@ -280,9 +279,14 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 
 	switch instance.Status.Status {
 	case "", infrav1alpha1.InstallingStatus:
+		needCreateNS := true
 		kubeconfig, err := r.LoadExternalKubeConfig(ctx, instance.Spec.Namespace)
 		if err != nil {
 			return ctrl.Result{}, err
+		}
+		// 如果配置了外部Namespace，则不需要创建命名空间
+		if kubeconfig != "" {
+			needCreateNS = false
 		}
 		// 获取 member 集群 kubeconfig
 		if kubeconfig == "" && instance.Spec.HostCluster != "host" {
@@ -302,7 +306,9 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 			return ctrl.Result{}, err
 		}
 		values["defaultImageRegistry"] = imageRegistry
-		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig, true, values)
+		nsExisted := r.IsNamespaceExisted(ctx, kubeconfig, instance.Spec.Namespace)
+		createNamespace := needCreateNS && !nsExisted
+		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig, createNamespace, values)
 		if err != nil {
 			logger.Error(err, "install edge cluster error")
 			return ctrl.Result{}, err
@@ -568,35 +574,6 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	return nil
 }
 
-func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool, values chartutil.Values) (infrav1alpha1.Status, error) {
-	chartStatus, err := helm.Status(file, name, namespace, kubeconfig)
-	if err != nil {
-		return "", err
-	}
-	switch chartStatus {
-	case release.StatusUnknown, release.StatusUninstalled:
-		err = helm.Install(file, name, namespace, kubeconfig, createNamespace, values)
-		if err != nil {
-			return "", err
-		}
-		return infrav1alpha1.InstallingStatus, nil
-	case release.StatusUninstalling:
-		return infrav1alpha1.UninstallingStatus, nil
-	case release.StatusDeployed:
-		return infrav1alpha1.RunningStatus, nil
-	case release.StatusFailed:
-		return infrav1alpha1.ErrorStatus, nil
-	case release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback:
-		return infrav1alpha1.InstallingStatus, nil
-	}
-	return infrav1alpha1.ErrorStatus, nil
-}
-
-func SaveToLocal(name string, config []byte) error {
-	path := filepath.Join(homedir.HomeDir(), ".kube", name)
-	return os.WriteFile(path, config, 0644)
-}
-
 func SetMonitorComponent(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
 	values["prometheus"] = map[string]interface{}{
 		"nodePort": getPrometheusAgentPort(),
@@ -723,4 +700,27 @@ func (r *Reconciler) GetValuesFromConfigMap(ctx context.Context, component strin
 		return values, nil
 	}
 	return values, nil
+}
+
+func (r *Reconciler) IsNamespaceExisted(ctx context.Context, kubeconfig, namespace string) bool {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+	if err != nil {
+		klog.Error("create rest config from kubeconfig string error", err.Error())
+		return true
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		klog.Error("create k8s client from restconfig error", err.Error())
+		return true
+	}
+	_, err = clientset.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false
+		}
+		klog.Error("get namespace error", err.Error())
+		return true
+	}
+	return true
 }
