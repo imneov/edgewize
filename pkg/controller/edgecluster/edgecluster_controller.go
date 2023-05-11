@@ -53,13 +53,20 @@ import (
 const (
 	CurrentNamespace            = "edgewize-system"
 	controllerName              = "edgecluster-controller"
-	DefaultComponents           = "edgewize,whizard-edge-agent,cloudcore,fluent-operator"
 	DefaultDistro               = "k3s"
 	ComponentEdgeWize           = "edgewize"
 	ComponentCloudCore          = "cloudcore"
 	EdgeWizeNameSpaceConfigName = "edgewize-namespaces-config"
 	EdgeWizeValuesConfigName    = "edgewize-values-config"
 )
+
+var DefaultComponents = "edgewize,whizard-edge-agent,cloudcore,fluent-operator"
+
+func init() {
+	if dc := os.Getenv("DEFAULT_COMPONENTS"); dc != "" {
+		DefaultComponents = dc
+	}
+}
 
 // Reconciler reconciles a Workspace object
 type Reconciler struct {
@@ -280,17 +287,17 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 	switch instance.Status.Status {
 	case "", infrav1alpha1.InstallingStatus:
 		needCreateNS := true
-		kubeconfig, err := r.LoadExternalKubeConfig(ctx, instance.Spec.Namespace)
+		kubeconfigfilename, err := r.LoadExternalKubeConfig(ctx, instance.Spec.Namespace)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 		// 如果配置了外部Namespace，则不需要创建命名空间
-		if kubeconfig != "" {
+		if kubeconfigfilename != "" {
 			needCreateNS = false
 		}
-		// 获取 member 集群 kubeconfig
-		if kubeconfig == "" && instance.Spec.HostCluster != "host" {
-			kubeconfig, err = r.LoadMemberKubeConfig(ctx, instance.Spec.HostCluster)
+		// 获取 member 集群 kubeconfigfilename
+		if kubeconfigfilename == "" && instance.Spec.HostCluster != "host" {
+			kubeconfigfilename, err = r.LoadMemberKubeConfig(ctx, instance.Spec.HostCluster)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -306,9 +313,9 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 			return ctrl.Result{}, err
 		}
 		values["defaultImageRegistry"] = imageRegistry
-		nsExisted := r.IsNamespaceExisted(ctx, kubeconfig, instance.Spec.Namespace)
+		nsExisted := r.IsNamespaceExisted(ctx, kubeconfigfilename, instance.Spec.Namespace)
 		createNamespace := needCreateNS && !nsExisted
-		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig, createNamespace, values)
+		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfigfilename, createNamespace, values)
 		if err != nil {
 			logger.Error(err, "install edge cluster error")
 			return ctrl.Result{}, err
@@ -703,7 +710,8 @@ func (r *Reconciler) GetValuesFromConfigMap(ctx context.Context, component strin
 }
 
 func (r *Reconciler) IsNamespaceExisted(ctx context.Context, kubeconfig, namespace string) bool {
-	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
+	config, err := clientcmd.BuildConfigFromFlags("", file)
 	if err != nil {
 		klog.Error("create rest config from kubeconfig string error", err.Error())
 		return true

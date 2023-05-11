@@ -89,6 +89,7 @@ type EdgeClusterStatus struct {
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 // +kubebuilder:printcolumn:name="EdgeWize",type=string,JSONPath=`.status.edgewize`
 // +kubebuilder:printcolumn:name="CloudCore",type=string,JSONPath=`.status.cloudcore`
+// +kubebuilder:printcolumn:name="FluentOperator",type=string,JSONPath=`.status.fluentOperator`
 // +kubebuilder:printcolumn:name="EdgewizeMonitor",type=string,JSONPath=`.status.edgewizeMonitor`
 // EdgeCluster is the Schema for the edgeclusters API
 type EdgeCluster struct {
