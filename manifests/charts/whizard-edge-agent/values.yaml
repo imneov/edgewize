@@ -9,15 +9,26 @@
 whizard_agent_proxy:
   image:
     repository: kubesphere/whizard-monitoring-agent-proxy
-    tag: "v0.5.0"
+    tag: "v0.6.2"
     digest: ""
     pullPolicy: IfNotPresent
-    pullSecrets: []
   tenant: ""
   gateway_address: ""
 
-# Config for PrometheusAgent in EdgeCluster
+whizard_edge_agent_proxy:
+  image:
+    repository: frezes/whizard-edge-agent-proxy
+    tag: "v0.1.0"
+    digest: ""
+    pullPolicy: IfNotPresent
+
+edge_agent:
+  nodePort:
+
 prometheus:
-  nodePort: 30991
+  storage:
+    className: ""
+    prometheus_pv_size: ""
 
 defaultImageRegistry: ""
+#imagePullSecrets:

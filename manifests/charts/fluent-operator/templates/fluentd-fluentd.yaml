@@ -13,6 +13,10 @@ spec:
         port: {{ .Values.fluentd.port }}
   replicas: {{ .Values.fluentd.replicas }}
   image: {{ .Values.defaultImageRegistry }}{{ .Values.fluentd.image.repository }}:{{ .Values.fluentd.image.tag }}
+  {{- if .Values.fluentd.imagePullSecrets }}
+  imagePullSecrets:
+  {{- toYaml .Values.fluentd.imagePullSecrets | nindent 4 }}
+  {{- end }}
   resources:
   {{- toYaml .Values.fluentd.resources | nindent 4  }}
   fluentdCfgSelector:

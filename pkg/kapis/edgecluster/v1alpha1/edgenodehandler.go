@@ -67,6 +67,8 @@ type EdgeJoinResponse struct {
 func (h *handler) joinNode(request *restful.Request, response *restful.Response) {
 	nodeName := request.QueryParameter("node_name")
 	version := request.QueryParameter("version")
+	runtime := request.QueryParameter("runtime")
+	imageRepository := request.QueryParameter("image-repository")
 	hasDefaultTaint, _ := strconv.ParseBool(request.QueryParameter("add_default_taint"))
 	//withNodePort, _ := strconv.ParseBool(request.QueryParameter("with_nodeport"))
 
@@ -216,7 +218,12 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 		withEdgeTaint = " --with-edge-taint"
 	}
 	cmd = fmt.Sprintf("arch=$(uname -m); curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && chmod +x keadm && ./keadm join --kubeedge-version=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s ", uri, version, strings.ReplaceAll(version, "v", ""), advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, string(secret.Data["tokendata"]), withEdgeTaint)
-
+	if runtime == "docker" {
+		cmd = cmd + "--remote-runtime-endpoint=unix:///var/run/dockershim.sock --runtimetype=docker"
+	}
+	if imageRepository != "" {
+		cmd = fmt.Sprintf("%s --image-repository=%s ", cmd, imageRepository)
+	}
 	resp := EdgeJoinResponse{
 		Code:   http.StatusOK,
 		Status: StatusSucceeded,

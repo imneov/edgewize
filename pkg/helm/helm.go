@@ -33,19 +33,13 @@ func Status(file, name, namespace, kubeconfig string) (release.Status, error) {
 	return installer.Status()
 }
 
-func Uninstall(file, name, namespace, kubeconfig string) error {
-	cha, err := LoadChart(file)
-	if err != nil {
+func Uninstall(name, namespace, kubeconfig string) error {
+	installer := NewHelmInstaller(nil, name, namespace, kubeconfig)
+	if err := installer.Init(); err != nil {
 		return err
 	}
-
-	installer := NewHelmInstaller(cha, name, namespace, kubeconfig)
-	if err = installer.Init(); err != nil {
+	if err := installer.Uninstall(); err != nil {
 		return err
 	}
-	if err = installer.Uninstall(); err != nil {
-		return err
-	}
-
 	return nil
 }

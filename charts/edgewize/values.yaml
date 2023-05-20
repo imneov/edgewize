@@ -19,10 +19,10 @@ nameOverride: ""
 fullnameOverride: ""
 ## @param commonLabels Labels to add to all deployed objects
 ##
-commonLabels: {}
+commonLabels: { }
 ## @param commonAnnotations Annotations to add to all deployed objects
 ##
-commonAnnotations: {}
+commonAnnotations: { }
 
 role: host
 
@@ -40,27 +40,27 @@ config:
             - '*'
   # Jwt Secret is required by edgewize-apiserver, a random string would be generated if it's empty
   jwtSecret: "edgewize"
-  multicluster: {}
-  monitoring: {}
+  multicluster: { }
+  monitoring: { }
   # alerting.thanosRulerEndpoint is required for Edge cluster
-  alerting: {}
-  notification: {}
+  alerting: { }
+  notification: { }
 
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
   # Annotations to add to the service account
-  annotations: {}
+  annotations: { }
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: "edgewize"
 
-podAnnotations: {}
+podAnnotations: { }
 
-podSecurityContext: {}
+podSecurityContext: { }
 # fsGroup: 2000
 
-securityContext: {}
+securityContext: { }
   # capabilities:
   #   drop:
   #   - ALL
@@ -82,9 +82,9 @@ tolerations:
     operator: Exists
     tolerationSeconds: 60
 
-affinity: {}
+affinity: { }
 
-nodeSelector: {}
+nodeSelector: { }
 
 ## deployment specific configuration
 
@@ -103,7 +103,7 @@ apiserver:
     ## pullSecrets:
     ##   - myRegistryKeySecretName
     ##
-    pullSecrets: []
+    pullSecrets: [ ]
   ## @param containerPorts [array] List of container ports to enable in the edgewize-apiserver container
   ##
   containerPorts:
@@ -132,13 +132,13 @@ apiserver:
   ##   - name: FOO
   ##     value: "bar"
   ##
-  extraEnvVars: []
+  extraEnvVars: [ ]
   ## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the haproxy container(s)
   ##
-  extraVolumeMounts: []
+  extraVolumeMounts: [ ]
   ## @param extraVolumes Optionally specify extra list of additional volumes for the haproxy pod(s)
   ##
-  extraVolumes: []
+  extraVolumes: [ ]
 
 controller:
   replicaCount: 1
@@ -155,7 +155,7 @@ controller:
     ## pullSecrets:
     ##   - myRegistryKeySecretName
     ##
-    pullSecrets: []
+    pullSecrets: [ ]
   ## @param containerPorts [array] List of container ports to enable in the edgewize-apiserver container
   ##
   containerPorts:
@@ -180,38 +180,76 @@ controller:
     - '-v=10'
   ## @param extraEnvVars Array with extra environment variables to add to haproxy nodes
   ##
-  extraEnvVars: []
+  extraEnvVars: [ ]
   ## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the haproxy container(s)
   ##
-  extraVolumeMounts: []
+  extraVolumeMounts: [ ]
   ## @param extraVolumes Optionally specify extra list of additional volumes for the haproxy pod(s)
   ##
-  extraVolumes: []
+  extraVolumes: [ ]
 
 agent:
   replicaCount: 1
 
 values:
   vcluster: # for k3s, k8s ,k0s
+    defaultImageRegistry: ""
     storage:
       persistence: true
       provisioning: "dynamic" # static or dynamic, default is dynamic
+      className: ""
       selector:
         matchLabels:
           edgecluster.edgewize.io/name: $name
-  whizard-edge-agent:
-    whizard_agent_proxy:
-      image:
-        repository: kubesphere/whizard-monitoring-agent-proxy
-        tag: "v0.5.0"
-        digest: ""
-        pullPolicy: IfNotPresent
-        pullSecrets: [ ]
-      tenant: ""
-      gateway_address: ""
+    etcd:
+      global:
+        imageRegistry: ""
+        imagePullSecrets: []
+        storageClass: ""
 
-    # Config for PrometheusAgent in EdgeCluster
+  whizardEdgeAgent:
+    edge_agent:
+      nodePort: # 30991 # empty will use ClusterIP
     prometheus:
-      nodePort: 30991
-      # endpoint: ""
+      storage:
+        className: ""
+        prometheus_pv_size: "20Gi"
     defaultImageRegistry: ""
+    imagePullSecrets: []
+  fluentOperator:
+    defaultImageRegistry: ""
+    operator:
+      imagePullSecrets: []
+    fluentbit:
+      imagePullSecrets: []
+      kubeedge:
+        enable: true
+        prometheusRemoteWrite:
+          # Change the port to the port of a cloud-side Prometheus-compatible server that can receive Prometheus remote write data
+          port: 30991
+    fluentd:
+      imagePullSecrets: []
+  cloudcore:
+    defaultImageRegistry: ""
+    cloudCore:
+      service:
+        type: "ClusterIP" # NodePort
+        cloudhubNodePort: "30000"
+        cloudhubQuicNodePort: "30001"
+        cloudhubHttpsNodePort: "30002"
+        cloudstreamNodePort: "30003"
+        tunnelNodePort: "30004"
+      image:
+        repository: "kubesphere/cloudcore"
+        tag: "v1.13.0-edgewize"
+        pullSecrets: []
+  edgewize:
+    global:
+      imageRegistry: ""
+      imagePullSecrets: []
+    apiserver:
+      image:
+        tag: "latest"
+    controller:
+      image:
+        tag: "latest"

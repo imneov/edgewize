@@ -8,6 +8,10 @@ metadata:
     app.kubernetes.io/name: fluent-bit
 spec:
   image: {{ .Values.defaultImageRegistry }}{{ .Values.fluentbit.image.repository }}:{{ .Values.fluentbit.image.tag }}
+  {{- if .Values.fluentbit.imagePullSecrets }}
+  imagePullSecrets:
+  {{- toYaml .Values.fluentbit.imagePullSecrets | nindent 8 }}
+  {{- end }}
   positionDB:
     hostPath:
       path: /var/lib/fluent-bit/

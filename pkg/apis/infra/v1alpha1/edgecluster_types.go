@@ -68,6 +68,8 @@ type EdgeClusterStatus struct {
 	// Status is the edge cluster release installation status
 	Status Status `json:"status,omitempty"`
 
+	ConfigFile string `json:"configFile,omitempty"`
+
 	// KubeConfig is the edge cluster kubeconfig, encode by base64
 	KubeConfig string `json:"kubeConfig,omitempty"`
 

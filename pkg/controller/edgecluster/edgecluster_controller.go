@@ -58,6 +58,8 @@ const (
 	ComponentCloudCore          = "cloudcore"
 	EdgeWizeNameSpaceConfigName = "edgewize-namespaces-config"
 	EdgeWizeValuesConfigName    = "edgewize-values-config"
+	WhizardGatewayServiceName   = "gateway-whizard-operated"
+	MonitorNamespace            = "kubesphere-monitoring-system"
 )
 
 var DefaultComponents = "edgewize,whizard-edge-agent,cloudcore,fluent-operator"
@@ -165,9 +167,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (ctrl.Result, error) {
 	logger := log.FromContext(ctx, "func", "undoReconcile", "instance", instance.Name)
 	logger.V(4).Info("delete edge cluster", "instance", instance)
+	kubeconfig := instance.Status.ConfigFile
 	switch instance.Status.Status {
 	case infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
-		status, err := helm.Status(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, "")
+		status, err := helm.Status(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -175,7 +178,7 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 		case "deployed", "superseded", "failed", "pending-install", "pending-upgrade", "pending-rollback":
 			logger.V(4).Info("begin uninstall edge cluster ", "status", status)
 			instance.Status.Status = infrav1alpha1.UninstallingStatus
-			err = helm.Uninstall(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, "")
+			err = helm.Uninstall(instance.Name, instance.Spec.Namespace, kubeconfig)
 			if err != nil {
 				logger.Error(err, "uninstall edge cluster error")
 				return ctrl.Result{}, err
@@ -192,21 +195,14 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 		return ctrl.Result{}, err
 	}
 
-	// remove pvc and namespace
-	//pvc := &corev1.PersistentVolumeClaim{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name:      fmt.Sprintf("data-%s-0", instance.Name),
-	//		Namespace: instance.Spec.Namespace,
-	//	},
-	//}
-	//if err := r.Delete(ctx, pvc); err != nil && !apierrors.IsNotFound(err) {
-	//	return ctrl.Result{}, err
-	//}
-	//
+	err := r.CleanEdgeClusterResources(instance.Name, instance.Spec.Namespace, kubeconfig)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	//ns := &corev1.Namespace{
 	//	ObjectMeta: metav1.ObjectMeta{
 	//		Name: instance.Spec.Namespace,
-	//	},
+	//	},Namespace
 	//}
 	//if err := r.Delete(ctx, ns); err != nil && !apierrors.IsNotFound(err) {
 	//	return ctrl.Result{}, err
@@ -287,46 +283,45 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 	switch instance.Status.Status {
 	case "", infrav1alpha1.InstallingStatus:
 		needCreateNS := true
-		kubeconfigfilename, err := r.LoadExternalKubeConfig(ctx, instance.Spec.Namespace)
+		kubeconfig, err := r.LoadExternalKubeConfig(ctx, instance.Spec.Namespace)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 		// 如果配置了外部Namespace，则不需要创建命名空间
-		if kubeconfigfilename != "" {
+		if kubeconfig != "" {
 			needCreateNS = false
 		}
-		// 获取 member 集群 kubeconfigfilename
-		if kubeconfigfilename == "" && instance.Spec.HostCluster != "host" {
-			kubeconfigfilename, err = r.LoadMemberKubeConfig(ctx, instance.Spec.HostCluster)
+		// 获取 member 集群 kubeconfig
+		if kubeconfig == "" && instance.Spec.HostCluster != "host" {
+			kubeconfig, err = r.LoadMemberKubeConfig(ctx, instance.Spec.HostCluster)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 		logger.V(1).Info("install edge cluster", "name", instance.Name)
-		imageRegistry := os.Getenv("IMAGE_REGISTRY")
-		if imageRegistry != "" && !strings.HasSuffix(imageRegistry, "/") {
-			imageRegistry += "/"
-		}
 		values, err := r.GetValuesFromConfigMap(ctx, "vcluster")
 		if err != nil {
-			logger.Error(err, "get vcluster values error")
-			return ctrl.Result{}, err
+			logger.Error(err, "get vcluster values error, use default")
+			values = map[string]interface{}{}
 		}
-		values["defaultImageRegistry"] = imageRegistry
-		nsExisted := r.IsNamespaceExisted(ctx, kubeconfigfilename, instance.Spec.Namespace)
+		nsExisted := r.IsNamespaceExisted(ctx, kubeconfig, instance.Spec.Namespace)
 		createNamespace := needCreateNS && !nsExisted
-		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfigfilename, createNamespace, values)
+		if instance.Annotations == nil {
+			instance.Annotations = make(map[string]string)
+		}
+		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig, createNamespace, values)
 		if err != nil {
 			logger.Error(err, "install edge cluster error")
 			return ctrl.Result{}, err
 		}
 		instance.Status.Status = status
+		instance.Status.ConfigFile = kubeconfig
 	case infrav1alpha1.RunningStatus:
 		if instance.Status.KubeConfig == "" {
 			config, err := r.GetKubeConfig(instance)
 			if err != nil {
 				if apierrors.IsNotFound(err) {
-					logger.Info("edge cluster kube config not found, retry after 500ms")
+					logger.Info("edge cluster kube config not found, retry after 1s")
 					return ctrl.Result{RequeueAfter: time.Second * 1}, nil
 				}
 				logger.Error(err, "get edge cluster kube config error")
@@ -463,8 +458,16 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 
 	switch instance.Status.EdgeWize {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
-		values := chartutil.Values{}
-		SetMonitorComponent(values, instance)
+		values, err := r.GetValuesFromConfigMap(ctx, "whizard-edge-agent")
+		if err != nil {
+			logger.Error(err, "get vcluster values error, use default")
+			values = map[string]interface{}{}
+		}
+		err = SetMonitorComponent(r, values, instance)
+		if err != nil {
+			logger.Error(err, "get gateway svc ip error, need to configure manually")
+		}
+		klog.Infof("ReconcileWhizardEdgeAgent: %v", values)
 		status, err := InstallChart("whizard-edge-agent", "whizard-edge-agent", "kubesphere-monitoring-system", instance.Name, true, values)
 		if err != nil {
 			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
@@ -486,16 +489,13 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 	}
 	switch instance.Status.EdgeWize {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
-		imageRegistry := os.Getenv("IMAGE_REGISTRY")
-		if imageRegistry != "" && strings.HasSuffix(imageRegistry, "/") {
-			imageRegistry = imageRegistry[:len(imageRegistry)-1]
-		}
-		values := chartutil.Values{
-			"global": map[string]interface{}{
-				"imageRegistry": imageRegistry,
-			},
+		values, err := r.GetValuesFromConfigMap(ctx, "edgewize")
+		if err != nil {
+			logger.Error(err, "get vcluster values error, use default")
+			values = map[string]interface{}{}
 		}
 		values["role"] = "member"
+		klog.Infof("ReconcileEdgeWize: %v", values)
 		status, err := InstallChart("edgewize", "edgewize", CurrentNamespace, instance.Name, true, values)
 		if err != nil {
 			instance.Status.EdgeWize = infrav1alpha1.ErrorStatus
@@ -524,14 +524,11 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 	}
 	switch instance.Status.CloudCore {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
-		imageRegistry := os.Getenv("IMAGE_REGISTRY")
-		if imageRegistry != "" && !strings.HasSuffix(imageRegistry, "/") {
-			imageRegistry += "/"
+		values, err := r.GetValuesFromConfigMap(ctx, "cloudcore")
+		if err != nil {
+			logger.Error(err, "get vcluster values error, use default")
+			values = map[string]interface{}{}
 		}
-		values := chartutil.Values{
-			"defaultImageRegistry": imageRegistry,
-		}
-		//cloudCore.modules.cloudHub.advertiseAddress=xxx
 		values["cloudCore"] = map[string]interface{}{
 			"modules": map[string]interface{}{
 				"cloudHub": map[string]interface{}{
@@ -539,6 +536,7 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 				},
 			},
 		}
+		klog.Infof("ReconcileCloudCore: %v", values)
 		status, err := InstallChart("cloudcore", "cloudcore", "kubeedge", instance.Name, true, values)
 		if err != nil {
 			instance.Status.CloudCore = infrav1alpha1.ErrorStatus
@@ -547,7 +545,7 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 		instance.Status.CloudCore = status
 		return nil
 	case infrav1alpha1.ErrorStatus:
-		logger.Info("edgewize install error")
+		logger.Info("cloudcore install error")
 	}
 	return nil
 }
@@ -560,20 +558,22 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	}
 	switch instance.Status.FluentOperator {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus:
-		imageRegistry := os.Getenv("IMAGE_REGISTRY")
-		if imageRegistry != "" && !strings.HasSuffix(imageRegistry, "/") {
-			imageRegistry += "/"
+		values, err := r.GetValuesFromConfigMap(ctx, "fluent-operator")
+		if err != nil {
+			logger.Error(err, "get vcluster values error, use default")
+			values = map[string]interface{}{}
 		}
-		values := chartutil.Values{
-			"defaultImageRegistry": imageRegistry,
+		klog.Infof("ReconcileFluentOperator: %v", values)
+		err = SetClusterOutput(values, instance)
+		if err != nil {
+			logger.Error(err, "configure ClusterOutput failed")
 		}
-		SetClusterOutput(values, instance)
 		status, err := InstallChart("fluent-operator", "fluent-operator", "fluent", instance.Name, true, values)
 		if err != nil {
-			instance.Status.CloudCore = infrav1alpha1.ErrorStatus
+			instance.Status.FluentOperator = infrav1alpha1.ErrorStatus
 			return err
 		}
-		instance.Status.CloudCore = status
+		instance.Status.FluentOperator = status
 		return nil
 	case infrav1alpha1.ErrorStatus:
 		logger.Info("fluent-operator install error")
@@ -581,35 +581,54 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	return nil
 }
 
-func SetMonitorComponent(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
-	values["prometheus"] = map[string]interface{}{
-		"nodePort": getPrometheusAgentPort(),
-	}
-
-	proxyConf := map[string]interface{}{"tenant": instance.Name}
+func SetClusterOutput(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) error {
 	if len(instance.Spec.AdvertiseAddress) > 0 {
-		proxyConf["gateway_address"] = fmt.Sprintf("http://%s:30990", instance.Spec.AdvertiseAddress[0])
-	}
+		port, err := values.PathValue("fluentbit.kubeedge.prometheusRemoteWrite.port")
+		if err != nil {
+			return err
+		}
 
-	values["whizard_agent_proxy"] = proxyConf
-}
+		enabled, err := values.PathValue("fluentbit.kubeedge.enable")
+		if err != nil {
+			return err
+		}
 
-func SetClusterOutput(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
-	if len(instance.Spec.AdvertiseAddress) > 0 {
-		values["fluentbit"] = map[string]interface{}{
-			"kubeedge": map[string]interface{}{
-				"prometheusRemoteWrite": map[string]interface{}{
-					"host": instance.Spec.AdvertiseAddress[0],
-					"port": getPrometheusAgentPort(),
-				},
+		fluentbitConf, err := values.Table("fluentbit")
+		if err != nil {
+			return err
+		}
+
+		fluentbitConfMap := fluentbitConf.AsMap()
+		fluentbitConfMap["kubeedge"] = map[string]interface{}{
+			"enable": enabled,
+			"prometheusRemoteWrite": map[string]interface{}{
+				"host": instance.Spec.AdvertiseAddress[0],
+				"port": port,
 			},
 		}
 	}
+	return nil
 }
 
-// TODO remove
-func getPrometheusAgentPort() int {
-	return 30991
+func SetMonitorComponent(r *Reconciler, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
+	gatewayService := &corev1.Service{}
+	key := types.NamespacedName{
+		Namespace: MonitorNamespace,
+		Name:      WhizardGatewayServiceName,
+	}
+	err = r.Get(context.Background(), key, gatewayService)
+	if err != nil {
+		return
+	}
+
+	whizardAgentConf := map[string]interface{}{"tenant": instance.Name}
+	if gatewayService.Spec.Ports != nil && len(gatewayService.Spec.Ports) > 0 {
+		gatewayIP := gatewayService.Spec.ClusterIP
+		gatewayPort := gatewayService.Spec.Ports[0].Port
+		whizardAgentConf["gateway_address"] = fmt.Sprintf("http://%s:%d", gatewayIP, gatewayPort)
+	}
+	values["whizard_agent_proxy"] = whizardAgentConf
+	return
 }
 
 // LoadExternalKubeConfig 从 ConfigMap 加载外部的 kubeconfig 保存到本地目录
@@ -660,10 +679,31 @@ func (r *Reconciler) LoadMemberKubeConfig(ctx context.Context, name string) (str
 	}
 	return path, nil
 }
+func (r *Reconciler) CleanEdgeClusterResources(name, namespace, kubeconfig string) error {
+	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
+	config, err := clientcmd.BuildConfigFromFlags("", file)
+	if err != nil {
+		klog.Error("create rest config from kubeconfig string error", err.Error())
+		return err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+
+	err = clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(context.Background(), fmt.Sprintf("data-%s-0", name), metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	err = clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(context.Background(), fmt.Sprintf("data-%s-etcd-0", name), metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // SaveExternalKubeConfig 保存外部的 kubeconfig 到本地目录
 func (r *Reconciler) SaveExternalKubeConfig() error {
-
 	// 创建一个 kubernetes clientset
 	config, err := rest.InClusterConfig()
 	if err != nil {

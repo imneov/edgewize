@@ -171,10 +171,13 @@ spec:
           {{- range $f := .Values.vcluster.baseArgs }}
             {{ $f }}
           {{- end }}
-            --kube-controller-manager-arg=controllers=*,-nodeipam,-nodelifecycle,-persistentvolume-binder,-attachdetach,-persistentvolume-expander,-cloud-node-lifecycle,-ttl
+            --kube-controller-manager-arg=controllers=*,-nodeipam,-persistentvolume-binder,-attachdetach,-persistentvolume-expander,-cloud-node-lifecycle,-ttl
             --egress-selector-mode disabled
+            --kube-controller-manager-arg=node-monitor-grace-period=1h
+            --kube-controller-manager-arg=node-monitor-period=1h
             --kube-apiserver-arg=endpoint-reconciler-type=none
             --kube-apiserver-arg=kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP
+            --datastore-endpoint=http://{{ .Release.Name }}-etcd.{{ .Release.Namespace }}.svc:2379
           {{- if .Values.serviceCIDR }}
             --service-cidr={{ .Values.serviceCIDR }}
           {{- else }}

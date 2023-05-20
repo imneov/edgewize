@@ -266,3 +266,18 @@ func (r *Handler) handleGetNamespacedAbnormalWorkloads(request *restful.Request,
 	response.WriteAsJson(result)
 
 }
+
+//
+//func (r *Handler) GetKubectlPod(request *restful.Request, response *restful.Response) {
+//	user := request.PathParameter("user")
+//
+//	kubectlPod, err := r.kubectlOperator.GetKubectlPod(user)
+//
+//	if err != nil {
+//		klog.Errorln(err)
+//		response.WriteHeaderAndEntity(http.StatusInternalServerError, errors2.Wrap(err))
+//		return
+//	}
+//
+//	response.WriteEntity(kubectlPod)
+//}
