@@ -1,0 +1,89 @@
+global:
+  imageRegistry: "zpk.abc:443/docker-test"
+  tag: v0.1.0
+  imagePullSecrets:
+    - "zpk-deploy-secret"
+  storageClass: "nfs"
+
+
+apiserver:
+  image:
+    repository: kubesphere/edgewize-apiserver
+    tag: "v0.4.1"
+controller:
+  image:
+    repository: kubesphere/edgewize-controller-manager
+    tag: "v0.4.1"
+
+
+values:
+  vcluster: # for k3s, k8s ,k0s
+    storage:
+      persistence: true
+      provisioning: "dynamic" # static or dynamic, default is dynamic
+      className: "nfs"
+    defaultImageRegistry: "zpk.abc:443/docker-test/"
+    serviceAccount:
+      imagePullSecrets:
+        - name: zpk-deploy-secret
+    etcd:
+      global:
+        imageRegistry: "zpk.abc:443/docker-test"
+        imagePullSecrets:
+          - "zpk-deploy-secret"
+        storageClass: "nfs"
+
+  whizardEdgeAgent:
+    edge_agent:
+      nodePort: # 30991 # empty will use ClusterIP
+    prometheus:
+      storage:
+        className: "nfs"
+        prometheus_pv_size: "20Gi"
+    defaultImageRegistry: "zpk.abc:443/docker-test/"
+    imagePullSecrets:
+      - name: "zpk-deploy-secret"
+  fluentOperator:
+    defaultImageRegistry: "zpk.abc:443/docker-test/"
+    operator:
+      imagePullSecrets:
+        - name: "zpk-deploy-secret"
+    fluentbit:
+      imagePullSecrets:
+        - name: "zpk-deploy-secret"
+      kubeedge:
+        enable: true
+        prometheusRemoteWrite:
+          # Change the port to the port of a cloud-side Prometheus-compatible server that can receive Prometheus remote write data
+          port: 30991
+    fluentd:
+      imagePullSecrets:
+        - name: "zpk-deploy-secret"
+  cloudcore:
+    defaultImageRegistry: "zpk.abc:443/docker-test/"
+    cloudCore:
+      service:
+        type: "ClusterIP" # NodePort
+        cloudhubNodePort: "30000"
+        cloudhubQuicNodePort: "30001"
+        cloudhubHttpsNodePort: "30002"
+        cloudstreamNodePort: "30003"
+        tunnelNodePort: "30004"
+      image:
+        repository: "kubesphere/cloudcore"
+        tag: "v1.13.0-edgewize"
+        pullSecrets:
+          - name: "zpk-deploy-secret"
+  edgewize:
+    global:
+      imageRegistry: "zpk.abc:443/docker-test"
+      imagePullSecrets:
+        - "zpk-deploy-secret"
+    apiserver:
+      repository: kubesphere/edgewize-apiserver
+      image:
+        tag: "v0.4.1"
+    controller:
+      repository: kubesphere/edgewize-controller-manager
+      image:
+        tag: "v0.4.1"
