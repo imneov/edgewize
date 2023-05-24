@@ -148,6 +148,7 @@ vcluster:
     - --disable-agent
     - --disable-cloud-controller
     - --flannel-backend=none
+
   # Extra arguments for k3s. Make sure the service-cidr is the exact service cidr of the host cluster.
   # If this does not match, you won't be able to create services within the vcluster. You can find out
   # the service cidr of the host cluster by creating a service with a not allowed ClusterIP in the host cluster.
@@ -399,3 +400,9 @@ init:
   # this allows you to use helm values inside, e.g.: {{ .Release.Name }}
   manifestsTemplate: ''
   helm: []
+
+etcd:
+  global:
+    imageRegistry: ""
+    imagePullSecrets: []
+    storageClass: ""

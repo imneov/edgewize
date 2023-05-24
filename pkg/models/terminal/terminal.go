@@ -298,7 +298,11 @@ func (t *terminaler) startProcess(namespace, podName, containerName string, cmd 
 		Stderr:    true,
 		TTY:       true,
 	}, scheme.ParameterCodec)
-
+	//t.config.TLSClientConfig.Insecure = true
+	//t.config.TLSClientConfig.CAFile = ""
+	//t.config.TLSClientConfig.CAData = nil
+	klog.Infof("t.config.TLSClientConfig", t.config.TLSClientConfig)
+	klog.Infof("request %v", req.URL().String())
 	exec, err := remotecommand.NewSPDYExecutor(t.config, "POST", req.URL())
 	if err != nil {
 		return err

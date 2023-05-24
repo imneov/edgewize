@@ -28,7 +28,7 @@ spec:
       containers:
       - args:
         - --kubelet-service=kube-system/kubelet
-        - --prometheus-config-reloader=kubesphere/prometheus-config-reloader:v0.55.1
+        - --prometheus-config-reloader={{ .Values.defaultImageRegistry }}kubesphere/prometheus-config-reloader:v0.55.1
         image: {{ .Values.defaultImageRegistry }}kubesphere/prometheus-operator:v0.55.1
         name: prometheus-operator
         ports:
@@ -70,3 +70,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 65534
       serviceAccountName: prometheus-operator
+      {{ if .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{ end }}

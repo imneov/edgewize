@@ -169,6 +169,13 @@ func AddToContainer(c *restful.Container, informerFactory informers.InformerFact
 		Returns(http.StatusOK, api.StatusOK, api.Workloads{}).
 		To(handler.handleGetNamespacedAbnormalWorkloads))
 
+	//webservice.Route(webservice.GET("/users/{user}/kubectl").
+	//	To(handler.GetKubectlPod).
+	//	Doc("get user's kubectl pod").
+	//	Param(webservice.PathParameter("user", "username")).
+	//	Metadata(restfulspec.KeyOpenAPITags, []string{constants.ToolboxTag}).
+	//	Returns(http.StatusOK, api.StatusOK, models.PodInfo{}))
+
 	c.Add(webservice)
 
 	return nil

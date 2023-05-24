@@ -9,15 +9,11 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
-
-	"github.com/edgewize-io/edgewize/manifests"
 )
 
-// TODO 重构
 func LoadChart(distro string) (*chart.Chart, error) {
 	path := "charts/" + distro
-	filesystem := manifests.BuiltinOrDir("")
-	filenames, err := GetFilesRecursive(filesystem, path)
+	filenames, err := GetFilesRecursive(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("chart '%q' does not exist", distro)
@@ -27,7 +23,7 @@ func LoadChart(distro string) (*chart.Chart, error) {
 
 	var bfs []*loader.BufferedFile
 	for _, filename := range filenames {
-		b, err := fs.ReadFile(filesystem, filename)
+		b, err := os.ReadFile(filename)
 		if err != nil {
 			return nil, fmt.Errorf("read file: %v", err)
 		}
@@ -46,9 +42,9 @@ func LoadChart(distro string) (*chart.Chart, error) {
 	return c, nil
 }
 
-func GetFilesRecursive(f fs.FS, root string) ([]string, error) {
+func GetFilesRecursive(root string) ([]string, error) {
 	res := []string{}
-	err := fs.WalkDir(f, root, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

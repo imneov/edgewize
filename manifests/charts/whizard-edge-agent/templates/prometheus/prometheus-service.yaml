@@ -14,7 +14,6 @@ spec:
   - name: web
     port: 9090
     targetPort: web
-    nodePort: {{ .Values.prometheus.nodePort }}
   - name: reloader-web
     port: 8080
     targetPort: reloader-web
@@ -24,4 +23,4 @@ spec:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: kube-prometheus
   sessionAffinity: ClientIP
-  type: NodePort
+  type: ClusterIP
