@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/options"
+	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/proxy"
 	apiserverconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
 	"github.com/edgewize-io/edgewize/pkg/utils/term"
 	"github.com/edgewize-io/edgewize/pkg/version"
@@ -124,13 +125,22 @@ func run(s *options.ServerRunOptions, ctx context.Context) error {
 		"edge-cluster-1": "https://10.233.50.204",
 	}
 	go func() {
-		tunnelserver := NewWebsocketProxyServer(s, 30002, backendServers) // ws
-		err := tunnelserver.Run(ctx)
+		hubhttpserver := proxy.NewHTTPProxyServer(s, 30002, backendServers) // ws
+		err := hubhttpserver.Run(ctx)
 		if err == http.ErrServerClosed {
+			klog.Errorf("error in hubhttpserver: %v", err)
 			return
 		}
 	}()
-	tunnelserver := NewWebsocketProxyServer(s, 30004, backendServers) // ws
+	go func() {
+		hubserver := proxy.NewWebsocketProxyServer(s, 30000, backendServers) // ws
+		err := hubserver.Run(ctx)
+		if err == http.ErrServerClosed {
+			klog.Errorf("error in hubserver: %v", err)
+			return
+		}
+	}()
+	tunnelserver := proxy.NewWebsocketProxyServer(s, 30004, backendServers) // ws
 	err := tunnelserver.Run(ctx)
 	if err == http.ErrServerClosed {
 		return nil
