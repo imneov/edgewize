@@ -1,4 +1,4 @@
-package app
+package proxy
 
 import (
 	"context"
@@ -96,59 +96,6 @@ func (s *WebsocketProxyServer) Run(ctx context.Context) error {
 		TLSConfig: tlsConfig,
 		Handler:   s,
 	}
-	//mux := http.NewServeMux()
-	////server.Handler.ServeHTTP()
-	//klog.Infof("server addr: %s", server.Addr)
-	//// Handle client requests
-	//mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	//	// Forward request to other server
-	//	backend, err := s.selectServer(r)
-	//	if err != nil {
-	//		klog.Errorf("error in select server:%w", err)
-	//		return
-	//	}
-	//
-	//	proxy := httputil.NewSingleHostReverseProxy(backend)
-	//	proxy.Director = func(request *http.Request) {
-	//		// Set the request properties to the backend properties
-	//		request.URL.Scheme = backend.Scheme
-	//		request.URL.Host = backend.Host
-	//		request.Host = backend.Host
-	//
-	//		// Add the backend query to the request raw query
-	//		backendQuery := backend.RawQuery
-	//		if backendQuery == "" || request.URL.RawQuery == "" {
-	//			request.URL.RawQuery = backendQuery + request.URL.RawQuery
-	//		} else {
-	//			request.URL.RawQuery = backendQuery + "&" + request.URL.RawQuery
-	//		}
-	//		// Add a default user agent if one is not specified
-	//		if _, ok := request.Header["User-Agent"]; !ok {
-	//			// explicitly disable User-Agent so it's not set to default value
-	//			request.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36")
-	//		}
-	//		klog.V(7).Infof("request.URL.Path：%s request.URL.RawQuery：%v", request.URL.Path, request.URL.RawQuery)
-	//	}
-	//
-	//	// Load the client certificate and private key
-	//	cliCert, err := LoadX509KeyFromFile(s.clientCertFile, s.clientKeyFile)
-	//	if err != nil {
-	//		klog.Errorf("error load client certificate and private key", err)
-	//		return
-	//	}
-	//
-	//	// Create a new http transport with a custom TLS client configuration
-	//	transport := &http.Transport{
-	//		TLSClientConfig: &tls.Config{
-	//			// Skip verification of the server's certificate chain
-	//			InsecureSkipVerify: true,
-	//			// Set the client certificate to use for authentication
-	//			Certificates: []tls.Certificate{cliCert},
-	//		},
-	//	}
-	//	proxy.Transport = transport
-	//	proxy.ServeHTTP(w, r)
-	//})
 
 	// Listen for incoming HTTPS connections with TLS encryption and handle errors
 	err = server.ListenAndServeTLS("", "")
@@ -185,6 +132,11 @@ func (s *WebsocketProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			request.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36")
 		}
 		klog.V(7).Infof("request.URL.Path：%s request.URL.RawQuery：%v", request.URL.Path, request.URL.RawQuery)
+	}
+	proxy.ModifyResponse = func(w *http.Response) error {
+		r := w.Request
+		klog.V(3).Infoln(w.Status, r.URL.String())
+		return nil
 	}
 
 	// Load the client certificate and private key
