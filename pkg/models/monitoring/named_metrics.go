@@ -165,26 +165,6 @@ var NodeMetrics = []string{
 	"node_device_size_usage",
 	"node_device_size_utilisation",
 
-	//edge node
-	"edge_node_cpu_utilisation",
-	"edge_node_cpu_total",
-	"edge_node_memory_utilisation",
-	"edge_node_memory_available",
-	"edge_node_memory_total",
-	"edge_node_memory_usage_wo_cache",
-	"edge_node_net_utilisation",
-	"edge_node_net_bytes_transmitted",
-	"edge_node_net_bytes_received",
-	"edge_node_disk_read_iops",
-	"edge_node_disk_write_iops",
-	"edge_node_disk_read_throughput",
-	"edge_node_disk_write_throughput",
-
-	"edge_node_cpu_usage",
-	"edge_node_load1",
-	"edge_node_load5",
-	"edge_node_load15",
-
 	// meter
 	"meter_node_cpu_usage",
 	"meter_node_memory_usage_wo_cache",

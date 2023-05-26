@@ -164,25 +164,6 @@ var promQLTemplates = map[string]string{
 	"node_device_size_utilisation": `1 - sum by(device, node, host_ip, role) (node_filesystem_avail_bytes{device!~"/dev/loop\\d+",device=~"/dev/.*",job="node-exporter"} * on(namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1}) / sum by(device, node, host_ip, role) (node_filesystem_size_bytes{device!~"/dev/loop\\d+",device=~"/dev/.*",job="node-exporter"} * on(namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1})`,
 
 	//edge node
-	"edge_node_cpu_utilisation":       "node:edge_node_cpu_utilisation:avg1m{$1}",
-	"edge_node_cpu_total":             "node:edge_node_num_cpu:sum{$1}",
-	"edge_node_memory_utilisation":    "node:edge_node_memory_utilisation:{$1}",
-	"edge_node_memory_available":      "node:edge_node_memory_bytes_available:sum{$1}",
-	"edge_node_memory_total":          "node:edge_node_memory_bytes_total:sum{$1}",
-	"edge_node_memory_usage_wo_cache": "node:edge_node_memory_bytes_total:sum{$1} - node:edge_node_memory_bytes_available:sum{$1}",
-	"edge_node_net_utilisation":       "node:edge_node_net_utilisation:sum_irate{$1}",
-	"edge_node_net_bytes_transmitted": "node:edge_node_net_bytes_transmitted:sum_irate{$1}",
-	"edge_node_net_bytes_received":    "node:edge_node_net_bytes_received:sum_irate{$1}",
-	"edge_node_disk_read_iops":        "node:edge_data_volume_iops_reads:sum{$1}",
-	"edge_node_disk_write_iops":       "node:edge_data_volume_iops_writes:sum{$1}",
-	"edge_node_disk_read_throughput":  "node:edge_data_volume_throughput_bytes_read:sum{$1}",
-	"edge_node_disk_write_throughput": "node:edge_data_volume_throughput_bytes_written:sum{$1}",
-
-	"edge_node_cpu_usage": `round(node:edge_node_cpu_utilisation:avg1m{$1} * node:edge_node_num_cpu:sum{$1}, 0.001)`,
-	"edge_node_load1":     `node:edge_load1:ratio{$1}`,
-	"edge_node_load5":     `node:edge_load5:ratio{$1}`,
-	"edge_node_load15":    `node:edge_load15:ratio{$1}`,
-
 	//The edge metrics with the prefix of node_filesystem is missing .
 
 	/*"node_disk_size_capacity_edge": ``,
