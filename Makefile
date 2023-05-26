@@ -58,6 +58,10 @@ binary: | edgewize-apiserver edgewize-controller-manager; $(info $(M)...Build al
 edgewize-apiserver: ; $(info $(M)...Begin to build edgewize-apiserver binary.)  @ ## Build edgewize-apiserver.
 	hack/gobuild.sh cmd/edgewize-apiserver;
 
+# Build edgewize-gateway binary
+edgewize-gateway: ; $(info $(M)...Begin to build edgewize-gateway binary.)  @ ## Build edgewize-apiserver.
+	hack/gobuild.sh cmd/edgewize-gateway;
+
 # Build edgewize-controller-manager binary
 edgewize-controller-manager: ; $(info $(M)...Begin to build edgewize-controller-manager binary.)  @ ## Build ks-controller-manager.
 	hack/gobuild.sh cmd/controller-manager
