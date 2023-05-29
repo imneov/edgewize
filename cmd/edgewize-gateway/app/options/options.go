@@ -18,8 +18,9 @@ package options
 
 import (
 	"flag"
-	controllerconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
 	"strings"
+
+	controllerconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
 
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog"
@@ -69,7 +70,7 @@ func (s *ServerRunOptions) Flags() (fss cliflag.NamedFlagSets) {
 		fs.AddGoFlag(fl)
 	})
 
-	fs.StringVar(&s.CertDir, "webhook-cert-dir", s.CertDir, ""+
+	fs.StringVar(&s.CertDir, "cert-dir", s.CertDir, ""+
 		"Certificate directory used to setup Edgewize gateway, need server.crt, server.key, server.ca, client.crt and client.key placed inside."+
 		"if not set, webhook server would look up the server key and certificate in"+
 		"/etc/edgewize/gateway-certs")
