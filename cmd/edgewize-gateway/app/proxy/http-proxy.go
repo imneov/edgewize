@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -19,6 +18,11 @@ import (
 	"github.com/golang-jwt/jwt"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/klog"
+)
+
+const (
+	ClusterName string = "clustername"
+	ClusterType string = "clustertype"
 )
 
 type HTTPProxyServer struct {
@@ -103,7 +107,7 @@ func (s *HTTPProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Forward request to other server
 		backend, err = s.selectServer(r)
 		if err != nil {
-			klog.Errorf("error in select server:%w", err)
+			klog.Errorf("error in select server:%v", err)
 			return
 		}
 	}
@@ -111,7 +115,7 @@ func (s *HTTPProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// // Forward request to other server
 	// backend, err := s.selectServer(r)
 	// if err != nil {
-	// 	klog.Errorf("error in select server:%w", err)
+	// 	klog.Errorf("error in select server:%v", err)
 	// 	return
 	// }
 
@@ -145,7 +149,7 @@ func (s *HTTPProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Load the client certificate and private key
 	cliCert, err := LoadX509KeyFromFile(s.clientCertFile, s.clientKeyFile)
 	if err != nil {
-		klog.Errorf("error load client certificate and private key", err)
+		klog.Error("error load client certificate and private key", err)
 		return
 	}
 
@@ -176,42 +180,38 @@ func (s *HTTPProxyServer) selectServer(r *http.Request) (*url.URL, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("there was an error")
 		}
-		klog.Error("bearerToken size")
 		return nil, nil
 	})
-	klog.V(3).Infof("authorizationHeader(%v) token(%v)", authorizationHeader, token)
-
-	// Print client certificate information
-	cert := r.TLS.PeerCertificates[0]
-	byt, err := json.Marshal(cert)
-	if err != nil {
-		klog.Errorf("error in decode cert")
-		return nil, err
+	klog.V(3).Infof("authorizationHeader(%v) token(%v) %v", authorizationHeader, token, err)
+	clusterName := getHeaderString(token.Header, ClusterName)
+	clusterType := getHeaderString(token.Header, ClusterType)
+	if clusterType == "EdgeCluster" {
+		backend, ok := s.backendServers[clusterName]
+		if !ok {
+			klog.Errorf("can't find backend server for cluster(%s)", clusterName)
+			return nil, fmt.Errorf("con't find backend server for cluster(%s)", clusterName)
+		}
+		backend = fmt.Sprintf("https://%s:%d", backend, s.proxyPort) 
+		ret, err := url.Parse(backend)
+		if err != nil {
+			klog.Errorf("parse backend server(%s) error: %v", backend, err)
+		} else {
+			klog.Infof("ret, %v", *ret)
+		}
+		return ret, err
 	}
-	klog.V(6).Infof("Received request from %v with certificate %v\n", r.RemoteAddr, cert.Subject.CommonName)
-	klog.V(8).Infof("err: %v json: %v\n", err, string(byt))
+	klog.Errorf("unsupport cluster type(%s)", clusterType)
+	return nil, errors.New("unsupport cluster type")
+}
 
-	s.RLock()
-	defer s.RUnlock()
-	CN := cert.Subject.CommonName
-	names := strings.Split(CN, ".")
-	clusterName := ""
-	if len(names) == 2 {
-		clusterName = names[1]
-	} else {
-		klog.Errorf("unknown cluster name, CommonName: %s", CN)
-		return nil, errors.New("unknown cluster")
-	}
-	backend, ok := s.backendServers[clusterName]
+func getHeaderString(header map[string]interface{}, key string) (val string) {
+	ret, ok := header[key]
 	if !ok {
-		klog.Errorf("can't find backend server for CN(%s)", CN)
-		return nil, fmt.Errorf("con't find backend server for CN(%s)", CN)
+		return ""
 	}
-	backend = fmt.Sprintf("%s:%d", backend, s.proxyPort)
-	ret, err := url.Parse(backend)
-	if err != nil {
-		klog.Errorf("parse backend server(%s) error: %w", backend, err)
+	res, ok := ret.(string)
+	if !ok {
+		return ""
 	}
-	klog.Infof("ret, %v", *ret)
-	return ret, err
+	return res
 }

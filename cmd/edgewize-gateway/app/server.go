@@ -121,9 +121,12 @@ func Run(s *options.ServerRunOptions, configCh <-chan apiserverconfig.Config, ct
 }
 
 func run(s *options.ServerRunOptions, ctx context.Context) error {
+	// TODO
 	backendServers := map[string]string{
-		"edge-cluster-1": "https://10.233.50.204",
+		"edge-cluster-1": "10.233.50.204",
 	}
+	errCh := make(chan error)
+	defer close(errCh)
 	go func() {
 		hubhttpserver := proxy.NewHTTPProxyServer(s, 30002, backendServers) // ws
 		err := hubhttpserver.Run(ctx)
@@ -131,6 +134,7 @@ func run(s *options.ServerRunOptions, ctx context.Context) error {
 			klog.Errorf("error in hubhttpserver: %v", err)
 			return
 		}
+		errCh <- err
 	}()
 	go func() {
 		hubserver := proxy.NewWebsocketProxyServer(s, 30000, backendServers) // ws
@@ -139,12 +143,17 @@ func run(s *options.ServerRunOptions, ctx context.Context) error {
 			klog.Errorf("error in hubserver: %v", err)
 			return
 		}
+		errCh <- err
 	}()
-	tunnelserver := proxy.NewWebsocketProxyServer(s, 30004, backendServers) // ws
-	err := tunnelserver.Run(ctx)
-	if err == http.ErrServerClosed {
-		return nil
-	}
-	<-ctx.Done()
-	return err
+	go func() {
+		tunnelserver := proxy.NewWebsocketProxyServer(s, 30004, backendServers) // ws
+		err := tunnelserver.Run(ctx)
+		if err == http.ErrServerClosed {
+			klog.Errorf("error in tunnelserver: %v", err)
+			return
+		}
+		errCh <- err
+	}()
+
+	return <-errCh
 }
