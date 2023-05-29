@@ -232,6 +232,8 @@ values:
   cloudcore:
     defaultImageRegistry: ""
     cloudCore:
+      cloudHub:
+        customCert: true # 挂载自定义证书
       service:
         type: "ClusterIP" # NodePort
         cloudhubNodePort: "30000"
