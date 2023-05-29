@@ -109,7 +109,7 @@ func (s *WebsocketProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	// Forward request to other server
 	backend, err := s.selectServer(r)
 	if err != nil {
-		klog.Errorf("error in select server:%w", err)
+		klog.Errorf("error in select server:%v", err)
 		return
 	}
 	proxy := httputil.NewSingleHostReverseProxy(backend)
@@ -142,7 +142,7 @@ func (s *WebsocketProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	// Load the client certificate and private key
 	cliCert, err := LoadX509KeyFromFile(s.clientCertFile, s.clientKeyFile)
 	if err != nil {
-		klog.Errorf("error load client certificate and private key", err)
+		klog.Errorf("error load client certificate and private key, %v", err)
 		return
 	}
 
@@ -186,10 +186,10 @@ func (s *WebsocketProxyServer) selectServer(r *http.Request) (*url.URL, error) {
 		klog.Errorf("can't find backend server for CN(%s)", CN)
 		return nil, fmt.Errorf("con't find backend server for CN(%s)", CN)
 	}
-	backend = fmt.Sprintf("%s:%d", backend, s.proxyPort)
+	backend = fmt.Sprintf("https://%s:%d", backend, s.proxyPort) 
 	ret, err := url.Parse(backend)
 	if err != nil {
-		klog.Errorf("parse backend server(%s) error: %w", backend, err)
+		klog.Errorf("parse backend server(%s) error: %v", backend, err)
 	}
 	klog.Infof("ret, %v", *ret)
 	return ret, err
