@@ -19,25 +19,31 @@ package app
 import (
 	"context"
 	"fmt"
-	"net/http"
-
 	"github.com/google/gops/agent"
 	"github.com/spf13/cobra"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog"
+	"net/http"
 
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/options"
 	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/proxy"
-	apiserverconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
 	"github.com/edgewize-io/edgewize/pkg/utils/term"
 	"github.com/edgewize-io/edgewize/pkg/version"
 )
 
 func NewGatewayServerCommand() *cobra.Command {
 	s := options.NewServerRunOptions()
+
+	// Load configuration from file
+	serversCfg, err := options.TryLoadFromDisk()
+	if err == nil {
+		s.ServerEndpoints = *serversCfg
+	} else {
+		klog.Fatal("Failed to load configuration from disk", err)
+	}
 
 	cmd := &cobra.Command{
 		Use:  "edgewize-gateway",
@@ -55,7 +61,7 @@ func NewGatewayServerCommand() *cobra.Command {
 				}
 			}
 
-			return Run(s, apiserverconfig.WatchConfigChange(), signals.SetupSignalHandler())
+			return Run(s, options.WatchConfigChange(), signals.SetupSignalHandler())
 		},
 		SilenceUsage: true,
 	}
@@ -86,12 +92,20 @@ func NewGatewayServerCommand() *cobra.Command {
 	return cmd
 }
 
-func Run(s *options.ServerRunOptions, configCh <-chan apiserverconfig.Config, ctx context.Context) error {
+func Run(s *options.ServerRunOptions, configCh <-chan options.ServerEndpoints, ctx context.Context) error {
 	ictx, cancelFunc := context.WithCancel(context.TODO())
+
+	serverEndpoints, err := options.TryLoadFromDisk()
+	if err != nil {
+		return err
+	}
+	backendServers := proxy.NewServers()
+	backendServers.LoadConfig(*serverEndpoints)
+
 	errCh := make(chan error)
 	defer close(errCh)
 	go func() {
-		if err := run(s, ictx); err != nil {
+		if err := run(s, ictx, backendServers); err != nil {
 			errCh <- err
 		}
 	}()
@@ -105,14 +119,7 @@ func Run(s *options.ServerRunOptions, configCh <-chan apiserverconfig.Config, ct
 			cancelFunc()
 			return nil
 		case cfg := <-configCh:
-			cancelFunc()
-			s.MergeConfig(&cfg)
-			ictx, cancelFunc = context.WithCancel(context.TODO())
-			go func() {
-				if err := run(s, ictx); err != nil {
-					errCh <- err
-				}
-			}()
+			backendServers.LoadConfig(cfg)
 		case err := <-errCh:
 			cancelFunc()
 			return err
@@ -120,11 +127,8 @@ func Run(s *options.ServerRunOptions, configCh <-chan apiserverconfig.Config, ct
 	}
 }
 
-func run(s *options.ServerRunOptions, ctx context.Context) error {
-	// TODO
-	backendServers := map[string]string{
-		"edge-cluster-1": "10.233.50.204",
-	}
+func run(s *options.ServerRunOptions, ctx context.Context, backendServers *proxy.ServerEndpoints) error {
+
 	errCh := make(chan error)
 	defer close(errCh)
 	go func() {

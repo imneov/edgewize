@@ -20,8 +20,6 @@ import (
 	"flag"
 	"strings"
 
-	controllerconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
-
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog"
 )
@@ -36,24 +34,18 @@ const (
 )
 
 type ServerRunOptions struct {
-	CertDir string
-	//ServerCAFile   string
-	//ServerCertFile string
-	//ServerKeyFile  string
-	//ClientCertFile string
-	//ClientKeyFile  string
-	GOPSEnabled bool
+	ServersConfigFile string
+	Servers           string
+	CertDir           string
+	GOPSEnabled       bool
+	ServerEndpoints   ServerEndpoints
 }
 
 func NewServerRunOptions() *ServerRunOptions {
 	s := &ServerRunOptions{
-		CertDir: CertDir,
-		//ServerCAFile:   ServerCAFile,
-		//ServerCertFile: ServerCertFile,
-		//ServerKeyFile:  ServerKeyFile,
-		//ClientCertFile: ClientCertFile,
-		//ClientKeyFile:  ClientKeyFile,
-		GOPSEnabled: true,
+		ServerEndpoints: ServerEndpoints{},
+		CertDir:         CertDir,
+		GOPSEnabled:     true,
 	}
 
 	return s
@@ -70,7 +62,12 @@ func (s *ServerRunOptions) Flags() (fss cliflag.NamedFlagSets) {
 		fs.AddGoFlag(fl)
 	})
 
-	fs.StringVar(&s.CertDir, "cert-dir", s.CertDir, ""+
+	edgefs := fss.FlagSet("edgewize")
+	edgefs.StringVar(&s.CertDir, "cert-dir", s.CertDir, ""+
+		"Certificate directory used to setup Edgewize gateway, need server.crt, server.key, server.ca, client.crt and client.key placed inside."+
+		"if not set, webhook server would look up the server key and certificate in"+
+		"/etc/edgewize/gateway-certs")
+	edgefs.StringVar(&s.ServersConfigFile, "servers-config", s.ServersConfigFile, ""+
 		"Certificate directory used to setup Edgewize gateway, need server.crt, server.key, server.ca, client.crt and client.key placed inside."+
 		"if not set, webhook server would look up the server key and certificate in"+
 		"/etc/edgewize/gateway-certs")
@@ -80,6 +77,6 @@ func (s *ServerRunOptions) Flags() (fss cliflag.NamedFlagSets) {
 
 // MergeConfig merge new config without validation
 // When misconfigured, the app should just crash directly
-func (s *ServerRunOptions) MergeConfig(cfg *controllerconfig.Config) {
-	//s.EdgeWizeOptions = cfg.EdgeWizeOptions
+func (s *ServerRunOptions) MergeConfig(cfg *ServerEndpoints) {
+
 }
