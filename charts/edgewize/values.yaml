@@ -2,7 +2,7 @@
 ## @param global.tag Global Docker image tag
 global:
   imageRegistry:
-  tag: v0.1.0
+  tag: latest
   imagePullSecrets: []
 
 ## @section Common parameters
@@ -93,7 +93,7 @@ apiserver:
   image:
     registry: ""
     repository: kubesphere/edgewize-apiserver
-    tag: "latest"
+    tag: ""
     digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
@@ -145,7 +145,7 @@ controller:
   image:
     registry: ""
     repository: kubesphere/edgewize-controller-manager
-    tag: "latest"
+    tag: ""
     digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
@@ -246,10 +246,19 @@ values:
   edgewize:
     global:
       imageRegistry: ""
+      tag: latest
       imagePullSecrets: []
     apiserver:
       image:
-        tag: "latest"
+        registry: ""
+        repository: kubesphere/edgewize-apiserver
+        tag: ""
+        digest: ""
+        pullPolicy: IfNotPresent
     controller:
       image:
-        tag: "latest"
+        registry: ""
+        repository: kubesphere/edgewize-controller-manager
+        tag: ""
+        digest: ""
+        pullPolicy: IfNotPresent
