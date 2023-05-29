@@ -19,12 +19,13 @@ package app
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/google/gops/agent"
 	"github.com/spf13/cobra"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog"
-	"net/http"
 
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
@@ -119,11 +120,21 @@ func Run(s *options.ServerRunOptions, configCh <-chan apiserverconfig.Config, ct
 }
 
 func run(s *options.ServerRunOptions, ctx context.Context) error {
-	apiserver := NewWebsocketProxyServer(s, 30004)
-
-	err := apiserver.Run(ctx)
+	backendServers := map[string]string{
+		"edge-cluster-1": "https://10.233.50.204",
+	}
+	go func() {
+		tunnelserver := NewWebsocketProxyServer(s, 30002, backendServers) // ws
+		err := tunnelserver.Run(ctx)
+		if err == http.ErrServerClosed {
+			return
+		}
+	}()
+	tunnelserver := NewWebsocketProxyServer(s, 30004, backendServers) // ws
+	err := tunnelserver.Run(ctx)
 	if err == http.ErrServerClosed {
 		return nil
 	}
+	<-ctx.Done()
 	return err
 }
