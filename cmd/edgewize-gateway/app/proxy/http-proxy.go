@@ -27,13 +27,13 @@ const (
 
 type HTTPProxyServer struct {
 	sync.RWMutex
-	backendServers                              map[string]string
+	backendServers                              *ServerEndpoints
 	proxyPort                                   int
 	serverCAFile, serverCertFile, serverKeyFile string
 	clientCertFile, clientKeyFile               string
 }
 
-func NewHTTPProxyServer(opt *options.ServerRunOptions, proxyPort int, backendServers map[string]string) *HTTPProxyServer {
+func NewHTTPProxyServer(opt *options.ServerRunOptions, proxyPort int, backendServers *ServerEndpoints) *HTTPProxyServer {
 	return &HTTPProxyServer{
 		backendServers: backendServers,
 		proxyPort:      proxyPort,
@@ -101,23 +101,13 @@ func (s *HTTPProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		backend *url.URL
 		err     error
 	)
-	if strings.HasPrefix(r.URL.Path, "/ca.crt") {
-		backend, err = url.Parse("https://10.233.50.204:30002/")
-	} else {
-		// Forward request to other server
-		backend, err = s.selectServer(r)
-		if err != nil {
-			klog.Errorf("error in select server:%v", err)
-			return
-		}
-	}
 
-	// // Forward request to other server
-	// backend, err := s.selectServer(r)
-	// if err != nil {
-	// 	klog.Errorf("error in select server:%v", err)
-	// 	return
-	// }
+	// Forward request to other server
+	backend, err = s.selectServer(r)
+	if err != nil {
+		klog.Errorf("error in select server:%v", err)
+		return
+	}
 
 	proxy := httputil.NewSingleHostReverseProxy(backend)
 	proxy.Director = func(request *http.Request) {
@@ -186,12 +176,12 @@ func (s *HTTPProxyServer) selectServer(r *http.Request) (*url.URL, error) {
 	clusterName := getHeaderString(token.Header, ClusterName)
 	clusterType := getHeaderString(token.Header, ClusterType)
 	if clusterType == "EdgeCluster" {
-		backend, ok := s.backendServers[clusterName]
+		backend, ok := s.backendServers.Get(clusterName)
 		if !ok {
 			klog.Errorf("can't find backend server for cluster(%s)", clusterName)
 			return nil, fmt.Errorf("con't find backend server for cluster(%s)", clusterName)
 		}
-		backend = fmt.Sprintf("https://%s:%d", backend, s.proxyPort) 
+		backend = fmt.Sprintf("https://%s:%d", backend, s.proxyPort)
 		ret, err := url.Parse(backend)
 		if err != nil {
 			klog.Errorf("parse backend server(%s) error: %v", backend, err)

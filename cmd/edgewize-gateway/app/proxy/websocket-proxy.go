@@ -36,13 +36,13 @@ type ServerRunOptions struct {
 
 type WebsocketProxyServer struct {
 	sync.RWMutex
-	backendServers                              map[string]string
+	backendServers                              *ServerEndpoints
 	proxyPort                                   int
 	serverCAFile, serverCertFile, serverKeyFile string
 	clientCertFile, clientKeyFile               string
 }
 
-func NewWebsocketProxyServer(opt *options.ServerRunOptions, proxyPort int, backendServers map[string]string) *WebsocketProxyServer {
+func NewWebsocketProxyServer(opt *options.ServerRunOptions, proxyPort int, backendServers *ServerEndpoints) *WebsocketProxyServer {
 	return &WebsocketProxyServer{
 		backendServers: backendServers,
 		proxyPort:      proxyPort,
@@ -181,12 +181,12 @@ func (s *WebsocketProxyServer) selectServer(r *http.Request) (*url.URL, error) {
 		klog.Errorf("unknown cluster name, CommonName: %s", CN)
 		return nil, errors.New("unknown cluster")
 	}
-	backend, ok := s.backendServers[clusterName]
+	backend, ok := s.backendServers.Get(clusterName)
 	if !ok {
 		klog.Errorf("can't find backend server for CN(%s)", CN)
 		return nil, fmt.Errorf("con't find backend server for CN(%s)", CN)
 	}
-	backend = fmt.Sprintf("https://%s:%d", backend, s.proxyPort) 
+	backend = fmt.Sprintf("https://%s:%d", backend, s.proxyPort)
 	ret, err := url.Parse(backend)
 	if err != nil {
 		klog.Errorf("parse backend server(%s) error: %v", backend, err)
