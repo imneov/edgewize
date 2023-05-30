@@ -2,8 +2,8 @@
 ## @param global.tag Global Docker image tag
 global:
   imageRegistry:
-  tag: latest
-  imagePullSecrets: []
+  tag: v0.4.2
+  imagePullSecrets: [ ]
 
 ## @section Common parameters
 ##
@@ -64,8 +64,8 @@ securityContext: { }
   # capabilities:
   #   drop:
   #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
+# readOnlyRootFilesystem: true
+# runAsNonRoot: true
 # runAsUser: 1000
 
 tolerations:
@@ -188,6 +188,66 @@ controller:
   ##
   extraVolumes: [ ]
 
+gateway:
+  advertiseAddress: []
+  replicaCount: 1
+  image:
+    registry: ""
+    repository: kubesphere/edgewize-gateway
+    tag: ""
+    digest: ""
+    pullPolicy: IfNotPresent
+    ## Optionally specify an array of imagePullSecrets.
+    ## Secrets must be manually created in the namespace.
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+    ## e.g:
+    ## pullSecrets:
+    ##   - myRegistryKeySecretName
+    ##
+    pullSecrets: [ ]
+  ## @param containerPorts [array] List of container ports to enable in the edgewize-apiserver container
+  ##
+  containerPorts:
+    - protocol: TCP
+      containerPort: 30000
+    - protocol: TCP
+      containerPort: 30002
+    - protocol: TCP
+      containerPort: 30004
+  nodePort:
+    cloudhub: 30000
+    cloudhubHttps: 30002
+    tunnelport: 30004
+  ## edgewize-apiserver resource requests and limits
+  ## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+  ## @param resources.limits The resources limits for the haproxy containers
+  ## @param resources.requests The requested resources for the haproxy containers
+  ##
+  resources:
+    limits:
+      cpu: 1
+      memory: 1024Mi
+    requests:
+      cpu: 20m
+      memory: 100Mi
+  ## @param command Override default container command (useful when using custom images)
+  ##
+  command:
+    - edgewize-gateway
+  ## @param extraEnvVars Array with extra environment variables to add to haproxy nodes
+  ## e.g:
+  ## extraEnvVars:
+  ##   - name: FOO
+  ##     value: "bar"
+  ##
+  extraEnvVars: [ ]
+  ## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the haproxy container(s)
+  ##
+  extraVolumeMounts: [ ]
+  ## @param extraVolumes Optionally specify extra list of additional volumes for the haproxy pod(s)
+  ##
+  extraVolumes: [ ]
+
 agent:
   replicaCount: 1
 
@@ -201,10 +261,14 @@ values:
       selector:
         matchLabels:
           edgecluster.edgewize.io/name: $name
+    serviceAccount:
+      imagePullSecrets:
+        - name: edge-deploy-secret
     etcd:
       global:
         imageRegistry: ""
-        imagePullSecrets: []
+        imagePullSecrets:
+          - edge-deploy-secret
         storageClass: ""
 
   whizardEdgeAgent:
@@ -215,25 +279,30 @@ values:
         className: ""
         prometheus_pv_size: "20Gi"
     defaultImageRegistry: ""
-    imagePullSecrets: []
+    imagePullSecrets:
+      - name: edge-deploy-secret
   fluentOperator:
     defaultImageRegistry: ""
     operator:
-      imagePullSecrets: []
+      imagePullSecrets:
+        - name: edge-deploy-secret
     fluentbit:
-      imagePullSecrets: []
+      imagePullSecrets:
+        - name: edge-deploy-secret
       kubeedge:
         enable: true
         prometheusRemoteWrite:
           # Change the port to the port of a cloud-side Prometheus-compatible server that can receive Prometheus remote write data
           port: 30991
     fluentd:
-      imagePullSecrets: []
+      imagePullSecrets:
+        - name: edge-deploy-secret
   cloudcore:
     defaultImageRegistry: ""
     cloudCore:
-      cloudHub:
-        customCert: true # 挂载自定义证书
+      modules:
+        cloudHub:
+          customCert: true # 挂载自定义证书
       service:
         type: "ClusterIP" # NodePort
         cloudhubNodePort: "30000"
@@ -244,12 +313,14 @@ values:
       image:
         repository: "kubesphere/cloudcore"
         tag: "v1.13.0-edgewize"
-        pullSecrets: []
+        pullSecrets:
+          - name: edge-deploy-secret
   edgewize:
     global:
       imageRegistry: ""
       tag: latest
-      imagePullSecrets: []
+      imagePullSecrets:
+        - edge-deploy-secret
     apiserver:
       image:
         registry: ""

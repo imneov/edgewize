@@ -34,7 +34,14 @@ ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
   -f build/controller-manager/Dockerfile \
   -t "${REPO}"/edgewize-controller-manager:"${TAG}" .
 
+${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
+  --build-arg "TARGETARCH=${TARGETARCH}" \
+  --build-arg "TARGETOS=${TARGETOS}" \
+  -f build/gateway/Dockerfile \
+  -t "${REPO}"/edgewize-gateway:"${TAG}" .
+
 if [[ -z "${DRY_RUN:-}" ]]; then
   ${CONTAINER_CLI} push "${REPO}"/edgewize-apiserver:"${TAG}"
   ${CONTAINER_CLI} push "${REPO}"/edgewize-controller-manager:"${TAG}"
+  ${CONTAINER_CLI} push "${REPO}"/edgewize-gateway:"${TAG}"
 fi

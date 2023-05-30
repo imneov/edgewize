@@ -71,7 +71,7 @@ func (s *WebsocketProxyServer) Run(ctx context.Context) error {
 		return err
 	}
 	caCertPool := x509.NewCertPool()
-	ok := caCertPool.AppendCertsFromPEM(pem.EncodeToMemory(&pem.Block{Type: certutil.CertificateBlockType, Bytes: caCert}))
+	ok := caCertPool.AppendCertsFromPEM(caCert)
 	if !ok {
 		err := fmt.Errorf("failed to append CA cert")
 		return err
@@ -221,8 +221,14 @@ func LoadX509Key(certStr, keyStr string) (tls.Certificate, error) {
 // LoadX509Key is a function that loads a TLS certificate as X.509 key pair from base64 encoded strings.
 // It decodes the strings, and returns a tls.Certificate object with the X.509 key pair.
 func LoadX509KeyFromFile(certFile, keyFile string) (tls.Certificate, error) {
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		klog.Errorf("load pem cert error")
+	} else {
+		return cert, nil
+	}
 	fail := func(err error) (tls.Certificate, error) { return tls.Certificate{}, err }
-	// Decode certStr from base64
+	//Decode certStr from base64
 	//cadata, err := base64.StdEncoding.DecodeString(certStr)
 	//if err != nil {
 	//	klog.Errorf("error in decode cert")

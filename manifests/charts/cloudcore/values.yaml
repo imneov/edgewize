@@ -5,6 +5,7 @@ appVersion: "1.13.0"
 
 defaultImageRegistry: ""
 
+edgeClusterName: ""
 cloudCore:
   replicaCount: 1
   hostNetWork: "false"

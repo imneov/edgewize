@@ -3,20 +3,17 @@ package proxy
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 
 	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/options"
 	"github.com/golang-jwt/jwt"
-	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/klog"
 )
 
@@ -55,29 +52,10 @@ func (s *HTTPProxyServer) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Load the client CA certificate
-	caCert, err := os.ReadFile(s.serverCAFile)
-	if err != nil {
-		err := fmt.Errorf("Error loading server certificate and private key (%s): %v", s.serverCAFile, err)
-		return err
-	}
-	caCertPool := x509.NewCertPool()
-	ok := caCertPool.AppendCertsFromPEM(pem.EncodeToMemory(&pem.Block{Type: certutil.CertificateBlockType, Bytes: caCert}))
-	if !ok {
-		err := fmt.Errorf("failed to append CA cert")
-		return err
-	}
-
 	// Create a TLS configuration with mutual authentication
 	tlsConfig := &tls.Config{
-		ClientAuth: tls.RequestClientCert,
-		// ClientCAs:    caCertPool,
-		Certificates: []tls.Certificate{serverCert},
-		// MinVersion:   tls.VersionTLS12,
-		// CipherSuites: []uint16{
-		// 	tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-		// 	tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
-		// },
+		ClientAuth:         tls.RequestClientCert,
+		Certificates:       []tls.Certificate{serverCert},
 		InsecureSkipVerify: true,
 	}
 
@@ -132,7 +110,11 @@ func (s *HTTPProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	proxy.ModifyResponse = func(w *http.Response) error {
 		r := w.Request
-		klog.V(3).Infoln(w.Status, r.URL.String())
+		responseDump, err := httputil.DumpResponse(w, true)
+		if err != nil {
+			return err
+		}
+		klog.V(3).Infoln(w.Status, r.URL.String(), base64.StdEncoding.EncodeToString(responseDump))
 		return nil
 	}
 
@@ -163,8 +145,9 @@ func (s *HTTPProxyServer) selectServer(r *http.Request) (*url.URL, error) {
 
 	bearerToken := strings.Split(authorizationHeader, " ")
 	if len(bearerToken) != 2 {
-		klog.Error("bearerToken size")
-		return nil, nil
+		err := fmt.Errorf("bearerToken(%s) size error, got %d want 2", bearerToken, len(bearerToken))
+		klog.Error(err)
+		return nil, err
 	}
 	token, err := jwt.Parse(bearerToken[1], func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

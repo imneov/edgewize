@@ -2,11 +2,12 @@ package options
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 	"k8s.io/klog"
-	"strings"
-	"sync"
 )
 
 var (
@@ -21,7 +22,7 @@ const (
 	///Users/neov/src/edgewize/edgewize/edgewize-servers.yaml
 
 	// DefaultConfigurationPath the default location of the configuration file
-	defaultConfigurationPath = "/etc/edgewize"
+	defaultConfigurationPath = "/etc/edgewize/cloudcore-services"
 )
 
 func (c *config) watchConfig() <-chan ServerEndpoints {
