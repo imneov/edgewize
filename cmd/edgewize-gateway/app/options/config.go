@@ -19,7 +19,6 @@ var (
 const (
 	// DefaultConfigurationName is the default name of configuration
 	defaultConfigurationName = "edgewize-servers"
-	///Users/neov/src/edgewize/edgewize/edgewize-servers.yaml
 
 	// DefaultConfigurationPath the default location of the configuration file
 	defaultConfigurationPath = "/etc/edgewize/cloudcore-services"

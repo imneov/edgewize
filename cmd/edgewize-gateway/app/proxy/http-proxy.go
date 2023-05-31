@@ -114,7 +114,7 @@ func (s *HTTPProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		klog.V(3).Infoln(w.Status, r.URL.String(), base64.StdEncoding.EncodeToString(responseDump))
+		klog.V(8).Infoln(w.Status, r.URL.String(), base64.StdEncoding.EncodeToString(responseDump))
 		return nil
 	}
 
@@ -141,7 +141,7 @@ func (s *HTTPProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *HTTPProxyServer) selectServer(r *http.Request) (*url.URL, error) {
 	authorizationHeader := r.Header.Get("authorization")
 
-	klog.V(3).Infof("authorizationHeader  %v", authorizationHeader)
+	klog.V(7).Infof("authorizationHeader  %v", authorizationHeader)
 
 	bearerToken := strings.Split(authorizationHeader, " ")
 	if len(bearerToken) != 2 {

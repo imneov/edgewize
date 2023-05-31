@@ -55,7 +55,7 @@ func NewWebsocketProxyServer(opt *options.ServerRunOptions, proxyPort int, backe
 }
 
 func (s *WebsocketProxyServer) Run(ctx context.Context) error {
-	klog.Infof("port: %d, certs: %s, %s, %s, %s", s.proxyPort, s.serverCertFile, s.clientCertFile, s.serverKeyFile, s.clientKeyFile)
+	klog.V(3).Infof("port: %d, certs: %s, %s, %s, %s", s.proxyPort, s.serverCertFile, s.clientCertFile, s.serverKeyFile, s.clientKeyFile)
 
 	// Load the backend server certificate and private key
 	serverCert, err := LoadX509KeyFromFile(s.serverCertFile, s.serverKeyFile)
@@ -135,7 +135,7 @@ func (s *WebsocketProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 	proxy.ModifyResponse = func(w *http.Response) error {
 		r := w.Request
-		klog.V(3).Infoln(w.Status, r.URL.String())
+		klog.V(7).Infoln(w.Status, r.URL.String())
 		return nil
 	}
 
@@ -172,15 +172,15 @@ func (s *WebsocketProxyServer) selectServer(r *http.Request) (*url.URL, error) {
 
 	s.RLock()
 	defer s.RUnlock()
+
 	CN := cert.Subject.CommonName
 	names := strings.Split(CN, ".")
 	clusterName := ""
-	if len(names) == 2 {
-		clusterName = names[1]
-	} else {
+	if len(names) != 2 {
 		klog.Errorf("unknown cluster name, CommonName: %s", CN)
 		return nil, errors.New("unknown cluster")
 	}
+	clusterName = names[1]
 	backend, ok := s.backendServers.Get(clusterName)
 	if !ok {
 		klog.Errorf("can't find backend server for CN(%s)", CN)
@@ -228,18 +228,6 @@ func LoadX509KeyFromFile(certFile, keyFile string) (tls.Certificate, error) {
 		return cert, nil
 	}
 	fail := func(err error) (tls.Certificate, error) { return tls.Certificate{}, err }
-	//Decode certStr from base64
-	//cadata, err := base64.StdEncoding.DecodeString(certStr)
-	//if err != nil {
-	//	klog.Errorf("error in decode cert")
-	//	return fail(err)
-	//}
-	//// Decode keyStr from base64
-	//cakey, err := base64.StdEncoding.DecodeString(keyStr)
-	//if err != nil {
-	//	klog.Errorf("error in decode key")
-	//	return fail(err)
-	//}
 	certdata, err := os.ReadFile(certFile)
 	if err != nil {
 		klog.Errorf("read fle error: %s", certFile)
