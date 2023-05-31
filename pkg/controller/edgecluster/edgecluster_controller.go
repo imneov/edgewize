@@ -1036,7 +1036,7 @@ func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1a
 		return err
 	}
 
-	imagePullSecret := &corev1.ConfigMap{}
+	imagePullSecret := &corev1.Secret{}
 	key := types.NamespacedName{
 		Namespace: CurrentNamespace,
 		Name:      EdgeDeploySecret,
@@ -1069,9 +1069,12 @@ func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1a
 			return err
 		}
 	}
-
-	klog.V(3).Infof("secret edge-deploy-secret content: %s", edgeDeploySecret.String())
-	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, edgeDeploySecret, metav1.CreateOptions{})
+	imagePullSecret.ObjectMeta.Namespace = namespace
+	imagePullSecret.ObjectMeta.UID = ""
+	imagePullSecret.ObjectMeta.ResourceVersion = ""
+	imagePullSecret.ObjectMeta.CreationTimestamp = metav1.NewTime(time.Time{})
+	klog.V(3).Infof("secret edge-deploy-secret content: %s", imagePullSecret.String())
+	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, imagePullSecret, metav1.CreateOptions{})
 	if err != nil {
 		klog.Error("create secret edge-deploy-secret error", err)
 		return err
