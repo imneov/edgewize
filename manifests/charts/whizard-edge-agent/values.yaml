@@ -15,16 +15,6 @@ whizard_agent_proxy:
   tenant: ""
   gateway_address: ""
 
-whizard_edge_agent_proxy:
-  image:
-    repository: frezes/whizard-edge-agent-proxy
-    tag: "v0.1.0"
-    digest: ""
-    pullPolicy: IfNotPresent
-
-edge_agent:
-  nodePort:
-
 prometheus:
   storage:
     className: ""
