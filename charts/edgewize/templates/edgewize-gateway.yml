@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: edgewize-gateway
+    tier: backend
+    version: {{ .Chart.AppVersion }}
+  name: edgewize-gateway
+spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+    type: RollingUpdate
+  progressDeadlineSeconds: 600
+  replicas: {{ .Values.agent.replicaCount }}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: edgewize-gateway
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: edgewize-gateway
+        tier: backend
+    spec:
+      serviceAccountName: {{ template "edgewize.serviceAccountName" . }}
+      {{- include "controller.imagePullSecrets" . | nindent 6 }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" ( dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" .) | nindent 8 }}
+      {{- end }}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: edgewize-gateway
+          image: {{ template "edgewize-gateway.image" . }}
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          {{- if .Values.gateway.containerPorts }}
+          ports: {{- include "common.tplvalues.render" (dict "value" .Values.gateway.containerPorts "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.gateway.command }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.gateway.command "context" $) | nindent 12 }}
+          {{- end }}
+          env:
+            {{- if .Values.gateway.extraEnvVars }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.gateway.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+          {{- if .Values.gateway.resources }}
+          resources: {{- toYaml .Values.gateway.resources | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: host-time
+              readOnly: true
+            - name: edgewize-gateway-certs
+              mountPath: /etc/edgewize/gateway-certs/
+              readOnly: true
+            - name: edgewize-cloudcore-service
+              mountPath: /etc/edgewize/cloudcore-services/
+          {{- if .Values.gateway.extraVolumeMounts }}
+          {{- include "common.tplvalues.render" (dict "value" .Values.gateway.extraVolumeMounts "context" $) | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: edgewize-gateway-certs
+          secret:
+            secretName: edgewize-gateway-certs
+            defaultMode: 420
+        - name: host-time
+          hostPath:
+            path: /etc/localtime
+            type: ""
+        - name: webhook-secret
+          secret:
+            defaultMode: 420
+            secretName: edgewize-controller-manager-webhook-cert
+        - name: edgewize-cloudcore-service
+          configMap:
+            name: edgewize-cloudcore-service
+        {{- if .Values.controller.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.gateway.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.gateway.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}
