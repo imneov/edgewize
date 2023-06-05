@@ -19,12 +19,15 @@ package edgecluster
 import (
 	"context"
 	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"k8s.io/client-go/util/retry"
 
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	"github.com/edgewize-io/edgewize/pkg/helm"
@@ -41,8 +44,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/record"
+	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/homedir"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 	ksclusterv1alpha1 "kubesphere.io/api/cluster/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -61,6 +64,8 @@ const (
 	EdgeWizeValuesConfigName    = "edgewize-values-config"
 	WhizardGatewayServiceName   = "gateway-whizard-operated"
 	MonitorNamespace            = "kubesphere-monitoring-system"
+	EdgeWizeServers             = "edgewize-servers.yaml"
+	EdgeDeploySecret            = "edge-deploy-secret"
 )
 
 var DefaultComponents = "edgewize,whizard-edge-agent,cloudcore,fluent-operator"
@@ -182,9 +187,9 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 			err = helm.Uninstall(instance.Name, instance.Spec.Namespace, kubeconfig)
 			if err != nil {
 				logger.Error(err, "uninstall edge cluster error")
-				return ctrl.Result{}, err
+			} else {
+				logger.V(4).Info("uninstall edge cluster success", "name", instance.Name)
 			}
-			logger.V(4).Info("uninstall edge cluster success", "name", instance.Name)
 		}
 	}
 	member := &infrav1alpha1.Cluster{
@@ -461,6 +466,11 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 
 	switch instance.Status.EdgeWize {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
+		namespace := "kubesphere-monitoring-system"
+		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+		if err != nil {
+			return err
+		}
 		values, err := r.GetValuesFromConfigMap(ctx, "whizard-edge-agent")
 		if err != nil {
 			logger.Error(err, "get vcluster values error, use default")
@@ -471,7 +481,7 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 			logger.Error(err, "get gateway svc ip error, need to configure manually")
 		}
 		klog.V(3).Infof("ReconcileWhizardEdgeAgent: %v", values)
-		status, err := InstallChart("whizard-edge-agent", "whizard-edge-agent", "kubesphere-monitoring-system", instance.Name, true, values)
+		status, err := InstallChart("whizard-edge-agent", "whizard-edge-agent", namespace, instance.Name, true, values)
 		if err != nil {
 			logger.Error(err, "install whizard-edge-agent error")
 			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
@@ -491,6 +501,11 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 	}
 	switch instance.Status.EdgeWize {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
+		namespace := CurrentNamespace
+		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+		if err != nil {
+			return err
+		}
 		values, err := r.GetValuesFromConfigMap(ctx, "edgewize")
 		if err != nil {
 			logger.Error(err, "get vcluster values error, use default")
@@ -498,7 +513,7 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 		}
 		values["role"] = "member"
 		klog.V(3).Infof("ReconcileEdgeWize: %v", values)
-		status, err := InstallChart("edgewize", "edgewize", CurrentNamespace, instance.Name, true, values)
+		status, err := InstallChart("edgewize", "edgewize", namespace, instance.Name, true, values)
 		if err != nil {
 			logger.Error(err, "install edgewize error")
 			instance.Status.EdgeWize = infrav1alpha1.ErrorStatus
@@ -526,7 +541,11 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 	switch instance.Status.CloudCore {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		namespace := "kubeedge"
-		err := r.InitCloudCoreCert(ctx, instance, instance.Name, namespace)
+		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+		if err != nil {
+			return err
+		}
+		err = r.InitCloudCoreCert(ctx, instance, instance.Name, namespace)
 		if err != nil {
 			klog.Warning("init cloudhub certs error, use default", err)
 		}
@@ -535,12 +554,9 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 			klog.Warning("get vcluster values error, use default", err)
 			values = map[string]interface{}{}
 		}
-		values["cloudCore"] = map[string]interface{}{
-			"modules": map[string]interface{}{
-				"cloudHub": map[string]interface{}{
-					"advertiseAddress": instance.Spec.AdvertiseAddress,
-				},
-			},
+		err = SetCloudCoreValues(values, instance)
+		if err != nil {
+			klog.Errorf("set cloudcore values error, err: %v", err)
 		}
 		klog.V(3).Infof("ReconcileCloudCore: %v", values)
 		status, err := InstallChart("cloudcore", "cloudcore", namespace, instance.Name, true, values)
@@ -552,7 +568,9 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 		instance.Status.CloudCore = status
 		if status == infrav1alpha1.RunningStatus {
 			err := r.UpdateCloudCoreService(ctx, instance.Name, "kubeedge", instance)
-			logger.Info("update edgewize-cloudcore-service error", "error", err)
+			if err != nil {
+				logger.Info("update edgewize-cloudcore-service error", "error", err)
+			}
 		}
 		return nil
 	}
@@ -567,6 +585,11 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	}
 	switch instance.Status.FluentOperator {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
+		namespace := "fluent"
+		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+		if err != nil {
+			return err
+		}
 		values, err := r.GetValuesFromConfigMap(ctx, "fluent-operator")
 		if err != nil {
 			logger.Error(err, "get vcluster values error, use default")
@@ -577,7 +600,7 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 		if err != nil {
 			logger.Error(err, "configure ClusterOutput failed")
 		}
-		status, err := InstallChart("fluent-operator", "fluent-operator", "fluent", instance.Name, true, values)
+		status, err := InstallChart("fluent-operator", "fluent-operator", namespace, instance.Name, true, values)
 		if err != nil {
 			logger.Error(err, "install fluent-operator error")
 			instance.Status.FluentOperator = infrav1alpha1.ErrorStatus
@@ -585,6 +608,17 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 		}
 		instance.Status.FluentOperator = status
 		return nil
+	}
+	return nil
+}
+
+func SetCloudCoreValues(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) error {
+	if len(instance.Spec.AdvertiseAddress) > 0 {
+		cloudcore := values["cloudCore"].(map[string]interface{})
+		modules := cloudcore["modules"].(map[string]interface{})
+		cloudHub := modules["cloudHub"].(map[string]interface{})
+		cloudHub["advertiseAddress"] = instance.Spec.AdvertiseAddress
+		values["edgeClusterName"] = instance.Name
 	}
 	return nil
 }
@@ -690,6 +724,7 @@ func (r *Reconciler) LoadMemberKubeConfig(ctx context.Context, name string) (str
 	}
 	return path, nil
 }
+
 func (r *Reconciler) CleanEdgeClusterResources(name, namespace, kubeconfig string) error {
 	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
 	config, err := clientcmd.BuildConfigFromFlags("", file)
@@ -787,6 +822,8 @@ func (r *Reconciler) IsNamespaceExisted(ctx context.Context, kubeconfig, namespa
 	return true
 }
 
+type ServiceMap map[string]corev1.ServiceSpec
+
 func (r *Reconciler) UpdateCloudCoreService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha1.EdgeCluster) error {
 	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
 	config, err := clientcmd.BuildConfigFromFlags("", file)
@@ -816,7 +853,16 @@ func (r *Reconciler) UpdateCloudCoreService(ctx context.Context, kubeconfig, nam
 		klog.Error("get configmap edgewize-cloudcore-service error ", err.Error())
 		return err
 	}
-	data, err := yaml.Marshal(svc.Spec)
+	svcMap := ServiceMap{}
+	if data, ok := cm.Data[EdgeWizeServers]; ok {
+		err = yaml.Unmarshal([]byte(data), &svcMap)
+		if err != nil {
+			klog.Errorf("invalid %s, err:%v", EdgeWizeServers, err)
+			cm.Data = make(map[string]string) // TODO
+		}
+	}
+	svcMap[instance.Name] = svc.Spec
+	data, err := yaml.Marshal(svcMap)
 	if err != nil {
 		klog.Error("Marshal svc.Spec error", err.Error())
 		return err
@@ -824,7 +870,45 @@ func (r *Reconciler) UpdateCloudCoreService(ctx context.Context, kubeconfig, nam
 	if cm.Data == nil {
 		cm.Data = make(map[string]string)
 	}
-	cm.Data[instance.Name] = string(data)
+	cm.Data[EdgeWizeServers] = string(data)
+	err = r.Update(ctx, cm)
+	if err != nil {
+		klog.Error("update edgewize-cloudcore-service configmap error ", err.Error())
+		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) DeleteCloudCoreService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha1.EdgeCluster) error {
+	cm := &corev1.ConfigMap{}
+	key := types.NamespacedName{
+		Namespace: "edgewize-system",
+		Name:      "edgewize-cloudcore-service",
+	}
+	err := r.Get(ctx, key, cm)
+	if err != nil {
+		klog.Error("get configmap edgewize-cloudcore-service error ", err.Error())
+		return err
+	}
+	svcMap := ServiceMap{}
+	if data, ok := cm.Data[EdgeWizeServers]; ok {
+		err = yaml.Unmarshal([]byte(data), &svcMap)
+		if err != nil {
+			klog.Errorf("invalid %s, err:%v", EdgeWizeServers, err)
+			cm.Data = make(map[string]string) // TODO
+		}
+	}
+	klog.V(3).Infof("delete cloudcore service: %s", instance.Name)
+	delete(svcMap, instance.Name)
+	data, err := yaml.Marshal(svcMap)
+	if err != nil {
+		klog.Error("Marshal svc.Spec error", err.Error())
+		return err
+	}
+	if cm.Data == nil {
+		cm.Data = make(map[string]string)
+	}
+	cm.Data[EdgeWizeServers] = string(data)
 	err = r.Update(ctx, cm)
 	if err != nil {
 		klog.Error("update edgewize-cloudcore-service configmap error ", err.Error())
@@ -846,9 +930,15 @@ func (r *Reconciler) InitCloudCoreCert(ctx context.Context, instance *infrav1alp
 		return err
 	}
 
-	if cloudhub, err := clientset.CoreV1().Secrets(namespace).Get(ctx, "cloudhub", metav1.GetOptions{}); client.IgnoreNotFound(err) != nil || cloudhub != nil {
-		klog.Error("get secret cloudhub error", err.Error())
-		return err
+	cloudhub, err := clientset.CoreV1().Secrets(namespace).Get(ctx, "cloudhub", metav1.GetOptions{})
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			klog.Error("get secret cloudhub error", err.Error())
+			return err
+		}
+	} else {
+		klog.Infof("secret cloudhub exists, skip. cloudhub: %v", cloudhub.String())
+		return nil
 	}
 
 	rootca := &corev1.Secret{}
@@ -857,8 +947,8 @@ func (r *Reconciler) InitCloudCoreCert(ctx context.Context, instance *infrav1alp
 		Namespace: CurrentNamespace,
 	}
 	err = r.Get(ctx, key, rootca)
-	if client.IgnoreNotFound(err) != nil {
-		klog.Warning("get secret edgewize-root-ca error", err.Error())
+	if err != nil {
+		klog.Errorf("get secret edgewize-root-ca error: %v", err)
 		return err
 	}
 	klog.V(3).Infof("rootca: %v", rootca)
@@ -869,89 +959,124 @@ func (r *Reconciler) InitCloudCoreCert(ctx context.Context, instance *infrav1alp
 	_, err = clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
 	if err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			klog.Error("create namespace %s error", namespace, err.Error())
+			klog.Errorf("create namespace %s error: %v", namespace, err)
 			return err
 		}
 	}
-	var genCA = false
-	var cacrt []byte
-	var cakey []byte
+	var caCrt []byte
+	var caKey []byte
 
+	if rootca.Data == nil {
+		klog.Errorf("secret rootca is invalided")
+		return fmt.Errorf("invalid rootca secret")
+	}
 	// name is empty means not found
-	if rootca.Name == "" || rootca.Data != nil {
-		var ok bool
-		cacrt, ok = rootca.Data["cacrt"]
-		if !ok {
-			klog.Warning("edgewize-root-ca cacrt is not exists, skip create certs.")
-			genCA = true
-		}
-		cakey, ok = rootca.Data["cakey"]
-		if !ok {
-			klog.Warning("edgewize-root-ca cakey is not exists, skip create certs.")
-			genCA = true
-		}
-
-		if !genCA || cacrt == nil || string(cacrt) == "" || cakey == nil || string(cakey) == "" {
-			genCA = true
-		}
+	var ok bool
+	caCrtPem, ok := rootca.Data["cacrt"]
+	if !ok {
+		klog.Errorf("secret root ca cert is invalided")
+		return fmt.Errorf("invalid rootca secret")
+	}
+	if caCrtBlock, _ := pem.Decode(caCrtPem); caCrtBlock == nil {
+		klog.Errorf("pem decode root ca cert error")
+		return fmt.Errorf("invalid rootca secret")
 	} else {
-		genCA = true
+		caCrt = caCrtBlock.Bytes
 	}
 
-	if genCA {
-		cacrt, cakey, err = CreateRooCA()
-		if err != nil {
-			klog.Errorf("create root ca error: %v.", err)
-			return err
-		}
-		if rootca.Name == "" {
-			rootca.Name = "edgewize-root-ca"
-			rootca.Namespace = CurrentNamespace
-			rootca.Data = map[string][]byte{
-				"cacrt": cacrt,
-				"cakey": cakey,
-			}
-			// 回写到 secret 中
-			err = r.Create(ctx, rootca)
-			if err != nil {
-				klog.Errorf("create secret %s error: %v", rootca.Name, err.Error())
-				return err
-			}
-		} else {
-			rootca.Data = map[string][]byte{
-				"cacrt": cacrt,
-				"cakey": cakey,
-			}
-			// 回写到 secret 中
-			err = r.Update(ctx, rootca)
-			if err != nil {
-				klog.Errorf("update secret %s error: %v", rootca.Name, err.Error())
-				return err
-			}
-		}
+	caKeyPem, ok := rootca.Data["cakey"]
+	if !ok {
+		klog.Errorf("secret root ca key is invalided")
+		return fmt.Errorf("invalid rootca secret")
 	}
-	klog.V(3).Infof("root CA content, crt: %s, key: %s", base64.StdEncoding.EncodeToString(cacrt), base64.StdEncoding.EncodeToString(cakey))
-	servercert, serverkey, err := SignCloudCoreCert(cacrt, cakey)
+	if caKeyBlock, _ := pem.Decode(caKeyPem); caKeyBlock == nil {
+		klog.Errorf("pem decode root ca key error")
+		return fmt.Errorf("invalid rootca secret")
+	} else {
+		caKey = caKeyBlock.Bytes
+	}
+
+	klog.V(5).Infof("root CA content, crt: %s, key: %s", base64.StdEncoding.EncodeToString(caCrt), base64.StdEncoding.EncodeToString(caKey))
+	serverCrt, serverKey, err := SignCloudCoreCert(caCrt, caKey)
 	if err != nil {
 		klog.Error("create cloudhub cert error", err)
 		return err
 	}
-	cloudhub := &corev1.Secret{
+	cloudhub = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "cloudhub",
 			Namespace: namespace,
 		},
 		Data: map[string][]byte{
-			"rootCA.crt": cacrt,
-			"rootCA.key": cakey,
-			"server.crt": servercert,
-			"server.key": serverkey,
+			"rootCA.crt": pem.EncodeToMemory(&pem.Block{Type: certutil.CertificateBlockType, Bytes: caCrt}),
+			"rootCA.key": pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: caKey}),
+			"server.crt": pem.EncodeToMemory(&pem.Block{Type: certutil.CertificateBlockType, Bytes: serverCrt}),
+			"server.key": pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: serverKey}),
 		},
 	}
 	klog.V(3).Infof("secret cloudhub content: %s", cloudhub.String())
 	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, cloudhub, metav1.CreateOptions{})
 	if err != nil {
 		klog.Error("create secret cloudhub error", err)
+		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1alpha1.EdgeCluster, kubeconfig string, namespace string) error {
+	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
+	config, err := clientcmd.BuildConfigFromFlags("", file)
+	if err != nil {
+		klog.Error("create rest config from kubeconfig string error", err.Error())
+		return err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		klog.Error("create clientset from config error", err.Error())
+		return err
+	}
+
+	imagePullSecret := &corev1.Secret{}
+	key := types.NamespacedName{
+		Namespace: CurrentNamespace,
+		Name:      EdgeDeploySecret,
+	}
+	err = r.Get(ctx, key, imagePullSecret)
+	if err != nil {
+		klog.Error("get image-pull-secret error", err.Error())
+		return client.IgnoreNotFound(err)
+	}
+
+	edgeDeploySecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, EdgeDeploySecret, metav1.GetOptions{})
+	if err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			klog.Error("get secret zpk-deploy-secret error", err.Error())
+			return err
+		}
+	} else {
+		klog.V(3).Infof("secret edge-deploy-secret exists, skip. edge-deploy-secret: %v", edgeDeploySecret.String())
+		return nil
+	}
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{Name: namespace},
+	}
+	// try to create namespace
+	_, err = clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
+	if err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			klog.Error("create namespace %s error", namespace, err.Error())
+			return err
+		}
+	}
+	imagePullSecret.ObjectMeta.Namespace = namespace
+	imagePullSecret.ObjectMeta.UID = ""
+	imagePullSecret.ObjectMeta.ResourceVersion = ""
+	imagePullSecret.ObjectMeta.CreationTimestamp = metav1.NewTime(time.Time{})
+	klog.V(3).Infof("secret edge-deploy-secret content: %s", imagePullSecret.String())
+	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, imagePullSecret, metav1.CreateOptions{})
+	if err != nil {
+		klog.Error("create secret edge-deploy-secret error", err)
 		return err
 	}
 	return nil

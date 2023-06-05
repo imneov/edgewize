@@ -23,9 +23,10 @@ data:
         - {{  .  }}
         {{- end}}
         nodeLimit: {{ .Values.cloudCore.modules.cloudHub.nodeLimit }}
-        tlsCAFile: /etc/kubeedge/ca/rootCA.crt
-        tlsCertFile: /etc/kubeedge/certs/edge.crt
-        tlsPrivateKeyFile: /etc/kubeedge/certs/edge.key
+        tlsCAFile: /etc/kubeedge/hub/rootCA.crt
+        tlsCAKeyFile: /etc/kubeedge/hub/rootCA.key
+        tlsCertFile: /etc/kubeedge/hub/server.crt
+        tlsPrivateKeyFile: /etc/kubeedge/hub/server.key
         unixsocket:
           address: unix:///var/lib/kubeedge/kubeedge.sock
           enable: true
@@ -46,6 +47,12 @@ data:
         enable: {{ .Values.cloudCore.modules.cloudStream.enable }}
         streamPort: 10003
         tunnelPort: 10004
+        tlsStreamCAFile: /etc/kubeedge/stream/streamCA.crt
+        tlsStreamCertFile: /etc/kubeedge/stream/stream.crt
+        tlsStreamPrivateKeyFile: /etc/kubeedge/stream/stream.key
+        tlsTunnelCAFile: /etc/kubeedge/hub/rootCA.crt
+        tlsTunnelCertFile: /etc/kubeedge/hub/server.crt
+        tlsTunnelPrivateKeyFile: /etc/kubeedge/hub/server.key
       dynamicController:
         enable: {{ .Values.cloudCore.modules.dynamicController.enable }}
       router:

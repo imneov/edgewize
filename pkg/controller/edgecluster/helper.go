@@ -164,35 +164,3 @@ func NewCertFromCa(cfg *certutil.Config, caCert *x509.Certificate, serverKey cry
 	}
 	return certDERBytes, nil
 }
-
-func CreateRooCA() ([]byte, []byte, error) {
-	// 对证书进行签名
-	caCrt := &x509.Certificate{
-		SerialNumber: big.NewInt(2019),
-		Subject: pkix.Name{
-			CommonName:   "EdgeWize",
-			Organization: []string{"KubeSphere"},
-			Country:      []string{"CN"},
-			Province:     []string{"Wuhan"},
-		},
-		NotBefore:             time.Now(),                    // 生效时间
-		NotAfter:              time.Now().AddDate(100, 0, 0), // 过期时间 年月日
-		IsCA:                  true,                          // 表示用于CA
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		BasicConstraintsValid: true,
-	}
-	caKey, err := rsa.GenerateKey(rand.Reader, 2048) // or 4096?
-	if err != nil {
-		klog.Errorf("generate rsa private key error: %v", err)
-		return nil, nil, err
-	}
-	caCrtBytes, err := x509.CreateCertificate(rand.Reader, caCrt, caCrt, &caKey.PublicKey, caKey)
-	if err != nil {
-		klog.Errorf("create certificate error: %v", err)
-		return nil, nil, err
-	}
-	caKeyBytes := x509.MarshalPKCS1PrivateKey(caKey)
-
-	return caCrtBytes, caKeyBytes, nil
-}

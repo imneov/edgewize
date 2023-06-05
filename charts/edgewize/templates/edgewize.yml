@@ -78,8 +78,10 @@ spec:
           env:
             - name: "ROLE"
               value: {{ .Values.role }}
+            {{- if .Values.global.imageRegistry }}
             - name: "IMAGE_REGISTRY"
               value: {{ .Values.global.imageRegistry }}
+            {{- end }}
             {{- if .Values.controller.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}

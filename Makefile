@@ -59,7 +59,7 @@ edgewize-apiserver: ; $(info $(M)...Begin to build edgewize-apiserver binary.)  
 	hack/gobuild.sh cmd/edgewize-apiserver;
 
 # Build edgewize-gateway binary
-edgewize-gateway: ; $(info $(M)...Begin to build edgewize-gateway binary.)  @ ## Build edgewize-apiserver.
+edgewize-gateway: ; $(info $(M)...Begin to build edgewize-gateway binary.)  @ ## Build edgewize-gateway.
 	hack/gobuild.sh cmd/edgewize-gateway;
 
 # Build edgewize-controller-manager binary

@@ -47,3 +47,47 @@ spec:
     # version: {{ .Chart.AppVersion }}
   sessionAffinity: None
   type: ClusterIP
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: edgewize-gateway
+    tier: backend
+    version: {{ .Chart.AppVersion }}
+  name: edgewize-gateway
+spec:
+  ports:
+    - port: 30000
+      protocol: TCP
+      targetPort: 30000
+      {{- if .Values.gateway.nodePort.cloudhub }}
+      nodePort: {{ .Values.gateway.nodePort.cloudhub}}
+      {{ end }}
+      name: cloudhub
+    - port: 30002
+      protocol: TCP
+      targetPort: 30002
+      {{- if .Values.gateway.nodePort.cloudhubHttps }}
+      nodePort: {{ .Values.gateway.nodePort.cloudhubHttps }}
+      {{ end }}
+      name: cloudhub-https
+    - port: 30004
+      protocol: TCP
+      targetPort: 30004
+      {{- if .Values.gateway.nodePort.tunnelport }}
+      nodePort: {{ .Values.gateway.nodePort.tunnelport }}
+      {{ end }}
+      name: tunnelport
+  selector:
+    app: edgewize-gateway
+    tier: backend
+    # version: {{ .Chart.AppVersion }}
+  sessionAffinity: None
+  {{- if or .Values.gateway.nodePort.cloudhub .Values.gateway.nodePort.cloudhubHttps .Values.gateway.nodePort.tunnelport }}
+  type: NodePort
+  {{- else }}
+  type: ClusterIP
+  {{- end }}

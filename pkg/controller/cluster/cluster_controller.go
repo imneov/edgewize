@@ -365,7 +365,17 @@ func (c *ClusterController) syncCluster(key string) error {
 	}
 	cluster.Status.KubernetesVersion = serverVersion.GitVersion
 
-	nodes, err := clusterClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	labelSelector := metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      "vcluster.loft.sh/fake-node",
+				Operator: "DoesNotExist",
+			},
+		},
+	}
+	nodes, err := clusterClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{
+		LabelSelector: metav1.FormatLabelSelector(&labelSelector),
+	})
 	if err != nil {
 		klog.Errorf("Failed to get cluster nodes, %#v", err)
 		return err

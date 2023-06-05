@@ -5,9 +5,12 @@ Return the proper image name
 {{ include "common.images.image" (dict "imageRoot" .Values.apiserver.image "global" .Values.global) }}
 {{- end -}}
 
-
 {{- define "edgewize-controller-manager.image" -}}
 {{ include "common.images.image" (dict "imageRoot" .Values.controller.image "global" .Values.global) }}
+{{- end -}}
+
+{{- define "edgewize-gateway.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.gateway.image "global" .Values.global) }}
 {{- end -}}
 
 {{- define "common.images.image" -}}
