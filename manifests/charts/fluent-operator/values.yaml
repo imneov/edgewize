@@ -6,7 +6,7 @@
 containerRuntime: docker
 #  If you want to deploy a default Fluent Bit pipeline (including Fluent Bit Input, Filter, and output) to collect Kubernetes logs, you'll need to set the Kubernetes parameter to true
 # see https://github.com/fluent/fluent-operator/tree/master/manifests/logging-stack
-Kubernetes: true
+Kubernetes: false
 
 operator:
   # The init container is to get the actual storage path of the docker log files so that it can be mounted to collect the logs.
@@ -183,10 +183,12 @@ fluentbit:
   kubeedge:
     enable: true
     prometheusRemoteWrite:
-    # Change the host to the address of a cloud-side Prometheus-compatible server that can receive Prometheus remote write data
+      # whizard edge gateway IP
       host: ""
-    # Change the port to the port of a cloud-side Prometheus-compatible server that can receive Prometheus remote write data
+      # whizard edge gateway Port
       port: ""
+      # Use the routeKey to find PrometheusAgent service address in WhizardEdgeGateway configuration
+      routerKey: ""
 
 fluentd:
   # Installs a sub chart carrying the CRDs for the fluentd controller. The sub chart is enabled by default.

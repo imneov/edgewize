@@ -34,8 +34,6 @@ values:
         storageClass: "nfs"
 
   whizardEdgeAgent:
-    edge_agent:
-      nodePort: # 30991 # empty will use ClusterIP
     prometheus:
       storage:
         className: "nfs"
@@ -54,7 +52,7 @@ values:
       kubeedge:
         enable: true
         prometheusRemoteWrite:
-          # Change the port to the port of a cloud-side Prometheus-compatible server that can receive Prometheus remote write data
+          host: ""
           port: 30991
     fluentd:
       imagePullSecrets:

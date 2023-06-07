@@ -55,17 +55,19 @@ import (
 )
 
 const (
-	CurrentNamespace            = "edgewize-system"
-	controllerName              = "edgecluster-controller"
-	DefaultDistro               = "k3s"
-	ComponentEdgeWize           = "edgewize"
-	ComponentCloudCore          = "cloudcore"
-	EdgeWizeNameSpaceConfigName = "edgewize-namespaces-config"
-	EdgeWizeValuesConfigName    = "edgewize-values-config"
-	WhizardGatewayServiceName   = "gateway-whizard-operated"
-	MonitorNamespace            = "kubesphere-monitoring-system"
-	EdgeWizeServers             = "edgewize-servers.yaml"
-	EdgeDeploySecret            = "edge-deploy-secret"
+	CurrentNamespace             = "edgewize-system"
+	controllerName               = "edgecluster-controller"
+	DefaultDistro                = "k3s"
+	ComponentEdgeWize            = "edgewize"
+	ComponentCloudCore           = "cloudcore"
+	EdgeWizeNameSpaceConfigName  = "edgewize-namespaces-config"
+	EdgeWizeValuesConfigName     = "edgewize-values-config"
+	WhizardGatewayServiceName    = "gateway-whizard-operated"
+	MonitorNamespace             = "kubesphere-monitoring-system"
+	EdgeWizeServers              = "edgewize-servers.yaml"
+	EdgeDeploySecret             = "edge-deploy-secret"
+	MonitorPromServiceName       = "prometheus-k8s"
+	WhizardEdgeGatewayConfigName = "whizard-edge-gateway-configmap"
 )
 
 var DefaultComponents = "edgewize,whizard-edge-agent,cloudcore,fluent-operator"
@@ -216,6 +218,11 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 
 	if err := r.Status().Update(ctx, instance); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	err = r.UnregisterWhizardEdgeGatewayRouters(ctx, instance)
+	if err != nil {
+		logger.Error(err, "remove edge cluster edge gateway route cfg failed", "name", instance.Name)
 	}
 	return ctrl.Result{}, nil
 }
@@ -466,8 +473,7 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 
 	switch instance.Status.EdgeWize {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
-		namespace := "kubesphere-monitoring-system"
-		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+		err := r.InitImagePullSecret(ctx, instance, instance.Name, MonitorNamespace)
 		if err != nil {
 			return err
 		}
@@ -476,18 +482,24 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 			logger.Error(err, "get vcluster values error, use default")
 			values = map[string]interface{}{}
 		}
-		err = SetMonitorComponent(r, values, instance)
+		err = r.SetMonitorComponent(ctx, values, instance)
 		if err != nil {
 			logger.Error(err, "get gateway svc ip error, need to configure manually")
 		}
 		klog.V(3).Infof("ReconcileWhizardEdgeAgent: %v", values)
-		status, err := InstallChart("whizard-edge-agent", "whizard-edge-agent", namespace, instance.Name, true, values)
+		status, err := InstallChart("whizard-edge-agent", "whizard-edge-agent", MonitorNamespace, instance.Name, true, values)
 		if err != nil {
 			logger.Error(err, "install whizard-edge-agent error")
 			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
 			return err
 		}
-		instance.Status.EdgewizeMonitor = status
+		err = r.RegisterWhizardEdgeGatewayRouters(ctx, instance.Name, instance)
+		if err != nil {
+			logger.Error(err, "update whizard edge gateway config failed")
+			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
+		} else {
+			instance.Status.EdgewizeMonitor = status
+		}
 		return nil
 	}
 	return nil
@@ -596,9 +608,10 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 			values = map[string]interface{}{}
 		}
 		klog.V(3).Infof("ReconcileFluentOperator: %v", values)
-		err = SetClusterOutput(values, instance)
+		err = r.SetClusterOutput(values, instance)
 		if err != nil {
-			logger.Error(err, "configure ClusterOutput failed")
+			logger.Error(err, "configure ClusterOutput failed, skip install fluent-operator")
+			return nil
 		}
 		status, err := InstallChart("fluent-operator", "fluent-operator", namespace, instance.Name, true, values)
 		if err != nil {
@@ -623,42 +636,47 @@ func SetCloudCoreValues(values chartutil.Values, instance *infrav1alpha1.EdgeClu
 	return nil
 }
 
-func SetClusterOutput(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) error {
-	if len(instance.Spec.AdvertiseAddress) > 0 {
-		port, err := values.PathValue("fluentbit.kubeedge.prometheusRemoteWrite.port")
-		if err != nil {
-			return err
-		}
+// edge node send data to whizard edge gateway
+func (r *Reconciler) SetClusterOutput(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
+	port, err := values.PathValue("fluentbit.kubeedge.prometheusRemoteWrite.port")
+	if err != nil {
+		return err
+	}
 
-		enabled, err := values.PathValue("fluentbit.kubeedge.enable")
-		if err != nil {
-			return err
-		}
+	host, err := values.PathValue("fluentbit.kubeedge.prometheusRemoteWrite.host")
+	if err != nil {
+		return err
+	}
 
-		fluentbitConf, err := values.Table("fluentbit")
-		if err != nil {
-			return err
-		}
+	enabled, err := values.PathValue("fluentbit.kubeedge.enable")
+	if err != nil {
+		return err
+	}
 
-		fluentbitConfMap := fluentbitConf.AsMap()
-		fluentbitConfMap["kubeedge"] = map[string]interface{}{
-			"enable": enabled,
-			"prometheusRemoteWrite": map[string]interface{}{
-				"host": instance.Spec.AdvertiseAddress[0],
-				"port": port,
-			},
-		}
+	fluentbitConf, err := values.Table("fluentbit")
+	if err != nil {
+		return err
+	}
+
+	fluentbitConfMap := fluentbitConf.AsMap()
+	fluentbitConfMap["kubeedge"] = map[string]interface{}{
+		"enable": enabled,
+		"prometheusRemoteWrite": map[string]interface{}{
+			"host":      host,
+			"port":      port,
+			"routerKey": instance.Name,
+		},
 	}
 	return nil
 }
 
-func SetMonitorComponent(r *Reconciler, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
+func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
 	gatewayService := &corev1.Service{}
 	key := types.NamespacedName{
 		Namespace: MonitorNamespace,
 		Name:      WhizardGatewayServiceName,
 	}
-	err = r.Get(context.Background(), key, gatewayService)
+	err = r.Get(ctx, key, gatewayService)
 	if err != nil {
 		return
 	}
@@ -670,6 +688,132 @@ func SetMonitorComponent(r *Reconciler, values chartutil.Values, instance *infra
 		whizardAgentConf["gateway_address"] = fmt.Sprintf("http://%s:%d", gatewayIP, gatewayPort)
 	}
 	values["whizard_agent_proxy"] = whizardAgentConf
+	return
+}
+
+func (r *Reconciler) RegisterWhizardEdgeGatewayRouters(ctx context.Context, kubeconfig string, instance *infrav1alpha1.EdgeCluster) (err error) {
+	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
+	config, err := clientcmd.BuildConfigFromFlags("", file)
+	if err != nil {
+		klog.Error("create rest config from kubeconfig string error", err.Error())
+		return
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		klog.Error("create k8s client from restconfig error", err.Error())
+		return
+	}
+
+	promService, err := clientset.CoreV1().
+		Services(MonitorNamespace).
+		Get(ctx, MonitorPromServiceName, metav1.GetOptions{})
+	if err != nil {
+		return
+	}
+
+	var routePath string
+	if promService.Spec.ClusterIP != "" {
+		for _, item := range promService.Spec.Ports {
+			if item.Name == "web" {
+				routePath = fmt.Sprintf("http://%s:%d/api/v1/write", promService.Spec.ClusterIP, item.Port)
+				break
+			}
+		}
+	}
+
+	if routePath == "" {
+		err = errors.New("create routePath for whizard edge gateway failed")
+		return
+	}
+
+	err = retry.RetryOnConflict(retry.DefaultBackoff, func() (err error) {
+		edgeGatewayConfigMap := &corev1.ConfigMap{}
+		key := types.NamespacedName{
+			Namespace: MonitorNamespace,
+			Name:      WhizardEdgeGatewayConfigName,
+		}
+		err = r.Get(ctx, key, edgeGatewayConfigMap)
+		if err != nil {
+			return
+		}
+
+		cmFile, ok := edgeGatewayConfigMap.Data["config.yaml"]
+		if !ok {
+			err = errors.New("whizard edge configmap is empty")
+			return
+		}
+
+		cmData := make(map[string]interface{})
+		err = yaml.Unmarshal([]byte(cmFile), cmData)
+		if err != nil {
+			return err
+		}
+
+		routersMap := make(map[string]interface{})
+		value, ok := cmData["routers"]
+		if ok {
+			routersMap = value.(map[string]interface{})
+		}
+
+		routersMap[instance.Name] = routePath
+		cmData["routers"] = routersMap
+
+		newCfgFile, err := yaml.Marshal(cmData)
+		if err != nil {
+			return
+		}
+
+		edgeGatewayConfigMap.Data["config.yaml"] = string(newCfgFile)
+		err = r.Update(ctx, edgeGatewayConfigMap)
+		return
+	})
+	return
+}
+
+func (r *Reconciler) UnregisterWhizardEdgeGatewayRouters(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (err error) {
+	err = retry.RetryOnConflict(retry.DefaultBackoff, func() (err error) {
+		edgeGatewayConfigMap := &corev1.ConfigMap{}
+		key := types.NamespacedName{
+			Namespace: MonitorNamespace,
+			Name:      WhizardEdgeGatewayConfigName,
+		}
+		err = r.Get(ctx, key, edgeGatewayConfigMap)
+		if err != nil {
+			return
+		}
+
+		EdgeGatewayCM := "config.yaml"
+		cmFile, ok := edgeGatewayConfigMap.Data[EdgeGatewayCM]
+		if !ok {
+			err = errors.New("whizard edge configmap is empty")
+			return
+		}
+
+		cmData := make(map[string]interface{})
+		err = yaml.Unmarshal([]byte(cmFile), cmData)
+		if err != nil {
+			return err
+		}
+
+		routersMap := make(map[string]interface{})
+		value, ok := cmData["routers"]
+		if ok {
+			routersMap = value.(map[string]interface{})
+		}
+
+		delete(routersMap, instance.Name)
+		cmData["routers"] = routersMap
+
+		newCfgFile, err := yaml.Marshal(cmData)
+		if err != nil {
+			return
+		}
+
+		edgeGatewayConfigMap.Data[EdgeGatewayCM] = string(newCfgFile)
+		err = r.Update(ctx, edgeGatewayConfigMap)
+		return
+	})
 	return
 }
 
