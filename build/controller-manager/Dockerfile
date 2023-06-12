@@ -50,7 +50,7 @@ FROM alpine:3.16.2
 
 COPY --from=base_os_context /out/ /
 COPY --from=build_context /out/ /
-COPY ./manifests/charts /charts
+COPY ./charts/edge /charts
 
 WORKDIR /
 

@@ -1,0 +1,6 @@
+apiVersion: v2
+appVersion: v3.1.0
+description: A Helm chart for KubeSphere Core components
+name: ks-core
+type: application
+version: 0.1.0

@@ -75,6 +75,8 @@ type EdgeClusterStatus struct {
 
 	EdgeWize Status `json:"edgewize,omitempty"`
 
+	KSCore Status `json:"ksCore,omitempty"`
+
 	CloudCore Status `json:"cloudcore,omitempty"`
 
 	FluentOperator Status `json:"fluentOperator,omitempty"`

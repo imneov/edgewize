@@ -40,7 +40,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/record"
@@ -70,7 +69,7 @@ const (
 	WhizardEdgeGatewayConfigName = "whizard-edge-gateway-configmap"
 )
 
-var DefaultComponents = "edgewize,whizard-edge-agent,cloudcore,fluent-operator"
+var DefaultComponents = "edgewize,whizard-edge-agent,cloudcore,fluent-operator,ks-core"
 
 func init() {
 	if dc := os.Getenv("DEFAULT_COMPONENTS"); dc != "" {
@@ -99,18 +98,18 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.MaxConcurrentReconciles <= 0 {
 		r.MaxConcurrentReconciles = 1
 	}
-	err := os.MkdirAll(filepath.Join(homedir.HomeDir(), ".kube", "external"), 0644)
+	//err := os.MkdirAll(filepath.Join(homedir.HomeDir(), ".kube", "external"), 0644)
+	//if err != nil {
+	//	klog.Error("create .kube directory error", err)
+	//}
+	err := os.MkdirAll(filepath.Join(homedir.HomeDir(), ".kube", "member"), 0644)
 	if err != nil {
 		klog.Error("create .kube directory error", err)
 	}
-	err = os.MkdirAll(filepath.Join(homedir.HomeDir(), ".kube", "member"), 0644)
-	if err != nil {
-		klog.Error("create .kube directory error", err)
-	}
-	err = r.SaveExternalKubeConfig()
-	if err != nil {
-		klog.Error("load external kubeconfig error", err)
-	}
+	//err = r.SaveExternalKubeConfig()
+	//if err != nil {
+	//	klog.Error("load external kubeconfig error", err)
+	//}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(controllerName).
 		WithOptions(controller.Options{
@@ -200,7 +199,15 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 		},
 	}
 	if err := r.Delete(ctx, member); err != nil && !apierrors.IsNotFound(err) {
-		return ctrl.Result{}, err
+		logger.Error(err, "delete edge cluster error")
+	}
+	ksMember := &ksclusterv1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: instance.Name,
+		},
+	}
+	if err := r.Delete(ctx, ksMember); err != nil && !apierrors.IsNotFound(err) {
+		logger.Error(err, "delete kubesphere member cluster error")
 	}
 
 	err := r.CleanEdgeClusterResources(instance.Name, instance.Spec.Namespace, kubeconfig)
@@ -361,8 +368,14 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 		for _, component := range components {
 			if len(component) > 0 && component[0] != '-' {
 				switch component {
+				case "ks-core":
+					err = r.ReconcileKSCore(ctx, instance)
+					if err != nil {
+						logger.Error(err, "install ks-core error")
+						return ctrl.Result{}, err
+					}
 				case "edgewize":
-					err = r.ReconcileEdgeWize(ctx, instance, member)
+					err = r.ReconcileEdgeWize(ctx, instance)
 					if err != nil {
 						logger.Error(err, "install edgewize agent error")
 						return ctrl.Result{}, err
@@ -413,6 +426,7 @@ func (r *Reconciler) GetKubeConfig(instance *infrav1alpha1.EdgeCluster) (*client
 	file := filepath.Join(homedir.HomeDir(), ".kube", "external", instance.Spec.Namespace)
 	secret := &corev1.Secret{}
 	service := &corev1.Service{}
+	// 如果配置了外部 kubeconfig 则使用外部 kubeconfig，否则使用当前集群 kubeconfig
 	if _, err := os.Stat(file); err == nil {
 		config, err := clientcmd.BuildConfigFromFlags("", file)
 		if err != nil {
@@ -505,7 +519,78 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 	return nil
 }
 
-func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alpha1.EdgeCluster, member *infrav1alpha1.Cluster) error {
+func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	logger := log.FromContext(ctx, "ReconcileKSCore", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.V(4).Info("kubeconfig is null, skip install ks-core")
+		return nil
+	}
+	switch instance.Status.KSCore {
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
+		namespace := "kubesphere-system"
+		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+		if err != nil {
+			logger.Error(err, "init image pull secret error, use default")
+			return err
+		}
+		values, err := r.GetValuesFromConfigMap(ctx, "ks-core")
+		if err != nil {
+			logger.Error(err, "get ks-core values error, use default")
+			values = map[string]interface{}{}
+		}
+		err = r.SetKSCoreValues(ctx, values)
+		if err != nil {
+			logger.Error(err, "set ks-core values error, skip")
+		}
+		klog.V(3).Infof("ReconcileKSCore: %v", values)
+		status, err := InstallChart("ks-core", "ks-core", namespace, instance.Name, true, values)
+		if err != nil {
+			logger.Error(err, "install ks-core error")
+			instance.Status.KSCore = infrav1alpha1.ErrorStatus
+			return err
+		}
+		instance.Status.KSCore = status
+		if instance.Status.KSCore == infrav1alpha1.RunningStatus {
+			member := &ksclusterv1alpha1.Cluster{}
+			err = r.Get(ctx, types.NamespacedName{Name: instance.Name}, member)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					member = &ksclusterv1alpha1.Cluster{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: instance.Name,
+							Annotations: map[string]string{
+								"kubesphere.io/creator": "admin",
+							},
+							Labels: map[string]string{
+								"cluster-role.kubesphere.io/edge": "",
+							},
+						},
+						Spec: ksclusterv1alpha1.ClusterSpec{
+							JoinFederation: true,
+							Connection: ksclusterv1alpha1.Connection{
+								Type:       ksclusterv1alpha1.ConnectionTypeDirect,
+								KubeConfig: []byte(instance.Status.KubeConfig),
+							},
+						},
+					}
+					err := r.Create(ctx, member)
+					if err != nil {
+						logger.Error(err, "create kubesphere member cluster error")
+						return err
+					}
+					klog.V(4).Infof("crete kubesphere member cluster success, name: %s", instance.Name)
+				} else {
+					logger.Error(err, "get kubesphere member cluster error")
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	return nil
+}
+
+func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
 	logger := log.FromContext(ctx, "ReconcileEdgeWize", instance.Name)
 	if instance.Status.KubeConfig == "" {
 		logger.V(4).Info("kubeconfig is null, skip install edgewize agent")
@@ -533,8 +618,23 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 		}
 		instance.Status.EdgeWize = status
 		if instance.Status.EdgeWize == infrav1alpha1.RunningStatus {
-			member.Spec.Connection.KubeConfig = []byte(instance.Status.KubeConfig)
-			err = r.Update(ctx, member)
+			// 等待 edgewize running 后再更新 kubeconfig，否则前端边缘集群显示 running，进入集群页面会报错
+			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+				edge := &infrav1alpha1.Cluster{}
+				key := types.NamespacedName{Name: instance.Name}
+				err := r.Get(ctx, key, edge)
+				if err != nil {
+					logger.Error(err, "get edge cluster error")
+					return err
+				}
+				edge.Spec.Connection.KubeConfig = []byte(instance.Status.KubeConfig)
+				err = r.Update(ctx, edge)
+				if err != nil {
+					logger.Error(err, "update edge cluster error")
+					return err
+				}
+				return nil
+			})
 			if err != nil {
 				return err
 			}
@@ -568,7 +668,7 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 		}
 		err = SetCloudCoreValues(values, instance)
 		if err != nil {
-			klog.Errorf("set cloudcore values error, err: %v", err)
+			klog.Warningf("set cloudcore values error, err: %v", err)
 		}
 		klog.V(3).Infof("ReconcileCloudCore: %v", values)
 		status, err := InstallChart("cloudcore", "cloudcore", namespace, instance.Name, true, values)
@@ -621,6 +721,37 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 		}
 		instance.Status.FluentOperator = status
 		return nil
+	}
+	return nil
+}
+
+func (r *Reconciler) SetKSCoreValues(ctx context.Context, values chartutil.Values) error {
+	ksConfig := &corev1.ConfigMap{}
+	key := types.NamespacedName{
+		Name:      "kubesphere-config",
+		Namespace: "kubesphere-system",
+	}
+	err := r.Get(ctx, key, ksConfig)
+	if err != nil {
+		return err
+	}
+	if data, ok := ksConfig.Data["kubesphere.yaml"]; ok {
+		value, err := chartutil.ReadValues([]byte(data))
+		if err != nil {
+			klog.Errorf("parse kubesphere.yaml error, err: %v", err)
+			return err
+		}
+		jwt, err := value.PathValue("authentication.jwtSecret")
+		if err != nil {
+			klog.Errorf("get jwtSecret error, err: %v", err)
+			return err
+		}
+		configInterface := values["config"]
+		config := make(map[string]interface{})
+		if configInterface != nil {
+			config = configInterface.(map[string]interface{})
+		}
+		config["jwtSecret"] = jwt
 	}
 	return nil
 }
@@ -822,29 +953,29 @@ func (r *Reconciler) LoadExternalKubeConfig(ctx context.Context, name string) (s
 	path := filepath.Join("external", name)
 	file := filepath.Join(homedir.HomeDir(), ".kube", path)
 	if _, err := os.Stat(file); err == nil {
-		return path, err
+		return path, nil
 	}
-	cm := &corev1.ConfigMap{}
-	key := types.NamespacedName{
-		Namespace: CurrentNamespace,
-		Name:      EdgeWizeNameSpaceConfigName,
-	}
-	err := r.Get(ctx, key, cm)
-	if err != nil {
-		klog.Error("get edgewize-namespaces-config configmap error", err)
-		return "", client.IgnoreNotFound(err)
-	}
-	klog.V(3).Info("edgewize-namespaces-config content", cm.Data)
-	config, ok := cm.Data[name]
-	if !ok {
-		klog.Errorf("%s  not found in edgewize-namespaces-config", name)
-		return "", nil
-	}
-	err = SaveToLocal(path, []byte(config))
-	if err != nil {
-		return "", err
-	}
-	return path, nil
+	//cm := &corev1.ConfigMap{}
+	//key := types.NamespacedName{
+	//	Namespace: CurrentNamespace,
+	//	Name:      EdgeWizeNameSpaceConfigName,
+	//}
+	//err := r.Get(ctx, key, cm)
+	//if err != nil {
+	//	klog.Error("get edgewize-namespaces-config configmap error", err)
+	//	return "", client.IgnoreNotFound(err)
+	//}
+	//klog.V(3).Info("edgewize-namespaces-config content", cm.Data)
+	//config, ok := cm.Data[name]
+	//if !ok {
+	//	klog.Errorf("%s  not found in edgewize-namespaces-config", name)
+	//	return "", nil
+	//}
+	//err = SaveToLocal(path, []byte(config))
+	//if err != nil {
+	//	return "", err
+	//}
+	return "", nil
 }
 
 // LoadMemberKubeConfig 获取 member 集群的 kubeconfig 并保存到本地目录
@@ -896,29 +1027,29 @@ func (r *Reconciler) CleanEdgeClusterResources(name, namespace, kubeconfig strin
 }
 
 // SaveExternalKubeConfig 保存外部的 kubeconfig 到本地目录
-func (r *Reconciler) SaveExternalKubeConfig() error {
-	// 创建一个 kubernetes clientset
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return err
-	}
-
-	cm, err := clientset.CoreV1().ConfigMaps(CurrentNamespace).Get(context.Background(), EdgeWizeNameSpaceConfigName, metav1.GetOptions{})
-	if err != nil {
-		return client.IgnoreNotFound(err)
-	}
-	for namespace, kubeconfig := range cm.Data {
-		err = SaveToLocal(filepath.Join("external", namespace), []byte(kubeconfig))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
+//func (r *Reconciler) SaveExternalKubeConfig() error {
+//	// 创建一个 kubernetes clientset
+//	config, err := rest.InClusterConfig()
+//	if err != nil {
+//		return err
+//	}
+//	clientset, err := kubernetes.NewForConfig(config)
+//	if err != nil {
+//		return err
+//	}
+//
+//	cm, err := clientset.CoreV1().ConfigMaps(CurrentNamespace).Get(context.Background(), EdgeWizeNameSpaceConfigName, metav1.GetOptions{})
+//	if err != nil {
+//		return client.IgnoreNotFound(err)
+//	}
+//	for namespace, kubeconfig := range cm.Data {
+//		err = SaveToLocal(filepath.Join("external", namespace), []byte(kubeconfig))
+//		if err != nil {
+//			return err
+//		}
+//	}
+//	return nil
+//}
 
 func (r *Reconciler) GetValuesFromConfigMap(ctx context.Context, component string) (chartutil.Values, error) {
 	configmap := &corev1.ConfigMap{}
@@ -1092,7 +1223,7 @@ func (r *Reconciler) InitCloudCoreCert(ctx context.Context, instance *infrav1alp
 	}
 	err = r.Get(ctx, key, rootca)
 	if err != nil {
-		klog.Errorf("get secret edgewize-root-ca error: %v", err)
+		klog.Warningf("get secret edgewize-root-ca error: %v", err)
 		return err
 	}
 	klog.V(3).Infof("rootca: %v", rootca)

@@ -37,7 +37,7 @@ ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
 ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
   --build-arg "TARGETARCH=${TARGETARCH}" \
   --build-arg "TARGETOS=${TARGETOS}" \
-  -f build/gateway/Dockerfile \
+  -f build/edgewize-gateway/Dockerfile \
   -t "${REPO}"/edgewize-gateway:"${TAG}" .
 
 if [[ -z "${DRY_RUN:-}" ]]; then
