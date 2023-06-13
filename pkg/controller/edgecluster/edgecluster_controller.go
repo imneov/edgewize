@@ -59,7 +59,6 @@ const (
 	DefaultDistro                = "k3s"
 	ComponentEdgeWize            = "edgewize"
 	ComponentCloudCore           = "cloudcore"
-	EdgeWizeNameSpaceConfigName  = "edgewize-namespaces-config"
 	EdgeWizeValuesConfigName     = "edgewize-values-config"
 	WhizardGatewayServiceName    = "gateway-whizard-operated"
 	MonitorNamespace             = "kubesphere-monitoring-system"
@@ -98,18 +97,10 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.MaxConcurrentReconciles <= 0 {
 		r.MaxConcurrentReconciles = 1
 	}
-	//err := os.MkdirAll(filepath.Join(homedir.HomeDir(), ".kube", "external"), 0644)
-	//if err != nil {
-	//	klog.Error("create .kube directory error", err)
-	//}
 	err := os.MkdirAll(filepath.Join(homedir.HomeDir(), ".kube", "member"), 0644)
 	if err != nil {
 		klog.Error("create .kube directory error", err)
 	}
-	//err = r.SaveExternalKubeConfig()
-	//if err != nil {
-	//	klog.Error("load external kubeconfig error", err)
-	//}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(controllerName).
 		WithOptions(controller.Options{
@@ -214,14 +205,6 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	//ns := &corev1.Namespace{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name: instance.Spec.Namespace,
-	//	},Namespace
-	//}
-	//if err := r.Delete(ctx, ns); err != nil && !apierrors.IsNotFound(err) {
-	//	return ctrl.Result{}, err
-	//}
 
 	if err := r.Status().Update(ctx, instance); err != nil {
 		return ctrl.Result{}, err
@@ -955,26 +938,6 @@ func (r *Reconciler) LoadExternalKubeConfig(ctx context.Context, name string) (s
 	if _, err := os.Stat(file); err == nil {
 		return path, nil
 	}
-	//cm := &corev1.ConfigMap{}
-	//key := types.NamespacedName{
-	//	Namespace: CurrentNamespace,
-	//	Name:      EdgeWizeNameSpaceConfigName,
-	//}
-	//err := r.Get(ctx, key, cm)
-	//if err != nil {
-	//	klog.Error("get edgewize-namespaces-config configmap error", err)
-	//	return "", client.IgnoreNotFound(err)
-	//}
-	//klog.V(3).Info("edgewize-namespaces-config content", cm.Data)
-	//config, ok := cm.Data[name]
-	//if !ok {
-	//	klog.Errorf("%s  not found in edgewize-namespaces-config", name)
-	//	return "", nil
-	//}
-	//err = SaveToLocal(path, []byte(config))
-	//if err != nil {
-	//	return "", err
-	//}
 	return "", nil
 }
 
@@ -1025,31 +988,6 @@ func (r *Reconciler) CleanEdgeClusterResources(name, namespace, kubeconfig strin
 	}
 	return nil
 }
-
-// SaveExternalKubeConfig 保存外部的 kubeconfig 到本地目录
-//func (r *Reconciler) SaveExternalKubeConfig() error {
-//	// 创建一个 kubernetes clientset
-//	config, err := rest.InClusterConfig()
-//	if err != nil {
-//		return err
-//	}
-//	clientset, err := kubernetes.NewForConfig(config)
-//	if err != nil {
-//		return err
-//	}
-//
-//	cm, err := clientset.CoreV1().ConfigMaps(CurrentNamespace).Get(context.Background(), EdgeWizeNameSpaceConfigName, metav1.GetOptions{})
-//	if err != nil {
-//		return client.IgnoreNotFound(err)
-//	}
-//	for namespace, kubeconfig := range cm.Data {
-//		err = SaveToLocal(filepath.Join("external", namespace), []byte(kubeconfig))
-//		if err != nil {
-//			return err
-//		}
-//	}
-//	return nil
-//}
 
 func (r *Reconciler) GetValuesFromConfigMap(ctx context.Context, component string) (chartutil.Values, error) {
 	configmap := &corev1.ConfigMap{}
@@ -1340,7 +1278,7 @@ func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1a
 	_, err = clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
 	if err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			klog.Error("create namespace %s error", namespace, err.Error())
+			klog.Errorf("create namespace %s error: %s", namespace, err.Error())
 			return err
 		}
 	}

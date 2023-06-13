@@ -19,12 +19,13 @@ package app
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/google/gops/agent"
 	"github.com/spf13/cobra"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog"
-	"net/http"
 
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
@@ -93,8 +94,6 @@ func NewGatewayServerCommand() *cobra.Command {
 }
 
 func Run(s *options.ServerRunOptions, configCh <-chan options.ServerEndpoints, ctx context.Context) error {
-	ictx, cancelFunc := context.WithCancel(context.TODO())
-
 	serverEndpoints, err := options.TryLoadFromDisk()
 	if err != nil {
 		return err
@@ -102,6 +101,7 @@ func Run(s *options.ServerRunOptions, configCh <-chan options.ServerEndpoints, c
 	backendServers := proxy.NewServers()
 	backendServers.LoadConfig(*serverEndpoints)
 
+	ictx, cancelFunc := context.WithCancel(context.TODO())
 	errCh := make(chan error)
 	defer close(errCh)
 	go func() {
