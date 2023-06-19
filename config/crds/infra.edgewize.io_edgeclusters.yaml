@@ -27,15 +27,19 @@ spec:
       type: string
     - jsonPath: .status.edgewize
       name: EdgeWize
+      priority: 1
       type: string
     - jsonPath: .status.cloudcore
       name: CloudCore
+      priority: 1
       type: string
     - jsonPath: .status.fluentOperator
       name: FluentOperator
+      priority: 1
       type: string
     - jsonPath: .status.edgewizeMonitor
       name: EdgewizeMonitor
+      priority: 1
       type: string
     name: v1alpha1
     schema:
@@ -65,7 +69,7 @@ spec:
                 type: string
               components:
                 description: Components will install in the edgecluster ,default is
-                  "edgewize,-whizard-edge-agent,cloudcore,fluent-operator" -xxx means
+                  "edgewize,whizard-edge-agent,cloudcore,fluent-operator" -xxx means
                   does not install xxx edgewize will always install
                 type: string
               description:
@@ -79,12 +83,20 @@ spec:
                   will be created and hosted (default to "host") it depends on the
                   multi-cluster component.
                 type: string
+              kubeConfig:
+                description: KubeConfig is the edge cluster kubeconfig, encode by
+                  base64
+                format: byte
+                type: string
               location:
                 description: Location is the location of the current cluster. TODO
                 type: string
               namespace:
                 description: Namespace is the target namespace where the edge cluster
                   will be installed
+                type: string
+              type:
+                description: Type is the edge cluster installation method
                 type: string
               version:
                 description: Version is the edge cluster distro version. TODO
@@ -102,6 +114,8 @@ spec:
               edgewizeMonitor:
                 type: string
               fluentOperator:
+                type: string
+              ksCore:
                 type: string
               kubeConfig:
                 description: KubeConfig is the edge cluster kubeconfig, encode by

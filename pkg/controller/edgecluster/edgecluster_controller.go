@@ -232,6 +232,9 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 		if _instance.Spec.Distro == "" {
 			_instance.Spec.Distro = DefaultDistro
 		}
+		if _instance.Spec.Type == "" {
+			_instance.Spec.Type = infrav1alpha1.InstallTypeAuto
+		}
 		if _instance.Spec.Components == "" {
 			_instance.Spec.Components = DefaultComponents
 		} else if !strings.Contains(_instance.Spec.Components, ComponentEdgeWize) {
@@ -288,110 +291,135 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	switch instance.Status.Status {
-	case "", infrav1alpha1.InstallingStatus:
-		needCreateNS := true
-		kubeconfig, err := r.LoadExternalKubeConfig(ctx, instance.Spec.Namespace)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		// 如果配置了外部Namespace，则不需要创建命名空间
-		if kubeconfig != "" {
-			needCreateNS = false
-		}
-		// 获取 member 集群 kubeconfig
-		if kubeconfig == "" && instance.Spec.HostCluster != "host" {
-			kubeconfig, err = r.LoadMemberKubeConfig(ctx, instance.Spec.HostCluster)
+	switch instance.Spec.Type {
+	case infrav1alpha1.InstallTypeAuto:
+		if instance.Status.Status != infrav1alpha1.RunningStatus {
+			err := r.InstallEdgeCluster(ctx, instance)
 			if err != nil {
+				logger.Error(err, "install cluster error", "name", instance.Name, "distro", instance.Spec.Distro)
 				return ctrl.Result{}, err
 			}
+			return ctrl.Result{}, nil
 		}
-		logger.V(1).Info("install edge cluster", "name", instance.Name)
-		values, err := r.GetValuesFromConfigMap(ctx, "vcluster")
+	case infrav1alpha1.InstallTypeManual:
+		if instance.Status.Status != infrav1alpha1.RunningStatus {
+			instance.Status.Status = infrav1alpha1.RunningStatus
+			instance.Status.KubeConfig = string(instance.Spec.KubeConfig)
+		}
+	}
+	if instance.Status.KubeConfig == "" {
+		config, err := r.GetKubeConfig(instance)
 		if err != nil {
-			logger.Error(err, "get vcluster values error, use default")
-			values = map[string]interface{}{}
-		}
-		nsExisted := r.IsNamespaceExisted(ctx, kubeconfig, instance.Spec.Namespace)
-		createNamespace := needCreateNS && !nsExisted
-		if instance.Annotations == nil {
-			instance.Annotations = make(map[string]string)
-		}
-		status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig, createNamespace, values)
-		if err != nil {
-			logger.Error(err, "install edge cluster error")
+			if apierrors.IsNotFound(err) {
+				logger.Info("edge cluster kube config not found, retry after 3s")
+				return ctrl.Result{RequeueAfter: time.Second * 3}, nil
+			}
+			logger.Error(err, "get edge cluster kube config error")
 			return ctrl.Result{}, err
 		}
-		instance.Status.Status = status
-		instance.Status.ConfigFile = kubeconfig
-	case infrav1alpha1.RunningStatus:
-		if instance.Status.KubeConfig == "" {
-			config, err := r.GetKubeConfig(instance)
-			if err != nil {
-				if apierrors.IsNotFound(err) {
-					logger.Info("edge cluster kube config not found, retry after 3s")
-					return ctrl.Result{RequeueAfter: time.Second * 3}, nil
-				}
-				logger.Error(err, "get edge cluster kube config error")
-				return ctrl.Result{}, err
-			}
-			data, err := clientcmd.Write(*config)
-			if err != nil {
-				logger.Error(err, "encode edge cluster kube config error")
-				return ctrl.Result{}, err
-			}
-			instance.Status.KubeConfig = string(data)
-		}
-		err := SaveToLocal(instance.Name, []byte(instance.Status.KubeConfig))
+		data, err := clientcmd.Write(*config)
 		if err != nil {
-			logger.Error(err, "write edge cluster kube config to file error")
+			logger.Error(err, "encode edge cluster kube config error")
 			return ctrl.Result{}, err
 		}
-		components := strings.Split(instance.Spec.Components, ",")
-		for _, component := range components {
-			if len(component) > 0 && component[0] != '-' {
-				switch component {
-				case "ks-core":
-					err = r.ReconcileKSCore(ctx, instance)
-					if err != nil {
-						logger.Error(err, "install ks-core error")
-						return ctrl.Result{}, err
-					}
-				case "edgewize":
-					err = r.ReconcileEdgeWize(ctx, instance)
-					if err != nil {
-						logger.Error(err, "install edgewize agent error")
-						return ctrl.Result{}, err
-					}
-				case "whizard-edge-agent":
-					err = r.ReconcileWhizardEdgeAgent(ctx, instance)
-					if err != nil {
-						logger.Error(err, "install whizard-edge-agent error")
-						return ctrl.Result{}, err
-					}
-				case "cloudcore":
-					err = r.ReconcileCloudCore(ctx, instance)
-					if err != nil {
-						logger.Error(err, "install cloudcore error")
-						return ctrl.Result{}, err
-					}
-				case "fluent-operator":
-					err = r.ReconcileFluentOperator(ctx, instance)
-					if err != nil {
-						logger.Error(err, "install cloudcore error")
-						return ctrl.Result{}, err
-					}
-				default:
-					logger.Info(fmt.Sprintf("unknown component %s", component))
-				}
-			}
-		}
-
-	case infrav1alpha1.ErrorStatus:
-		logger.Info("edge cluster install error", "name", instance.Name)
+		instance.Status.KubeConfig = string(data)
+	}
+	err = SaveToLocal(instance.Name, []byte(instance.Status.KubeConfig))
+	if err != nil {
+		logger.Error(err, "write edge cluster kube config to file error")
+		return ctrl.Result{}, err
+	}
+	err = r.InstallEdgeClusterComponents(ctx, instance)
+	if err != nil {
+		logger.Error(err, "install edge cluster components error")
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *Reconciler) InstallEdgeCluster(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	logger := log.FromContext(ctx, "InstallEdgeCluster", instance.Name)
+	needCreateNS := true
+	kubeconfig, err := r.LoadExternalKubeConfig(ctx, instance.Spec.Namespace)
+	if err != nil {
+		return err
+	}
+	// 如果配置了外部Namespace，则不需要创建命名空间
+	if kubeconfig != "" {
+		needCreateNS = false
+	}
+	// 获取 member 集群 kubeconfig
+	if kubeconfig == "" && instance.Spec.HostCluster != "host" {
+		kubeconfig, err = r.LoadMemberKubeConfig(ctx, instance.Spec.HostCluster)
+		if err != nil {
+			return err
+		}
+	}
+	logger.V(1).Info("install edge cluster", "name", instance.Name)
+	values, err := r.GetValuesFromConfigMap(ctx, "vcluster")
+	if err != nil {
+		logger.Error(err, "get vcluster values error, use default")
+		values = map[string]interface{}{}
+	}
+	nsExisted := r.IsNamespaceExisted(ctx, kubeconfig, instance.Spec.Namespace)
+	createNamespace := needCreateNS && !nsExisted
+	if instance.Annotations == nil {
+		instance.Annotations = make(map[string]string)
+	}
+	status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig, createNamespace, values)
+	if err != nil {
+		logger.Error(err, "install edge cluster error")
+		return err
+	}
+	instance.Status.Status = status
+	instance.Status.ConfigFile = kubeconfig
+	return nil
+}
+
+func (r *Reconciler) InstallEdgeClusterComponents(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	logger := log.FromContext(ctx, "InstallEdgeClusterComponents", instance.Name)
+	components := strings.Split(instance.Spec.Components, ",")
+	var err error
+	for _, component := range components {
+		if len(component) > 0 && component[0] != '-' {
+			switch component {
+			case "ks-core":
+				err = r.ReconcileKSCore(ctx, instance)
+				if err != nil {
+					logger.Error(err, "install ks-core error")
+					return err
+				}
+			case "edgewize":
+				err = r.ReconcileEdgeWize(ctx, instance)
+				if err != nil {
+					logger.Error(err, "install edgewize agent error")
+					return err
+				}
+			case "whizard-edge-agent":
+				err = r.ReconcileWhizardEdgeAgent(ctx, instance)
+				if err != nil {
+					logger.Error(err, "install whizard-edge-agent error")
+					return err
+				}
+			case "cloudcore":
+				err = r.ReconcileCloudCore(ctx, instance)
+				if err != nil {
+					logger.Error(err, "install cloudcore error")
+					return err
+				}
+			case "fluent-operator":
+				err = r.ReconcileFluentOperator(ctx, instance)
+				if err != nil {
+					logger.Error(err, "install cloudcore error")
+					return err
+				}
+			default:
+				logger.Info(fmt.Sprintf("unknown component %s", component))
+			}
+		}
+	}
+	return nil
 }
 
 func (r *Reconciler) UpdateEdgeCluster(ctx context.Context, nn types.NamespacedName, updateFunc func(*infrav1alpha1.EdgeCluster) error) error {

@@ -29,6 +29,13 @@ const (
 	ErrorStatus        Status = "error"
 )
 
+type InstallType string
+
+const (
+	InstallTypeAuto   InstallType = "auto"
+	InstallTypeManual InstallType = "manual"
+)
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -60,6 +67,12 @@ type EdgeClusterSpec struct {
 	Components string `json:"components,omitempty"`
 
 	AdvertiseAddress []string `json:"advertiseAddress,omitempty"`
+
+	// Type is the edge cluster installation method
+	Type InstallType `json:"type,omitempty"`
+
+	// KubeConfig is the edge cluster kubeconfig, encode by base64
+	KubeConfig []byte `json:"kubeConfig,omitempty"`
 }
 
 // EdgeClusterStatus defines the observed state of EdgeCluster
@@ -91,10 +104,10 @@ type EdgeClusterStatus struct {
 // +kubebuilder:printcolumn:name="NameSpace",type=string,JSONPath=`.spec.namespace`
 // +kubebuilder:printcolumn:name="Distro",type=string,JSONPath=`.spec.distro`
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
-// +kubebuilder:printcolumn:name="EdgeWize",type=string,JSONPath=`.status.edgewize`
-// +kubebuilder:printcolumn:name="CloudCore",type=string,JSONPath=`.status.cloudcore`
-// +kubebuilder:printcolumn:name="FluentOperator",type=string,JSONPath=`.status.fluentOperator`
-// +kubebuilder:printcolumn:name="EdgewizeMonitor",type=string,JSONPath=`.status.edgewizeMonitor`
+// +kubebuilder:printcolumn:name="EdgeWize",type=string,priority=1,JSONPath=`.status.edgewize`
+// +kubebuilder:printcolumn:name="CloudCore",type=string,priority=1,JSONPath=`.status.cloudcore`
+// +kubebuilder:printcolumn:name="FluentOperator",type=string,priority=1,JSONPath=`.status.fluentOperator`
+// +kubebuilder:printcolumn:name="EdgewizeMonitor",type=string,priority=1,JSONPath=`.status.edgewizeMonitor`
 // EdgeCluster is the Schema for the edgeclusters API
 type EdgeCluster struct {
 	metav1.TypeMeta   `json:",inline"`
