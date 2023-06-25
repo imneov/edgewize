@@ -18,7 +18,6 @@ package app
 
 import (
 	"github.com/edgewize-io/edgewize/cmd/controller-manager/app/options"
-	"github.com/edgewize-io/edgewize/pkg/controller/alerting"
 	"github.com/edgewize-io/edgewize/pkg/controller/cluster"
 	"github.com/edgewize-io/edgewize/pkg/controller/edgecluster"
 	"github.com/edgewize-io/edgewize/pkg/informers"
@@ -32,9 +31,6 @@ import (
 var allControllers = []string{
 	"edgecluster",
 	"cluster",
-	"rulegroup",
-	"clusterrulegroup",
-	"globalrulegroup",
 }
 
 // setup all available controllers one by one
@@ -57,33 +53,6 @@ func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory i
 		// "edgecluster" controller
 		edgeclusterReconciler := &edgecluster.Reconciler{}
 		addControllerWithSetup(mgr, "edgecluster", edgeclusterReconciler)
-	}
-
-	// controllers for alerting
-	alertingOptionsEnable := cmOptions.AlertingOptions != nil && (cmOptions.AlertingOptions.PrometheusEndpoint != "" || cmOptions.AlertingOptions.ThanosRulerEndpoint != "")
-	if alertingOptionsEnable {
-		if !cmOptions.InHostCluster() {
-			// "rulegroup" controller
-			if cmOptions.IsControllerEnabled("rulegroup") {
-				rulegroupReconciler := &alerting.RuleGroupReconciler{}
-				addControllerWithSetup(mgr, "rulegroup", rulegroupReconciler)
-			}
-			// "clusterrulegroup" controller
-			if cmOptions.IsControllerEnabled("clusterrulegroup") {
-				clusterrulegroupReconciler := &alerting.ClusterRuleGroupReconciler{}
-				addControllerWithSetup(mgr, "clusterrulegroup", clusterrulegroupReconciler)
-			}
-			// "globalrulegroup" controller
-			if cmOptions.IsControllerEnabled("globalrulegroup") {
-				globalrulegroupReconciler := &alerting.GlobalRuleGroupReconciler{}
-				addControllerWithSetup(mgr, "globalrulegroup", globalrulegroupReconciler)
-			}
-		}
-
-		if cmOptions.InHostCluster() {
-			prometheusRuleReconcilers := &alerting.GlobalPrometheusRuleReconcilers{}
-			addControllerWithSetup(mgr, "prometheusrules", prometheusRuleReconcilers)
-		}
 	}
 
 	// log all controllers process result

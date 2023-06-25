@@ -20,5 +20,51 @@ prometheus:
     className: ""
     prometheus_pv_size: ""
 
+npu_exporter:
+  image:
+    repository: npu-exporter
+    pullPolicy: IfNotPresent
+    tag: v3.0.0
+
+dcgm_exporter:
+  image:
+    repository: nvcr.io/nvidia/k8s/dcgm-exporter
+    pullPolicy: IfNotPresent
+    tag: 3.1.7-3.1.4-ubuntu20.04
+
+  podSecurityContext: {}
+
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: nvidia.com/gpu.present
+                operator: Exists
+              - key: node-role.kubernetes.io/edge
+                operator: Exists
+
+  tolerations:
+    - key: node-role.kubernetes.io/edge
+      operator: Exists
+      effect: NoSchedule
+
+  securityContext:
+    runAsNonRoot: false
+    runAsUser: 0
+    capabilities:
+      add: [ "SYS_ADMIN" ]
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Comment the following line to stop profiling metrics from DCGM
+  arguments: [ "-f", "/etc/dcgm-exporter/dcp-metrics-included.csv" ]
+
 defaultImageRegistry: ""
 #imagePullSecrets:

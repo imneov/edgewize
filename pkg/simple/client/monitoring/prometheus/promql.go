@@ -117,6 +117,14 @@ var promQLTemplates = map[string]string{
 	"cluster_gpu_memory_available":       `sum(DCGM_FI_DEV_FB_FREE) * 1024 * 1024`,
 	"cluster_gpu_memory_total":           `sum(DCGM_FI_DEV_FB_FREE + DCGM_FI_DEV_FB_USED) * 1024 * 1024`,
 
+	"cluster_npu_utilization":        `round(avg(npu_chip_info_utilization) / 100, 0.00001)`,
+	"cluster_npu_usage":              `round(sum(npu_chip_info_utilization) / 100, 0.00001)`,
+	"cluster_npu_total":              `count(npu_chip_info_utilization)`,
+	"cluster_npu_memory_usage":       `sum(npu_chip_info_used_memory) * 1024 * 1024`,
+	"cluster_npu_memory_total":       `sum(npu_chip_info_total_memory) * 1024 * 1024`,
+	"cluster_npu_memory_utilization": `round(sum(npu_chip_info_used_memory) / sum(npu_chip_info_total_memory), 0.00001)`,
+	"cluster_npu_memory_available":   `(sum(npu_chip_info_total_memory- npu_chip_info_used_memory)) * 1024 * 1024`,
+
 	// node
 	"node_cpu_utilisation":        "node:node_cpu_utilisation:avg1m{$1}",
 	"node_cpu_total":              "node:node_num_cpu:sum{$1}",
@@ -150,15 +158,39 @@ var promQLTemplates = map[string]string{
 	"node_load15":                 `node:load15:ratio{$1}`,
 	"node_pod_abnormal_ratio":     `node:pod_abnormal:ratio{$1}`,
 	"node_pleg_quantile":          `node_quantile:kubelet_pleg_relist_duration_seconds:histogram_quantile{$1}`,
-	"node_gpu_utilization":        `round(avg(DCGM_FI_PROF_GR_ENGINE_ACTIVE * on (namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1}) by(node) / 100, 0.00001) or round(avg(DCGM_FI_DEV_GPU_UTIL* on (namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1}) by(node)/ 100, 0.00001)`,
-	"node_gpu_usage":              `round(sum(DCGM_FI_PROF_GR_ENGINE_ACTIVE * on (namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1}) by(node) / 100, 0.00001) or round(sum(DCGM_FI_DEV_GPU_UTIL* on (namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1}) by(node)/ 100, 0.00001)`,
+
+	// TODO make Kubeedge to support /var/lib/kubelet/pod-resources
+	//"node_gpu_utilization":        `round(avg(DCGM_FI_PROF_GR_ENGINE_ACTIVE * on (namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1}) by(node) / 100, 0.00001) or round(avg(DCGM_FI_DEV_GPU_UTIL* on (namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1}) by(node)/ 100, 0.00001)`,
+	//"node_gpu_usage":              `round(sum(DCGM_FI_PROF_GR_ENGINE_ACTIVE * on (namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1}) by(node) / 100, 0.00001) or round(sum(DCGM_FI_DEV_GPU_UTIL* on (namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1}) by(node)/ 100, 0.00001)`,
+	//"node_gpu_total":              `kube_node_status_capacity{resource="nvidia_com_gpu", $1}`,
+	//"node_gpu_memory_utilization": `avg(DCGM_FI_DEV_FB_USED/(DCGM_FI_DEV_FB_FREE + DCGM_FI_DEV_FB_USED) * on(namespace , pod) group_left(node) (node_namespace_pod:kube_pod_info:{$1})) by(node)`,
+	//"node_gpu_memory_usage":       `DCGM_FI_DEV_FB_USED * on(namespace , pod) group_left(node) (node_namespace_pod:kube_pod_info:{$1}) * 1024 * 1024`,
+	//"node_gpu_memory_available":   `DCGM_FI_DEV_FB_FREE* on(namespace , pod) group_left(node) (node_namespace_pod:kube_pod_info:{$1}) * 1024 * 1024`,
+	//"node_gpu_memory_total":       `sum((DCGM_FI_DEV_FB_FREE + DCGM_FI_DEV_FB_USED) * on(pod,namespace) group_left(node) node_namespace_pod:kube_pod_info:{$1}) by(node) * 1024 * 1024`,
+	//"node_gpu_temp":               `round(DCGM_FI_DEV_GPU_TEMP* on(namespace , pod) group_left(node) (node_namespace_pod:kube_pod_info:{$1}), 0.001)`,
+	//"node_gpu_power_usage":        `round(DCGM_FI_DEV_POWER_USAGE* on(namespace , pod) group_left(node) (node_namespace_pod:kube_pod_info:{$1}), 0.001)`,
+
+	"node_gpu_utilization":        `round(avg(DCGM_FI_PROF_GR_ENGINE_ACTIVE{$1}) by (node) / 100, 0.00001) or round(avg(DCGM_FI_DEV_GPU_UTIL{$1}) by (node) / 100, 0.00001)`,
+	"node_gpu_usage":              `round(avg(DCGM_FI_PROF_GR_ENGINE_ACTIVE{$1}) by (node) / 100, 0.00001) or round(avg(DCGM_FI_DEV_GPU_UTIL{$1}) by (node) / 100, 0.00001)`,
 	"node_gpu_total":              `kube_node_status_capacity{resource="nvidia_com_gpu", $1}`,
-	"node_gpu_memory_utilization": `avg(DCGM_FI_DEV_FB_USED/(DCGM_FI_DEV_FB_FREE + DCGM_FI_DEV_FB_USED) * on(namespace , pod) group_left(node) (node_namespace_pod:kube_pod_info:{$1})) by(node)`,
-	"node_gpu_memory_usage":       `DCGM_FI_DEV_FB_USED * on(namespace , pod) group_left(node) (node_namespace_pod:kube_pod_info:{$1}) * 1024 * 1024`,
-	"node_gpu_memory_available":   `DCGM_FI_DEV_FB_FREE* on(namespace , pod) group_left(node) (node_namespace_pod:kube_pod_info:{$1}) * 1024 * 1024`,
-	"node_gpu_memory_total":       `sum((DCGM_FI_DEV_FB_FREE + DCGM_FI_DEV_FB_USED) * on(pod,namespace) group_left(node) node_namespace_pod:kube_pod_info:{$1}) by(node) * 1024 * 1024`,
-	"node_gpu_temp":               `round(DCGM_FI_DEV_GPU_TEMP* on(namespace , pod) group_left(node) (node_namespace_pod:kube_pod_info:{$1}), 0.001)`,
-	"node_gpu_power_usage":        `round(DCGM_FI_DEV_POWER_USAGE* on(namespace , pod) group_left(node) (node_namespace_pod:kube_pod_info:{$1}), 0.001)`,
+	"node_gpu_memory_utilization": `round(sum(DCGM_FI_DEV_FB_USED{$1}) by (node) / (sum(DCGM_FI_DEV_FB_USED{$1}) by (node) + sum(DCGM_FI_DEV_FB_FREE{$1}) by (node)), 0.00001)`,
+	"node_gpu_memory_usage":       `sum(DCGM_FI_DEV_FB_USED{$1}) by (node) * 1024 * 1024`,
+	"node_gpu_memory_available":   `sum(DCGM_FI_DEV_FB_FREE{$1}) by (node) * 1024 * 1024`,
+	"node_gpu_memory_total":       `sum(DCGM_FI_DEV_FB_FREE{$1} + DCGM_FI_DEV_FB_USED{$1}) by (node) * 1024 * 1024`,
+	"node_gpu_temp":               `round(avg(DCGM_FI_DEV_GPU_TEMP{$1}) by (node), 0.001)`,
+	"node_gpu_power_usage":        `round(avg(DCGM_FI_DEV_POWER_USAGE{$1}) by (node), 0.001)`,
+
+	"node_npu_utilization":        `round(avg(npu_chip_info_utilization{$1}) by (node) / 100, 0.00001)`,
+	"node_npu_usage":              `round(sum(npu_chip_info_utilization{$1}) by (node) / 100, 0.00001)`,
+	"node_npu_total":              `count(npu_chip_info_utilization{$1}) by (node)`,
+	"node_npu_memory_usage":       `sum(npu_chip_info_used_memory{$1}) by (node) * 1024 * 1024`,
+	"node_npu_memory_total":       `sum(npu_chip_info_total_memory{$1}) by (node) * 1024 * 1024`,
+	"node_npu_memory_utilization": `round(sum(npu_chip_info_used_memory{$1}) by (node) / sum(npu_chip_info_total_memory{$1}) by (node), 0.00001)`,
+	"node_npu_memory_available":   `sum(npu_chip_info_total_memory{$1} - npu_chip_info_used_memory{$1}) by (node) * 1024 * 1024`,
+	"node_npu_power":              `round(avg(npu_chip_info_power{$1}) by (node), 0.00001)`,
+	"node_npu_temp":               `round(avg(npu_chip_info_temperature{$1}) by (node), 0.001)`,
+	"node_npu_voltage":            `round(avg(npu_chip_info_voltage{$1}) by (node), 0.001)`,
+	"node_npu_health_status":      `npu_chip_info_health_status{$1}`,
 
 	"node_device_size_usage":       `sum by(device, node, host_ip, role) (node_filesystem_size_bytes{device!~"/dev/loop\\d+",device=~"/dev/.*",job="node-exporter"} * on(namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1}) - sum by(device, node, host_ip, role) (node_filesystem_avail_bytes{device!~"/dev/loop\\d+",device=~"/dev/.*",job="node-exporter"} * on(namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1})`,
 	"node_device_size_utilisation": `1 - sum by(device, node, host_ip, role) (node_filesystem_avail_bytes{device!~"/dev/loop\\d+",device=~"/dev/.*",job="node-exporter"} * on(namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1}) / sum by(device, node, host_ip, role) (node_filesystem_size_bytes{device!~"/dev/loop\\d+",device=~"/dev/.*",job="node-exporter"} * on(namespace, pod) group_left(node, host_ip, role) node_namespace_pod:kube_pod_info:{$1})`,
@@ -203,6 +235,9 @@ var promQLTemplates = map[string]string{
 	"workspace_pod_abnormal_ratio":         `count by (workspace) ((kube_pod_info{node!=""} unless on (pod, namespace) (kube_pod_status_phase{job="kube-state-metrics", phase="Succeeded"}>0) unless on (pod, namespace) ((kube_pod_status_ready{job="kube-state-metrics", condition="true"}>0) and on (pod, namespace) (kube_pod_status_phase{job="kube-state-metrics", phase="Running"}>0)) unless on (pod, namespace) (kube_pod_container_status_waiting_reason{job="kube-state-metrics", reason="ContainerCreating"}>0)) * on (namespace) group_left(workspace) kube_namespace_labels{$1}) / sum by (workspace) (kube_pod_status_phase{phase!="Succeeded", namespace!=""} * on (namespace) group_left(workspace)(kube_namespace_labels{$1}))`,
 	"workspace_gpu_usage":                  `round((sum by(workspace) (label_replace(DCGM_FI_PROF_GR_ENGINE_ACTIVE{exported_namespace!=""},"namespace","$1","exported_namespace","(.+)") * on(namespace) group_left(workspace) (kube_namespace_labels{$1})) or  sum by(workspace) (label_replace(DCGM_FI_DEV_GPU_UTIL{exported_namespace!=""},"namespace","$1","exported_namespace","(.+)") * on(namespace) group_left(workspace) (kube_namespace_labels{$1})) ) / 100,0.001)`,
 	"workspace_gpu_memory_usage":           `(sum by (workspace) (label_replace(DCGM_FI_DEV_FB_USED{exported_namespace!=""},"namespace","$1","exported_namespace","(.+)") * on(namespace) group_left(workspace) (kube_namespace_labels{$1}))) * 1024 * 1024`,
+
+	"workspace_npu_usage":        `round((sum by(workspace) (container_npu_utilization * on(namespace) group_left(workspace) (kube_namespace_labels{$1})) ) / 100,0.001)`,
+	"workspace_npu_memory_usage": `(sum by (workspace) (container_npu_used_memory * on(namespace) group_left(workspace) (kube_namespace_labels{$1}))) * 1024 * 1024`,
 
 	// namespace
 	"namespace_cpu_usage":                        `round(namespace:container_cpu_usage_seconds_total:sum_rate{namespace!="", $1}, 0.001)`,
@@ -271,6 +306,10 @@ var promQLTemplates = map[string]string{
 	"namespace_alerts_error_total":               `count(sum without(ruler_replica) (ALERTS{rule_level="namespace", severity="error", $1}))`,
 	"namespace_alerts_warning_total":             `count(sum without(ruler_replica) (ALERTS{rule_level="namespace", severity="warning", $1}))`,
 	"namespace_alerts_info_total":                `count(sum without(ruler_replica) (ALERTS{rule_level="namespace", severity="info", $1}))`,
+
+	"namespace_npu_limit_hard":   `sum by (namespace) (kube_resourcequota{resource="requests.huawei.com/Ascend310", type="hard", namespace!=""} * on (namespace) group_left(workspace) kube_namespace_labels{$1})`,
+	"namespace_npu_usage":        `round((sum by(namespace) (container_npu_utilization * on(namespace) group_left(workspace) (kube_namespace_labels{$1})) ) / 100, 0.001)`,
+	"namespace_npu_memory_usage": `(sum by (namespace) (container_npu_used_memory * on(namespace) group_left(workspace) (kube_namespace_labels{$1}))) * 1024 * 1024`,
 	// ingress
 	"ingress_request_count":                 `round(sum(increase(nginx_ingress_controller_requests{$1,$2}[$3])))`,
 	"ingress_request_4xx_count":             `round(sum(increase(nginx_ingress_controller_requests{$1,$2,status=~"[4].*"}[$3])))`,
@@ -306,6 +345,9 @@ var promQLTemplates = map[string]string{
 	"workload_gpu_usage":                              `namespace:workload_gpu_usage:sum{$1}`,
 	"workload_gpu_memory_usage":                       `namespace:workload_gpu_memory_usage:sum{$1}`,
 
+	"workload_npu_usage":        `namespace:workload_npu_usage:sum{$1}`,
+	"workload_npu_memory_usage": `namespace:workload_npu_memory_usage:sum{$1}`,
+
 	// pod
 	"pod_cpu_usage":                        `round(sum by (namespace, pod) (irate(container_cpu_usage_seconds_total{job=~"kubelet|kubeedge", pod!="", image!=""}[5m])), 0.001) *  on (namespace, pod) group_left (qos,owner_kind,owner_name,node) qos_owner_node:kube_pod_info:{$1}`,
 	"pod_cpu_used_requests_utilisation":    `round(sum by (namespace, pod) (irate(container_cpu_usage_seconds_total{job="kubelet", pod!="", image!=""}[5m])) / sum by (namespace,pod)(kube_pod_container_resource_requests{resource="cpu"}),0.001) * on (namespace, pod) group_left (qos,owner_kind,owner_name,node) qos_owner_node:kube_pod_info:{$1}`,
@@ -321,6 +363,9 @@ var promQLTemplates = map[string]string{
 	"pod_pvc_bytes_used":                   `max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes) * on (namespace, persistentvolumeclaim) group_left (storageclass) kube_persistentvolumeclaim_info{} * on (namespace, persistentvolumeclaim) group_left (pod) kube_pod_spec_volumes_persistentvolumeclaims_info{}`,
 	"pod_pvc_bytes_utilisation":            `max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) * on (namespace, persistentvolumeclaim) group_left (storageclass) kube_persistentvolumeclaim_info{} * on (namespace, persistentvolumeclaim) group_left (pod) kube_pod_spec_volumes_persistentvolumeclaims_info{}`,
 
+	"pod_npu_usage":        `round(((sum by(namespace, pod) (label_replace(label_replace(container_npu_utilization, "pod", "$1", "pod_name", "(.+)"), "container", "$1", "container_name", "(.+)") * on (namespace, pod) group_left (qos,owner_kind,owner_name,node) qos_owner_node:kube_pod_info:{$1})) * (sum by (namespace,pod) (kube_pod_info{}))) / 100, 0.001)`,
+	"pod_npu_memory_usage": `(sum by(namespace, pod) (label_replace(label_replace(container_npu_used_memory, "pod", "$1", "pod_name", "(.+)"), "container", "$1", "container_name", "(.+)")) * on (namespace, pod) group_left (qos,owner_kind,owner_name,node) qos_owner_node:kube_pod_info:{$1}) * 1024 * 1024`,
+
 	// container
 	"container_cpu_usage":             `round(sum by (namespace, pod, container) (irate(container_cpu_usage_seconds_total{job=~"kubelet|kubeedge", container!="POD", container!="", image!="", $1}[5m])), 0.001)`,
 	"container_memory_usage":          `sum by (namespace, pod, container) (container_memory_usage_bytes{job=~"kubelet|kubeedge", container!="POD", container!="", image!="", $1})`,
@@ -329,6 +374,9 @@ var promQLTemplates = map[string]string{
 	"container_gpu_memory_usage":      `(sum by(namespace, pod, container) (label_replace(label_replace(label_replace(DCGM_FI_DEV_FB_USED{$1},"namespace","$1","exported_namespace","(.+)"),"pod","$1","exported_pod","(.+)"),"container","$1","exported_container","(.+)") )) * 1024 * 1024`,
 	"container_processes_usage":       `sum by (namespace, pod, container) (container_processes{job=~"kubelet|kubeedge", container!="POD", container!="", image!="", $1})`,
 	"container_threads_usage":         `sum by (namespace, pod, container) (container_threads {job=~"kubelet|kubeedge", container!="POD", container!="", image!="", $1})`,
+
+	"container_npu_usage":        `round((sum by (id, namespace, pod, container) (label_replace(label_replace(container_npu_utilization{$1}, "pod", "$1", "pod_name", "(.+)"), "container", "$1", "container_name", "(.+)"))) / 100, 0.001)`,
+	"container_npu_memory_usage": `(sum by (id, namespace, pod, container_name) (label_replace(label_replace(container_npu_used_memory{$1}, "pod", "$1", "pod_name", "(.+)"), "container", "$1", "container_name", "(.+)") )) * 1024 * 1024`,
 
 	// pvc
 	"pvc_inodes_available":   `max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_inodes_free) * on (namespace, persistentvolumeclaim) group_left (storageclass) kube_persistentvolumeclaim_info{$1}`,
@@ -387,11 +435,21 @@ var protectedMetrics = map[string]bool{
 	"pod_gpu_memory_usage":       true,
 	"container_gpu_usage":        true,
 	"container_gpu_memory_usage": true,
+	// npu
+	"pod_npu_usage":              true,
+	"pod_npu_memory_usage":       true,
+	"container_npu_usage":        true,
+	"container_npu_memory_usage": true,
 }
 
-var wrappedQueryMetrics = map[string]bool{
+var wrappedGpuQueryMetrics = map[string]bool{
 	"container_gpu_usage":        true,
 	"container_gpu_memory_usage": true,
+}
+
+var wrappedNpuQueryMetrics = map[string]bool{
+	"container_npu_usage":        true,
+	"container_npu_memory_usage": true,
 }
 
 func makeExpr(metric string, opts monitoring.QueryOptions) string {
@@ -407,9 +465,14 @@ func makeExpr(metric string, opts monitoring.QueryOptions) string {
 	if protected {
 		tmpl = unWrappedExpr(tmpl)
 	}
-	_, wrappedQueryFlag := wrappedQueryMetrics[metric]
+	_, wrappedQueryFlag := wrappedGpuQueryMetrics[metric]
 	if wrappedQueryFlag {
 		tmpl = strings.NewReplacer("namespace=", "exported_namespace=", "pod=", "exported_pod=", "container=", "exported_container=").Replace(tmpl)
+	}
+
+	_, npuContainerQueryFlag := wrappedNpuQueryMetrics[metric]
+	if npuContainerQueryFlag {
+		tmpl = strings.NewReplacer("pod=", "pod_name=", "container=", "container_name=").Replace(tmpl)
 	}
 
 	return tmpl

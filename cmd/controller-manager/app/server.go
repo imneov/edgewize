@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"os"
 
-	alertingv2beta1 "github.com/edgewize-io/edgewize/pkg/apis/alerting/v2beta1"
-
 	"github.com/edgewize-io/edgewize/cmd/controller-manager/app/options"
 	"github.com/edgewize-io/edgewize/pkg/apis"
 	controllerconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
@@ -208,21 +206,6 @@ func run(s *options.KubeSphereControllerManagerOptions, ctx context.Context) err
 	// Start cache data after all informer is registered
 	klog.V(0).Info("Starting cache resource from apiserver...")
 	informerFactory.Start(ctx.Done())
-
-	if !s.InHostCluster() {
-		rulegroup := alertingv2beta1.RuleGroup{}
-		if err := rulegroup.SetupWebhookWithManager(mgr); err != nil {
-			klog.Fatalf("Unable to setup RuleGroup webhook: %v", err)
-		}
-		clusterrulegroup := alertingv2beta1.ClusterRuleGroup{}
-		if err := clusterrulegroup.SetupWebhookWithManager(mgr); err != nil {
-			klog.Fatalf("Unable to setup ClusterRuleGroup webhook: %v", err)
-		}
-		globalrulegroup := alertingv2beta1.GlobalRuleGroup{}
-		if err := globalrulegroup.SetupWebhookWithManager(mgr); err != nil {
-			klog.Fatalf("Unable to setup GlobalRuleGroup webhook: %v", err)
-		}
-	}
 
 	klog.V(2).Info("registering metrics to the webhook server")
 	// Add an extra metric endpoint, so we can use the the same metric definition with ks-apiserver
