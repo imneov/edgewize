@@ -63,6 +63,14 @@ spec:
             - mountPath: /etc/localtime
               name: host-time
               readOnly: true
+            - name: edgewize-root-ca
+              mountPath: /etc/certs/rootCA.crt
+              readOnly: true
+              subPath: cacrt
+            - name: edgewize-root-ca
+              mountPath: /etc/certs/rootCA.key
+              readOnly: true
+              subPath: cakey
           {{- if .Values.apiserver.extraVolumeMounts }}
           {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
@@ -98,6 +106,14 @@ spec:
               readOnly: true
             - mountPath: /tmp/k8s-webhook-server/serving-certs
               name: webhook-secret
+            - name: edgewize-root-ca
+              mountPath: /etc/certs/rootCA.crt
+              readOnly: true
+              subPath: cacrt
+            - name: edgewize-root-ca
+              mountPath: /etc/certs/rootCA.key
+              readOnly: true
+              subPath: cakey
           {{- if .Values.controller.extraVolumeMounts }}
           {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
@@ -118,6 +134,10 @@ spec:
           secret:
             defaultMode: 420
             secretName: edgewize-controller-manager-webhook-cert
+        - name: edgewize-root-ca
+          secret:
+            defaultMode: 420
+            secretName: edgewize-root-ca
         {{- if .Values.controller.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraVolumes "context" $) | nindent 8 }}
         {{- end }}

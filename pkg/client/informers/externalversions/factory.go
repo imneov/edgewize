@@ -25,6 +25,7 @@ import (
 
 	versioned "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
 	alerting "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/alerting"
+	apps "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/apps"
 	infra "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/infra"
 	internalinterfaces "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -245,11 +246,16 @@ type SharedInformerFactory interface {
 	InformerFor(obj runtime.Object, newFunc internalinterfaces.NewInformerFunc) cache.SharedIndexInformer
 
 	Alerting() alerting.Interface
+	Apps() apps.Interface
 	Infra() infra.Interface
 }
 
 func (f *sharedInformerFactory) Alerting() alerting.Interface {
 	return alerting.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Apps() apps.Interface {
+	return apps.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Infra() infra.Interface {

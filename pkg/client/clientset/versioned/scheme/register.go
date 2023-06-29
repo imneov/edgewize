@@ -20,6 +20,7 @@ package scheme
 
 import (
 	alertingv2beta1 "github.com/edgewize-io/edgewize/pkg/apis/alerting/v2beta1"
+	appsv1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/apps/v1alpha1"
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -33,6 +34,7 @@ var Codecs = serializer.NewCodecFactory(Scheme)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
 	alertingv2beta1.AddToScheme,
+	appsv1alpha1.AddToScheme,
 	infrav1alpha1.AddToScheme,
 }
 

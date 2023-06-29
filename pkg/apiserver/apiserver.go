@@ -58,6 +58,7 @@ import (
 	"github.com/edgewize-io/edgewize/pkg/utils/metrics"
 
 	alertingv2beta1 "github.com/edgewize-io/edgewize/pkg/kapis/alerting/v2beta1"
+	edgeappsetv1alpha1 "github.com/edgewize-io/edgewize/pkg/kapis/edgeappset/v1alpha1"
 	monitoringv1alpha3 "github.com/edgewize-io/edgewize/pkg/kapis/monitoring/v1alpha3"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/monitoring"
 )
@@ -154,6 +155,7 @@ func (s *APIServer) installKubeSphereAPIs(stopCh <-chan struct{}) {
 		s.InformerFactory,
 		s.RuntimeCache,
 		s.KubernetesClient.Kubernetes().Discovery()))
+	urlruntime.Must(edgeappsetv1alpha1.AddToContainer(s.container, s.InformerFactory))
 	urlruntime.Must(monitoringv1alpha3.AddToContainer(
 		s.container,
 		s.KubernetesClient.Kubernetes(),

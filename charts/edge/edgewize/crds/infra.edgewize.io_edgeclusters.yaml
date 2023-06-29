@@ -31,6 +31,9 @@ spec:
     - jsonPath: .status.cloudcore
       name: CloudCore
       type: string
+    - jsonPath: .status.fluentOperator
+      name: FluentOperator
+      type: string
     - jsonPath: .status.edgewizeMonitor
       name: EdgewizeMonitor
       type: string
@@ -62,7 +65,7 @@ spec:
                 type: string
               components:
                 description: Components will install in the edgecluster ,default is
-                  "whizard-edge-agent,edgewize,cloudcore,fluent-operator" -xxx means
+                  "edgewize,whizard-edge-agent,cloudcore,fluent-operator" -xxx means
                   does not install xxx edgewize will always install
                 type: string
               description:
@@ -92,11 +95,15 @@ spec:
             properties:
               cloudcore:
                 type: string
+              configFile:
+                type: string
               edgewize:
                 type: string
               edgewizeMonitor:
                 type: string
               fluentOperator:
+                type: string
+              ksCore:
                 type: string
               kubeConfig:
                 description: KubeConfig is the edge cluster kubeconfig, encode by

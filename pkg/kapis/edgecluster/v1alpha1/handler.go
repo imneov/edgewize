@@ -19,10 +19,14 @@ package v1alpha1
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/edgewize-io/edgewize/pkg/api"
@@ -37,6 +41,7 @@ import (
 	"github.com/edgewize-io/edgewize/pkg/utils/k8sutil"
 	"github.com/edgewize-io/edgewize/pkg/version"
 	"github.com/emicklei/go-restful"
+	"github.com/golang-jwt/jwt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/cli-runtime/pkg/printers"
@@ -276,4 +281,61 @@ func validateKubeSphereAPIServer(config *rest.Config) (*version.Info, error) {
 	}
 
 	return &ver, nil
+}
+
+const (
+	ClusterName string = "clustername"
+	ClusterType string = "clustertype"
+	NodeGroup   string = "nodegroup"
+)
+
+func newJoinTokenSecret(nodeGroup, clusterName, clusterType string) (string, error) {
+	// set double TokenRefreshDuration as expirationTime, which can guarantee that the validity period
+	// of the token obtained at anytime is greater than or equal to TokenRefreshDuration
+	expiresAt := time.Now().Add(time.Hour * 24).Unix()
+
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	token.Claims = jwt.StandardClaims{
+		ExpiresAt: expiresAt,
+	}
+	token.Header[ClusterName] = clusterName
+	token.Header[ClusterType] = clusterType
+	token.Header[NodeGroup] = nodeGroup
+
+	keyPEM, err := getCaKey()
+	if err != nil {
+		klog.Error(err, "failed to get ca key")
+		return "", err
+	}
+	tokenString, err := token.SignedString(keyPEM)
+	if err != nil {
+		klog.Error(err, "failed to sign token")
+		return "", err
+	}
+
+	caHash, err := getCaHash()
+	if err != nil {
+		klog.Error(err, "failed to get ca hash")
+		return "", err
+	}
+	// combine caHash and tokenString into caHashAndToken
+	caHashToken := strings.Join([]string{caHash, tokenString}, ".")
+	// save caHashAndToken to secret
+	return caHashToken, nil
+}
+
+// getCaHash gets ca-hash
+func getCaHash() (string, error) {
+	caDER, err := os.ReadFile("/etc/certs/rootCA.crt")
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(caDER)
+	return hex.EncodeToString(digest[:]), nil
+}
+
+// getCaKey gets caKey to encrypt token
+func getCaKey() ([]byte, error) {
+	return os.ReadFile("/etc/certs/rootCA.key")
 }

@@ -65,7 +65,7 @@ spec:
                 type: string
               components:
                 description: Components will install in the edgecluster ,default is
-                  "edgewize,-whizard-edge-agent,cloudcore,fluent-operator" -xxx means
+                  "edgewize,whizard-edge-agent,cloudcore,fluent-operator" -xxx means
                   does not install xxx edgewize will always install
                 type: string
               description:
@@ -102,6 +102,8 @@ spec:
               edgewizeMonitor:
                 type: string
               fluentOperator:
+                type: string
+              ksCore:
                 type: string
               kubeConfig:
                 description: KubeConfig is the edge cluster kubeconfig, encode by

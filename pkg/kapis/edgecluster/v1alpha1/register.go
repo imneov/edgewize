@@ -64,7 +64,12 @@ func AddToContainer(container *restful.Container,
 
 	webservice.Route(webservice.POST("/edgeclusters/validation").
 		Doc("").
-		Param(webservice.BodyParameter("cluster", "cluster specification")).
+		To(handler.validateEdgeCluster).
+		Returns(http.StatusOK, api.StatusOK, nil).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
+
+	webservice.Route(webservice.POST("/edgeclusters/validation").
+		Doc("").
 		To(handler.validateEdgeCluster).
 		Returns(http.StatusOK, api.StatusOK, nil).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
@@ -78,14 +83,18 @@ func AddToContainer(container *restful.Container,
 
 	webservice.Route(webservice.GET("/edgeclusters").
 		Doc("").
-		Param(webservice.BodyParameter("cluster", "cluster specification")).
 		To(handler.listEdgeCluster).
 		Returns(http.StatusOK, api.StatusOK, nil).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
 
 	webservice.Route(webservice.GET("/nodes/join").
 		Doc("").
-		Param(webservice.BodyParameter("cluster", "cluster specification")).
+		Param(webservice.BodyParameter("version", "kubeedge version")).
+		Param(webservice.BodyParameter("runtime", "edge container runtime, containerd or docker")).
+		Param(webservice.BodyParameter("node_name", "edge node name")).
+		Param(webservice.BodyParameter("node_group", "node group of edge node")).
+		Param(webservice.BodyParameter("image-repository", "private image repository address")).
+		Param(webservice.BodyParameter("add_default_taint", "if add default taint")).
 		To(handler.joinNode).
 		Returns(http.StatusOK, api.StatusOK, nil).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))

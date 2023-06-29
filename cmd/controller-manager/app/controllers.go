@@ -20,6 +20,7 @@ import (
 	"github.com/edgewize-io/edgewize/cmd/controller-manager/app/options"
 	"github.com/edgewize-io/edgewize/pkg/controller/alerting"
 	"github.com/edgewize-io/edgewize/pkg/controller/cluster"
+	"github.com/edgewize-io/edgewize/pkg/controller/edgeappset"
 	"github.com/edgewize-io/edgewize/pkg/controller/edgecluster"
 	"github.com/edgewize-io/edgewize/pkg/informers"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
@@ -57,6 +58,10 @@ func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory i
 		// "edgecluster" controller
 		edgeclusterReconciler := &edgecluster.Reconciler{}
 		addControllerWithSetup(mgr, "edgecluster", edgeclusterReconciler)
+
+		// "edgeappset" controller
+		edgeAppSetReconciler := &edgeappset.Reconciler{}
+		addControllerWithSetup(mgr, "edgeappset", edgeAppSetReconciler)
 	}
 
 	// controllers for alerting

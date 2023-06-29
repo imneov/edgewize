@@ -614,12 +614,17 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 		if err != nil {
 			return err
 		}
+		err = r.InitCert(ctx, instance.Name, "edgewize-root-ca", namespace, nil)
+		if err != nil {
+			klog.Warning("init edgewize certs error, use default", err)
+		}
 		values, err := r.GetValuesFromConfigMap(ctx, "edgewize")
 		if err != nil {
 			logger.Error(err, "get vcluster values error, use default")
 			values = map[string]interface{}{}
 		}
 		values["role"] = "member"
+		values["edgeClusterName"] = instance.Name
 		klog.V(3).Infof("ReconcileEdgeWize: %v", values)
 		status, err := InstallChart("edgewize", "edgewize", namespace, instance.Name, true, values)
 		if err != nil {
@@ -668,7 +673,7 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 		if err != nil {
 			return err
 		}
-		err = r.InitCloudCoreCert(ctx, instance, instance.Name, namespace)
+		err = r.InitCert(ctx, instance.Name, "cloudhub", namespace, SignCloudCoreCert)
 		if err != nil {
 			klog.Warning("init cloudhub certs error, use default", err)
 		}
@@ -1158,7 +1163,7 @@ func (r *Reconciler) DeleteCloudCoreService(ctx context.Context, kubeconfig, nam
 	return nil
 }
 
-func (r *Reconciler) InitCloudCoreCert(ctx context.Context, instance *infrav1alpha1.EdgeCluster, kubeconfig string, namespace string) error {
+func (r *Reconciler) InitCert(ctx context.Context, kubeconfig string, name, namespace string, serverCertFunc func(crt, key []byte) ([]byte, []byte, error)) error {
 	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
 	config, err := clientcmd.BuildConfigFromFlags("", file)
 	if err != nil {
@@ -1171,14 +1176,14 @@ func (r *Reconciler) InitCloudCoreCert(ctx context.Context, instance *infrav1alp
 		return err
 	}
 
-	cloudhub, err := clientset.CoreV1().Secrets(namespace).Get(ctx, "cloudhub", metav1.GetOptions{})
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			klog.Error("get secret cloudhub error", err.Error())
+			klog.Error("get secret %s error", name, err.Error())
 			return err
 		}
 	} else {
-		klog.Infof("secret cloudhub exists, skip. cloudhub: %v", cloudhub.String())
+		klog.Infof("secret %s exists, skip. secret: %v", name, secret.String())
 		return nil
 	}
 
@@ -1238,27 +1243,35 @@ func (r *Reconciler) InitCloudCoreCert(ctx context.Context, instance *infrav1alp
 	}
 
 	klog.V(5).Infof("root CA content, crt: %s, key: %s", base64.StdEncoding.EncodeToString(caCrt), base64.StdEncoding.EncodeToString(caKey))
-	serverCrt, serverKey, err := SignCloudCoreCert(caCrt, caKey)
+
 	if err != nil {
-		klog.Error("create cloudhub cert error", err)
+		klog.Errorf("create secret %s error: %v", name, err)
 		return err
 	}
-	cloudhub = &corev1.Secret{
+	secret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "cloudhub",
+			Name:      name,
 			Namespace: namespace,
 		},
 		Data: map[string][]byte{
 			"rootCA.crt": pem.EncodeToMemory(&pem.Block{Type: certutil.CertificateBlockType, Bytes: caCrt}),
 			"rootCA.key": pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: caKey}),
-			"server.crt": pem.EncodeToMemory(&pem.Block{Type: certutil.CertificateBlockType, Bytes: serverCrt}),
-			"server.key": pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: serverKey}),
 		},
 	}
-	klog.V(3).Infof("secret cloudhub content: %s", cloudhub.String())
-	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, cloudhub, metav1.CreateOptions{})
+	if serverCertFunc != nil {
+		serverCrt, serverKey, err := SignCloudCoreCert(caCrt, caKey)
+		if err != nil {
+			klog.Errorf("root CA content, crt: %s, key: %s", base64.StdEncoding.EncodeToString(caCrt), base64.StdEncoding.EncodeToString(caKey))
+		} else {
+			secret.Data["server.crt"] = pem.EncodeToMemory(&pem.Block{Type: certutil.CertificateBlockType, Bytes: serverCrt})
+			secret.Data["server.key"] = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: serverKey})
+		}
+	}
+
+	klog.V(3).Infof("secret %s content: %s", name, secret.String())
+	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil {
-		klog.Error("create secret cloudhub error", err)
+		klog.Errorf("create secret %s error: %v", name, err)
 		return err
 	}
 	return nil

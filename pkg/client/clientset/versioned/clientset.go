@@ -23,6 +23,7 @@ import (
 	"net/http"
 
 	alertingv2beta1 "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/typed/alerting/v2beta1"
+	appsv1alpha1 "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/typed/apps/v1alpha1"
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/typed/infra/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
@@ -32,6 +33,7 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	AlertingV2beta1() alertingv2beta1.AlertingV2beta1Interface
+	AppsV1alpha1() appsv1alpha1.AppsV1alpha1Interface
 	InfraV1alpha1() infrav1alpha1.InfraV1alpha1Interface
 }
 
@@ -39,12 +41,18 @@ type Interface interface {
 type Clientset struct {
 	*discovery.DiscoveryClient
 	alertingV2beta1 *alertingv2beta1.AlertingV2beta1Client
+	appsV1alpha1    *appsv1alpha1.AppsV1alpha1Client
 	infraV1alpha1   *infrav1alpha1.InfraV1alpha1Client
 }
 
 // AlertingV2beta1 retrieves the AlertingV2beta1Client
 func (c *Clientset) AlertingV2beta1() alertingv2beta1.AlertingV2beta1Interface {
 	return c.alertingV2beta1
+}
+
+// AppsV1alpha1 retrieves the AppsV1alpha1Client
+func (c *Clientset) AppsV1alpha1() appsv1alpha1.AppsV1alpha1Interface {
+	return c.appsV1alpha1
 }
 
 // InfraV1alpha1 retrieves the InfraV1alpha1Client
@@ -100,6 +108,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.appsV1alpha1, err = appsv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 	cs.infraV1alpha1, err = infrav1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
@@ -126,6 +138,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.alertingV2beta1 = alertingv2beta1.New(c)
+	cs.appsV1alpha1 = appsv1alpha1.New(c)
 	cs.infraV1alpha1 = infrav1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)

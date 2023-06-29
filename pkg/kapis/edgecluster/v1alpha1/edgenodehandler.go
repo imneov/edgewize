@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -68,9 +69,13 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 	nodeName := request.QueryParameter("node_name")
 	version := request.QueryParameter("version")
 	runtime := request.QueryParameter("runtime")
+	nodeGroup := request.QueryParameter("node_group")
 	imageRepository := request.QueryParameter("image-repository")
 	hasDefaultTaint, _ := strconv.ParseBool(request.QueryParameter("add_default_taint"))
 	//withNodePort, _ := strconv.ParseBool(request.QueryParameter("with_nodeport"))
+
+	// klog 打印query参数
+	klog.V(3).Infof("EdgeNodeJoin: nodeName: %s, version: %s, runtime: %s, nodeGroup: %s, imageRepository: %s, hasDefaultTaint: %v", nodeName, version, runtime, nodeGroup, imageRepository, hasDefaultTaint)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -120,9 +125,8 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 		})
 		return
 	}
-
-	// Get secret
-	secret, err := h.k8sclient.CoreV1().Secrets(KubeEdgeNamespace).Get(ctx, KubeEdgeTokenSecretName, metav1.GetOptions{})
+	clusterName := os.Getenv("EDGE_CLUSTER_NAME")
+	secret, err := newJoinTokenSecret(nodeGroup, clusterName, "EdgeCluster")
 	if err != nil {
 		klog.Infof("EdgeNodeJoin: Read cloudcore token secret error [+%v]\n", err)
 		response.AddHeader("Content-Type", "text/json")
@@ -217,7 +221,7 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 	if hasDefaultTaint {
 		withEdgeTaint = " --with-edge-taint"
 	}
-	cmd = fmt.Sprintf("arch=$(uname -m); curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && chmod +x keadm && ./keadm join --kubeedge-version=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s ", uri, version, strings.ReplaceAll(version, "v", ""), advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, string(secret.Data["tokendata"]), withEdgeTaint)
+	cmd = fmt.Sprintf("arch=$(uname -m); curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && chmod +x keadm && ./keadm join --kubeedge-version=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s ", uri, version, strings.ReplaceAll(version, "v", ""), advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, secret, withEdgeTaint)
 	if runtime == "docker" {
 		cmd = cmd + "--remote-runtime-endpoint=unix:///var/run/dockershim.sock --runtimetype=docker"
 	}
