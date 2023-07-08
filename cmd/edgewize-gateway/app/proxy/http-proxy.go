@@ -12,9 +12,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/options"
 	"github.com/golang-jwt/jwt"
 	"k8s.io/klog"
+
+	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/options"
 )
 
 const (

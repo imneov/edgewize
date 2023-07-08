@@ -6,8 +6,8 @@
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:allowDangerousTypes=true"
 
-GV="infra:v1alpha1 alerting:v2beta1"
-MANIFESTS="infra/* alerting/v2beta1"
+GV="infra:v1alpha1 apps:v1alpha1 alerting:v2beta1"
+MANIFESTS="infra/* apps/* alerting/v2beta1"
 
 # App Version
 APP_VERSION = v0.1.0
@@ -128,7 +128,8 @@ container-cross-push: ; $(info $(M)...Begin to build and push.)  @ ## Build and 
 	hack/docker_build_multiarch.sh
 
 helm-package: ; $(info $(M)...Begin to helm-package.)  @ ## Helm-package.
-	ls config/crds/infra.edgewize.io* | xargs -i cp -r {} charts/host/edgewize/crds/
+	ls config/crds/*.edgewize.io* | xargs -i cp -r {} charts/host/edgewize/crds/
+	ls config/crds/*.edgewize.io* | xargs -i cp -r {} charts/edge/edgewize/crds/
 	helm package charts/host/edgewize --app-version=${APP_VERSION} --version=${APP_VERSION} -d ./bin
 
 helm-deploy: ; $(info $(M)...Begin to helm-deploy.)  @ ## Helm-deploy.

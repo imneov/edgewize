@@ -31,10 +31,11 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 
-	utilquota "github.com/edgewize-io/edgewize/kube/pkg/quota/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
+
+	utilquota "github.com/edgewize-io/edgewize/kube/pkg/quota/v1"
 )
 
 // Following code copied from github.com/openshift/apiserver-library-go/pkg/admission/quota/clusterresourcequota

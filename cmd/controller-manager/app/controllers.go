@@ -17,6 +17,13 @@ limitations under the License.
 package app
 
 import (
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
 	"github.com/edgewize-io/edgewize/cmd/controller-manager/app/options"
 	"github.com/edgewize-io/edgewize/pkg/controller/alerting"
 	"github.com/edgewize-io/edgewize/pkg/controller/cluster"
@@ -24,19 +31,21 @@ import (
 	"github.com/edgewize-io/edgewize/pkg/controller/edgecluster"
 	"github.com/edgewize-io/edgewize/pkg/informers"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
-	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/klog"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 var allControllers = []string{
 	"edgecluster",
+	"edgeappset",
 	"cluster",
 	"rulegroup",
 	"clusterrulegroup",
 	"globalrulegroup",
 }
+
+const (
+	DefaultResyncPeriod    = 120 * time.Second
+	DefaultHostClusterName = "host"
+)
 
 // setup all available controllers one by one
 func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory informers.InformerFactory,
@@ -50,19 +59,18 @@ func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory i
 			client.KubeSphere(),
 			client.Config(),
 			kubesphereInformer.Infra().V1alpha1().Clusters(),
-			cmOptions.EdgeWizeOptions.ClusterControllerResyncPeriod,
-			cmOptions.EdgeWizeOptions.HostClusterName,
+			DefaultResyncPeriod,
+			DefaultHostClusterName,
 		)
 		addController(mgr, "cluster", clusterController)
 
 		// "edgecluster" controller
 		edgeclusterReconciler := &edgecluster.Reconciler{}
 		addControllerWithSetup(mgr, "edgecluster", edgeclusterReconciler)
-
-		// "edgeappset" controller
-		edgeAppSetReconciler := &edgeappset.Reconciler{}
-		addControllerWithSetup(mgr, "edgeappset", edgeAppSetReconciler)
 	}
+	// "edgeappset" controller
+	edgeAppSetReconciler := &edgeappset.Reconciler{}
+	addControllerWithSetup(mgr, "edgeappset", edgeAppSetReconciler)
 
 	// controllers for alerting
 	alertingOptionsEnable := cmOptions.AlertingOptions != nil && (cmOptions.AlertingOptions.PrometheusEndpoint != "" || cmOptions.AlertingOptions.ThanosRulerEndpoint != "")

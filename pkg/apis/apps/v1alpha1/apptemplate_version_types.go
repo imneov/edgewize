@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,7 +27,17 @@ type AppTemplateVersionSpec struct {
 	// Version of the AppTemplateVersion.
 	Version string `json:"version,omitempty"`
 
-	DeploymentSpec *appsv1.DeploymentSpec `json:"deploymentSpec,omitempty"`
+	DeploymentSpec *DeploymentSpec `json:"deploymentSpec,omitempty"`
+}
+
+type DeploymentSpec struct {
+	Replicas *int32 `json:"replicas,omitempty" protobuf:"varint,1,opt,name=replicas"`
+	// Template describes the pods that will be created.
+	Template v1.PodTemplateSpec `json:"template" protobuf:"bytes,3,opt,name=template"`
+	// The deployment strategy to use to replace existing pods with new ones.
+	// +optional
+	// +patchStrategy=retainKeys
+	Strategy appsv1.DeploymentStrategy `json:"strategy,omitempty" patchStrategy:"retainKeys" protobuf:"bytes,4,opt,name=strategy"`
 }
 
 type AppTemplateVersionStatus struct {

@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -68,7 +69,7 @@ const (
 	WhizardEdgeGatewayConfigName = "whizard-edge-gateway-configmap"
 )
 
-var DefaultComponents = "edgewize,whizard-edge-agent,cloudcore,fluent-operator,ks-core"
+var DefaultComponents = "edgewize,whizard-edge-agent,cloudcore,fluent-operator,ks-core,kubefed"
 
 func init() {
 	if dc := os.Getenv("DEFAULT_COMPONENTS"); dc != "" {
@@ -264,7 +265,6 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 					Name: instance.Name,
 					Labels: map[string]string{
 						infrav1alpha1.MemberClusterRole: "",
-						infrav1alpha1.ClusterAlias:      instance.Spec.Alias,
 					},
 				},
 				Spec: infrav1alpha1.ClusterSpec{
@@ -390,6 +390,12 @@ func (r *Reconciler) InstallEdgeClusterComponents(ctx context.Context, instance 
 					logger.Error(err, "install ks-core error")
 					return err
 				}
+			case "kubefed":
+				err = r.ReconcileKubefed(ctx, instance)
+				if err != nil {
+					logger.Error(err, "install kubefed error", "instance", instance.Name)
+					return err
+				}
 			case "edgewize":
 				err = r.ReconcileEdgeWize(ctx, instance)
 				if err != nil {
@@ -496,7 +502,7 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 		return nil
 	}
 
-	switch instance.Status.EdgeWize {
+	switch instance.Status.EdgewizeMonitor {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		err := r.InitImagePullSecret(ctx, instance, instance.Name, MonitorNamespace)
 		if err != nil {
@@ -504,17 +510,17 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 		}
 		values, err := r.GetValuesFromConfigMap(ctx, "whizard-edge-agent")
 		if err != nil {
-			logger.Error(err, "get vcluster values error, use default")
+			logger.Error(err, "get vcluster values error, use default", "instance", instance.Name)
 			values = map[string]interface{}{}
 		}
 		err = r.SetMonitorComponent(ctx, values, instance)
 		if err != nil {
-			logger.Error(err, "get gateway svc ip error, need to configure manually")
+			logger.Error(err, "get gateway svc ip error, need to configure manually", "instance", instance.Name)
 		}
-		klog.V(3).Infof("ReconcileWhizardEdgeAgent: %v", values)
+		klog.V(3).Infof("whizard-edge-agent values: %v, instance: %s", values, instance.Name)
 		status, err := InstallChart("whizard-edge-agent", "whizard-edge-agent", MonitorNamespace, instance.Name, true, values)
 		if err != nil {
-			logger.Error(err, "install whizard-edge-agent error")
+			logger.Error(err, "install whizard-edge-agent error", "instance", instance.Name)
 			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
 			return err
 		}
@@ -539,21 +545,22 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 	switch instance.Status.KSCore {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		namespace := "kubesphere-system"
+		r.applyYaml(instance.Name, "/charts/cluster-configuration.yaml")
 		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
 		if err != nil {
-			logger.Error(err, "init image pull secret error, use default")
+			logger.Error(err, "init image pull secret error, use default", "instance", instance.Name)
 			return err
 		}
 		values, err := r.GetValuesFromConfigMap(ctx, "ks-core")
 		if err != nil {
-			logger.Error(err, "get ks-core values error, use default")
+			logger.Error(err, "get ks-core values error, use default", "instance", instance.Name)
 			values = map[string]interface{}{}
 		}
 		err = r.SetKSCoreValues(ctx, values)
 		if err != nil {
-			logger.Error(err, "set ks-core values error, skip")
+			logger.Error(err, "set ks-core values error, skip", "instance", instance.Name)
 		}
-		klog.V(3).Infof("ReconcileKSCore: %v", values)
+		klog.V(3).Infof("ks-core values: %v, instance: %s", values, instance.Name)
 		status, err := InstallChart("ks-core", "ks-core", namespace, instance.Name, true, values)
 		if err != nil {
 			logger.Error(err, "install ks-core error")
@@ -562,6 +569,7 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 		}
 		instance.Status.KSCore = status
 		if instance.Status.KSCore == infrav1alpha1.RunningStatus {
+			r.applyYaml(instance.Name, "/charts/role-templates.yaml")
 			member := &ksclusterv1alpha1.Cluster{}
 			err = r.Get(ctx, types.NamespacedName{Name: instance.Name}, member)
 			if err != nil {
@@ -601,6 +609,41 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 	return nil
 }
 
+func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	logger := log.FromContext(ctx, "ReconcileKubefed", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.V(4).Info("kubeconfig is null, skip install kubefed")
+		return nil
+	}
+	switch instance.Status.Kubefed {
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
+		namespace := "kube-federation-system"
+		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+		if err != nil {
+			logger.Error(err, "init image pull secret error, use default")
+			return err
+		}
+		values, err := r.GetValuesFromConfigMap(ctx, "kubefed")
+		if err != nil {
+			logger.Error(err, "get kubefed values error, use default")
+			values = map[string]interface{}{}
+		}
+		klog.V(3).Infof("Kubefed values: %v, instance: %s", values, instance.Name)
+		status, err := InstallChart("kubefed", "kubefed", namespace, instance.Name, true, values)
+		if err != nil {
+			logger.Error(err, "install kubefed error")
+			instance.Status.Kubefed = infrav1alpha1.ErrorStatus
+			return err
+		}
+		instance.Status.Kubefed = status
+		if instance.Status.Kubefed == infrav1alpha1.RunningStatus {
+			r.applyYaml(instance.Name, "/charts/federatedcrds.yaml")
+		}
+		return nil
+	}
+	return nil
+}
+
 func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
 	logger := log.FromContext(ctx, "ReconcileEdgeWize", instance.Name)
 	if instance.Status.KubeConfig == "" {
@@ -625,7 +668,7 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 		}
 		values["role"] = "member"
 		values["edgeClusterName"] = instance.Name
-		klog.V(3).Infof("ReconcileEdgeWize: %v", values)
+		klog.V(3).Infof("edgewize values: %v, instance: %s", values, instance.Name)
 		status, err := InstallChart("edgewize", "edgewize", namespace, instance.Name, true, values)
 		if err != nil {
 			logger.Error(err, "install edgewize error")
@@ -686,7 +729,7 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 		if err != nil {
 			klog.Warningf("set cloudcore values error, err: %v", err)
 		}
-		klog.V(3).Infof("ReconcileCloudCore: %v", values)
+		klog.V(3).Infof("cloudcore values: %v, instance: %s", values, instance.Name)
 		status, err := InstallChart("cloudcore", "cloudcore", namespace, instance.Name, true, values)
 		if err != nil {
 			klog.Warning("install cloudcore error, will try again at the next Reconcile.", "error", err)
@@ -723,7 +766,7 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 			logger.Error(err, "get vcluster values error, use default")
 			values = map[string]interface{}{}
 		}
-		klog.V(3).Infof("ReconcileFluentOperator: %v", values)
+		klog.V(3).Infof("fluent-operator values: %v, instance: %s", values, instance.Name)
 		err = r.SetClusterOutput(values, instance)
 		if err != nil {
 			logger.Error(err, "configure ClusterOutput failed, skip install fluent-operator")
@@ -1011,12 +1054,19 @@ func (r *Reconciler) CleanEdgeClusterResources(name, namespace, kubeconfig strin
 
 	err = clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(context.Background(), fmt.Sprintf("data-%s-0", name), metav1.DeleteOptions{})
 	if err != nil {
-		klog.Error("delete edgecluster pvc error", fmt.Sprintf("data-%s-0", name), err.Error())
+		klog.Error("delete edgecluster pvc error", fmt.Sprintf("data-%s-0", name), err.Error(), "instance:", name)
 		return err
 	}
 	err = clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(context.Background(), fmt.Sprintf("data-%s-etcd-0", name), metav1.DeleteOptions{})
 	if err != nil {
-		klog.Error("delete edgecluster pvc error", fmt.Sprintf("data-%s-etcd-0", name), err.Error())
+		klog.Error("delete edgecluster pvc error", fmt.Sprintf("data-%s-etcd-0", name), err.Error(), "instance:", name)
+		return err
+	}
+	// delete local kubeconfig dile
+	path := filepath.Join(homedir.HomeDir(), ".kube", name)
+	err = os.Remove(path)
+	if err != nil {
+		klog.Error("delete kubeconfig file error", err.Error(), "instance:", name)
 		return err
 	}
 	return nil
@@ -1183,7 +1233,7 @@ func (r *Reconciler) InitCert(ctx context.Context, kubeconfig string, name, name
 			return err
 		}
 	} else {
-		klog.Infof("secret %s exists, skip. secret: %v", name, secret.String())
+		klog.Infof("secret %s exists, skip.", name)
 		return nil
 	}
 
@@ -1244,10 +1294,6 @@ func (r *Reconciler) InitCert(ctx context.Context, kubeconfig string, name, name
 
 	klog.V(5).Infof("root CA content, crt: %s, key: %s", base64.StdEncoding.EncodeToString(caCrt), base64.StdEncoding.EncodeToString(caKey))
 
-	if err != nil {
-		klog.Errorf("create secret %s error: %v", name, err)
-		return err
-	}
 	secret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -1268,7 +1314,6 @@ func (r *Reconciler) InitCert(ctx context.Context, kubeconfig string, name, name
 		}
 	}
 
-	klog.V(3).Infof("secret %s content: %s", name, secret.String())
 	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil {
 		klog.Errorf("create secret %s error: %v", name, err)
@@ -1297,8 +1342,13 @@ func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1a
 	}
 	err = r.Get(ctx, key, imagePullSecret)
 	if err != nil {
-		klog.Error("get image-pull-secret error", err.Error())
-		return client.IgnoreNotFound(err)
+		if client.IgnoreNotFound(err) == nil {
+			klog.Warning("image-pull-secret nou found ,skip")
+			return nil
+		} else {
+			klog.Error("get image-pull-secret error ", err.Error())
+			return err
+		}
 	}
 
 	edgeDeploySecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, EdgeDeploySecret, metav1.GetOptions{})
@@ -1334,4 +1384,14 @@ func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1a
 		return err
 	}
 	return nil
+}
+
+func (r Reconciler) applyYaml(kubeconfig, filepath string) {
+	cmd := fmt.Sprintf("apply -f %s --kubeconfig /root/.kube/%s", filepath, kubeconfig)
+	_, err := exec.Command("/usr/local/bin/kubectl", strings.Split(cmd, " ")...).Output()
+	if err != nil {
+		klog.Errorf("apply %s error: %s", filepath, err)
+	} else {
+		klog.V(3).Infof("apply %s success", filepath)
+	}
 }

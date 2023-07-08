@@ -21,6 +21,7 @@ spec:
   template:
     metadata:
       labels:
+        IndexByEdgeWize: "true"
         app: edgewize
         tier: backend
     spec:
@@ -101,6 +102,7 @@ spec:
               name: edgewize-config
             - mountPath: /root/.kube/external/
               name: edgewize-namespaces-config
+              readOnly: true
             - mountPath: /etc/localtime
               name: host-time
               readOnly: true

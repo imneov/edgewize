@@ -20,13 +20,14 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
+
 	ksinformers "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions"
 	"github.com/edgewize-io/edgewize/pkg/informers"
 	"github.com/edgewize-io/edgewize/pkg/models/monitoring/expressions"
 	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/resource"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/monitoring"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog/v2"
 )
 
 type MonitoringOperator interface {

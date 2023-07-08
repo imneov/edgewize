@@ -16,11 +16,12 @@ import (
 	"strings"
 	"sync"
 
+	certutil "k8s.io/client-go/util/cert"
+	"k8s.io/klog"
+
 	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/options"
 	apiserverconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
 	genericoptions "github.com/edgewize-io/edgewize/pkg/server/options"
-	certutil "k8s.io/client-go/util/cert"
-	"k8s.io/klog"
 )
 
 type ServerRunOptions struct {

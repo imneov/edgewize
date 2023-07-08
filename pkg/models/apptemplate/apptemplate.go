@@ -17,6 +17,11 @@ import (
 	"context"
 	"sort"
 
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/klog"
+
 	"github.com/edgewize-io/edgewize/pkg/api"
 	appsv1alpha1 "github.com/edgewize-io/edgewize/pkg/api/apps/v1alpha1"
 	apisappsv1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/apps/v1alpha1"
@@ -24,10 +29,6 @@ import (
 	appslisteners "github.com/edgewize-io/edgewize/pkg/client/listers/apps/v1alpha1"
 	"github.com/edgewize-io/edgewize/pkg/informers"
 	resources "github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/klog"
 )
 
 type Operator interface {

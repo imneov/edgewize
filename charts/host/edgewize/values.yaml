@@ -62,8 +62,8 @@ podSecurityContext: { }
 
 securityContext: { }
   # capabilities:
-  #   drop:
-  #   - ALL
+#   drop:
+#   - ALL
 # readOnlyRootFilesystem: true
 # runAsNonRoot: true
 # runAsUser: 1000
@@ -189,7 +189,8 @@ controller:
   extraVolumes: [ ]
 
 gateway:
-  advertiseAddress: []
+  advertiseAddress: [ ]
+  dnsNames: [ ]
   replicaCount: 1
   image:
     registry: ""
@@ -253,8 +254,6 @@ agent:
 
 values:
   vcluster: # for k3s, k8s ,k0s
-    vcluster:
-      image: rancher/k3s:v1.23.5-k3s1
     sync:
       hoststorageclasses:
         enabled: true
@@ -275,7 +274,6 @@ values:
         imagePullSecrets:
           - edge-deploy-secret
         storageClass: ""
-
   whizardEdgeAgent:
     prometheus:
       storage:
@@ -339,35 +337,40 @@ values:
         digest: ""
         pullPolicy: IfNotPresent
   ksCore:
+    defaultImageRegistry: ""
     image:
-      bookinfo_details_v1_repo: harbor.wuxs.vip/kubesphere/examples-bookinfo-details-v1
-      bookinfo_details_v1_tag: 1.16.2
-      bookinfo_productpage_v1_repo: harbor.wuxs.vip/kubesphere/examples-bookinfo-productpage-v1
-      bookinfo_productpage_v1_tag: 1.16.2
-      bookinfo_ratings_v1_repo: harbor.wuxs.vip/kubesphere/examples-bookinfo-ratings-v1
-      bookinfo_ratings_v1_tag: 1.16.3
-      bookinfo_reviews_v1_repo: harbor.wuxs.vip/kubesphere/examples-bookinfo-reviews-v1
-      bookinfo_reviews_v1_tag: 1.16.2
-      defaultbackend_repo: harbor.wuxs.vip/mirrorgooglecontainers/defaultbackend-amd64
-      defaultbackend_tag: 1.4
-      ks_apiserver_repo: harbor.wuxs.vip/kse/ks-apiserver
       ks_apiserver_tag: kse-release-3.3-abc
-      ks_console_repo: harbor.wuxs.vip/kse/ks-console
       ks_console_tag: kse-release-3.3-abc
-      ks_controller_manager_repo: harbor.wuxs.vip/kse/ks-controller-manager
       ks_controller_manager_tag: kse-release-3.3-abc
-      ks_kubectl_repo: harbor.wuxs.vip/kubesphere/kubectl
-      ks_kubectl_tag: v1.0.0
-      nginx_ingress_controller_repo: harbor.wuxs.vip/kubesphere/nginx-ingress-controller
-      nginx_ingress_controller_tag: v1.1.0
       pullPolicy: IfNotPresent
     config:
       create: true
       jwtSecret: ""
       multicluster:
-        clusterRole: "member"
+        enabled: true
+        clusterRole: member
     kube_version: v1.23.5+k3s1
 
     console:
       port: 30881
       type: ClusterIP
+  kubefed:
+    controllermanager:
+      defaultImageRegistry: "harbor.wuxs.vip/"
+      commonAffinity: { }
+      commonNodeSelector: { }
+      commonTolerations: [ ]
+      controller:
+        annotations: { }
+        image: kubefed
+        replicaCount: 1
+        repository: kubesphere
+        tag: v0.8.1
+      postInstallJob:
+        image: kubectl
+        repository: kubesphere
+        tag: v1.22.0
+      webhook:
+        image: kubefed
+        repository: kubesphere
+        tag: v0.8.1

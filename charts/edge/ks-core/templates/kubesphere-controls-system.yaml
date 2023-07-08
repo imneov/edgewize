@@ -178,6 +178,7 @@ spec:
   template:
     metadata:
       labels:
+        IndexByEdgeWize: "true"
         app: kubesphere
         component: kubesphere-router
     spec:
@@ -189,7 +190,7 @@ spec:
         # Any image is permissible as long as:
         # 1. It serves a 404 page at /
         # 2. It serves 200 on a /healthz endpoint
-        image: {{ .Values.image.defaultbackend_repo }}:{{ .Values.image.defaultbackend_tag | default "latest" }}
+        image: {{ .Values.defaultImageRegistry }}{{ .Values.image.defaultbackend_repo }}:{{ .Values.image.defaultbackend_tag | default "latest" }}
         livenessProbe:
           httpGet:
             path: /healthz

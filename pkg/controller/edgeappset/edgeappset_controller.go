@@ -20,12 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	appsv1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/apps/v1alpha1"
-	"github.com/edgewize-io/edgewize/pkg/utils/sliceutil"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -34,6 +31,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+
+	appsv1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/apps/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/utils/sliceutil"
 )
 
 const (
@@ -121,20 +121,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 }
 
 func (r *Reconciler) undoReconcile(ctx context.Context, nn types.NamespacedName, instance *appsv1alpha1.EdgeAppSet) (ctrl.Result, error) {
-	deployList := &appsv1.DeploymentList{}
-	err := r.List(ctx, deployList, client.InNamespace(""), client.MatchingLabels{
-		appsv1alpha1.LabelEdgeAppSet: instance.Name,
-	})
-	if err != nil {
-		klog.Error(err, "list deployments failed")
-		return ctrl.Result{}, err
-	}
-	for _, deploy := range deployList.Items {
-		if err := r.Delete(ctx, &deploy); err != nil {
-			klog.Error(err, "delete deployment failed", "deployment", deploy.Name)
-			return ctrl.Result{}, err
-		}
-	}
 	return ctrl.Result{}, nil
 }
 
@@ -184,11 +170,10 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 			}
 			deploy.Labels[appsv1alpha1.LabelEdgeAppSet] = instance.Name
 			deploy.Labels[appsv1alpha1.LabelNodeGroup] = selector.NodeGroup
-			deploy.OwnerReferences = []metav1.OwnerReference{
-				*metav1.NewControllerRef(instance, instance.GetObjectKind().GroupVersionKind()),
-			}
-
-			deploy.Namespace = instance.Namespace
+			//deploy.OwnerReferences = []metav1.OwnerReference{
+			//	*metav1.NewControllerRef(instance, instance.GetObjectKind().GroupVersionKind()),
+			//}
+			deploy.Namespace = selector.Project
 			deploy.Spec = instance.Spec.DeploymentTemplate.Spec
 			deploy.Spec.Template.Labels = map[string]string{
 				"app": deploy.Name,

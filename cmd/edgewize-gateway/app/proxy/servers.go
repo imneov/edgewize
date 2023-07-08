@@ -1,9 +1,11 @@
 package proxy
 
 import (
-	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/options"
-	"k8s.io/klog"
 	"sync"
+
+	"k8s.io/klog"
+
+	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/options"
 )
 
 type ServerEndpoints struct {

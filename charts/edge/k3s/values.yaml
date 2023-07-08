@@ -1,5 +1,5 @@
 # These annotations will be applied to all objects created in this chart
-globalAnnotations: {}
+globalAnnotations: { }
 
 # If the control plane is deployed in high availability mode
 # Make sure to scale up the replicas and use an external datastore
@@ -10,7 +10,7 @@ enableHA: false
 defaultImageRegistry: ""
 
 # Plugins that should get loaded. Usually you want to apply those via 'vcluster create ... -f https://.../plugin.yaml'
-plugin: {}
+plugin: { }
 # Manually configure a plugin called test
 # test:
 #   image: ...
@@ -44,10 +44,10 @@ sync:
     enabled: true
   ingresses:
     enabled: false
-  ingressclasses: {}
+  ingressclasses: { }
     # By default IngressClasses sync is enabled when the Ingress sync is enabled
     # but it can be explicitly disabled by setting:
-    # enabled: false
+  # enabled: false
   fake-nodes:
     enabled: true # will be ignored if nodes.enabled = true
   fake-persistentvolumes:
@@ -98,12 +98,12 @@ mapServices:
   # fromVirtual:
   #   from: my-namespace/name
   #   to: host-service
-  fromVirtual: []
+  fromVirtual: [ ]
   # Same as from virtual, but instead sync services
   # from the host cluster into the virtual cluster.
   # If the namespace does not exist, vcluster will
   # also create the namespace for the service.
-  fromHost: []
+  fromHost: [ ]
 
 hostpathMapper:
   enabled: false
@@ -112,8 +112,8 @@ hostpathMapper:
 syncer:
   # Image to use for the syncer
   image: kubesphere/vcluster:v0.13
-  extraArgs: []
-  env: []
+  extraArgs: [ ]
+  env: [ ]
   livenessProbe:
     enabled: true
   readinessProbe:
@@ -136,7 +136,7 @@ syncer:
 # Virtual Cluster (k3s) configuration
 vcluster:
   # Image to use for the virtual cluster
-  image: rancher/k3s:v1.25.5-k3s1
+  image: rancher/k3s:v1.23.5-k3s1
   command:
     - /bin/k3s
   baseArgs:
@@ -152,13 +152,15 @@ vcluster:
   # Extra arguments for k3s. Make sure the service-cidr is the exact service cidr of the host cluster.
   # If this does not match, you won't be able to create services within the vcluster. You can find out
   # the service cidr of the host cluster by creating a service with a not allowed ClusterIP in the host cluster.
-  # This will yield an error message in the form of: 
+  # This will yield an error message in the form of:
   # The Service "faulty-service" is invalid: spec.clusterIP: Invalid value: "1.1.1.1": provided IP is not in the valid range. The range of valid IPs is 10.96.0.0/12
-  extraArgs: []
+  extraArgs:
+    - --kube-scheduler-arg=leader-elect=false
+    - --kube-controller-manager-arg=leader-elect=false
   volumeMounts:
     - mountPath: /data
       name: data
-  env: []
+  env: [ ]
   resources:
     limits:
       memory: 2Gi
@@ -182,7 +184,7 @@ storage:
       "edgecluster.edgewize.io/name": $name
 
 # Extra volumes that should be created for the StatefulSet
-volumes: []
+volumes: [ ]
 
 # Service account that should be used by the vcluster
 serviceAccount:
@@ -214,24 +216,24 @@ rbac:
 replicas: 1
 
 # NodeSelector used to schedule the vcluster
-nodeSelector: {}
+nodeSelector: { }
 
 # Affinity to apply to the vcluster statefulset
-affinity: {}
+affinity: { }
 
 # PriorityClassName to apply to the vcluster statefulset
 priorityClassName: ""
 
 # Tolerations to apply to the vcluster statefulset
-tolerations: []
+tolerations: [ ]
 
 # Extra Labels for the stateful set
-labels: {}
-podLabels: {}
+labels: { }
+podLabels: { }
 
 # Extra Annotations for the stateful set
-annotations: {}
-podAnnotations: {}
+annotations: { }
+podAnnotations: { }
 
 # PodDisruptionBudget settings for the vcluster
 # (takes effect only if high availability mode is enabled and more than one replica is created)
@@ -248,9 +250,9 @@ serverToken:
   # (Note that this token is also used to generate the encryption key for important content in the database e.g., bootstrap data)
   value: ""
   # Reference to an existing secret key used as value for the k3s server token
-  secretKeyRef: {}
+  secretKeyRef: { }
     # name: ""
-    # key: ""
+  # key: ""
 
 # Service configurations
 service:
@@ -259,7 +261,7 @@ service:
   # Optional configuration
   # A list of IP addresses for which nodes in the cluster will also accept traffic for this service.
   # These IPs are not managed by Kubernetes; e.g., an external load balancer.
-  externalIPs: []
+  externalIPs: [ ]
 
   # Optional configuration for LoadBalancer & NodePort service types
   # Route external traffic to node-local or cluster-wide endpoints [ Local | Cluster ]
@@ -269,7 +271,7 @@ service:
   # Specify IP of load balancer to be created
   loadBalancerIP: ""
   # CIDR block(s) for the service allowlist
-  loadBalancerSourceRanges: []
+  loadBalancerSourceRanges: [ ]
   # Set the loadBalancerClass if using an external load balancer controller
   loadBalancerClass: ""
 
@@ -321,10 +323,10 @@ coredns:
   service:
     type: ClusterIP
     # Configuration for LoadBalancer service type
-    externalIPs: []
+    externalIPs: [ ]
     externalTrafficPolicy: ""
     # Extra Annotations
-    annotations: {}
+    annotations: { }
   resources:
     limits:
       cpu: 1000m
@@ -332,12 +334,12 @@ coredns:
     requests:
       cpu: 3m
       memory: 16Mi
-# if below option is configured, it will override the coredns manifests with the following string
-#  manifests: |-
-#    apiVersion: ...
-#    ...
-  podAnnotations: {}
-  podLabels: {}
+  # if below option is configured, it will override the coredns manifests with the following string
+  #  manifests: |-
+  #    apiVersion: ...
+  #    ...
+  podAnnotations: { }
+  podLabels: { }
 
 # If enabled will deploy vcluster in an isolated mode with pod security
 # standards, limit ranges and resource quotas
@@ -399,10 +401,10 @@ init:
   # The contents of manifests-template will be templated using helm
   # this allows you to use helm values inside, e.g.: {{ .Release.Name }}
   manifestsTemplate: ''
-  helm: []
+  helm: [ ]
 
 etcd:
   global:
     imageRegistry: ""
-    imagePullSecrets: []
+    imagePullSecrets: [ ]
     storageClass: ""

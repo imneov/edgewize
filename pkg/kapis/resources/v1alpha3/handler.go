@@ -21,13 +21,14 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/edgewize-io/edgewize/pkg/informers"
-	"github.com/edgewize-io/edgewize/pkg/models/quotas"
-	v2 "github.com/edgewize-io/edgewize/pkg/models/registries/v2"
 	"github.com/emicklei/go-restful"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog"
+
+	"github.com/edgewize-io/edgewize/pkg/informers"
+	"github.com/edgewize-io/edgewize/pkg/models/quotas"
+	v2 "github.com/edgewize-io/edgewize/pkg/models/registries/v2"
 
 	"github.com/edgewize-io/edgewize/pkg/api"
 	"github.com/edgewize-io/edgewize/pkg/apiserver/query"

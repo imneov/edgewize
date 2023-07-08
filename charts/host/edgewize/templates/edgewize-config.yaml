@@ -33,3 +33,17 @@ data:
     servicemesh:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    edgewize:
+      gateway:
+        {{- if (eq (len .Values.gateway.advertiseAddress) 0) }}
+        advertiseAddress: []
+        {{- else }}
+        advertiseAddress:
+          {{- toYaml .Values.gateway.advertiseAddress | nindent 8 }}
+        {{- end }}
+        {{- if (eq (len .Values.gateway.dnsNames) 0) }}
+        dnsNames: []
+        {{- else }}
+        dnsNames:
+          {{- toYaml .Values.gateway.dnsNames | nindent 8 }}
+        {{- end }}

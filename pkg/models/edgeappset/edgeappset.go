@@ -16,35 +16,74 @@ package edgeappset
 import (
 	"context"
 
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
+	appsv1 "k8s.io/client-go/listers/apps/v1"
+
 	"github.com/edgewize-io/edgewize/pkg/api"
 	appsv1alpha1 "github.com/edgewize-io/edgewize/pkg/api/apps/v1alpha1"
 	apisappsv1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/apps/v1alpha1"
 	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	kubesphere "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
 	appslisteners "github.com/edgewize-io/edgewize/pkg/client/listers/apps/v1alpha1"
 	"github.com/edgewize-io/edgewize/pkg/informers"
 	resources "github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3"
-	v1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	appsv1 "k8s.io/client-go/listers/apps/v1"
 )
 
 type Operator interface {
 	ListEdgeAppSets(ctx context.Context, namespace string, queryParam *query.Query) (*api.ListResult, error)
 	GetEdgeAppSet(ctx context.Context, namespace, name string) (*appsv1alpha1.EdgeAppSet, error)
+	DeleteEdgeAppSet(ctx context.Context, namespace string, name string, deleteWorkloads bool) (*appsv1alpha1.EdgeAppSet, error)
 }
 
-func NewAppSetOperator(informers informers.InformerFactory) Operator {
+func NewAppSetOperator(ksclient kubesphere.Interface, client kubernetes.Interface, informers informers.InformerFactory) Operator {
 	return &appSetOperator{
+		client:             client,
+		ksclient:           ksclient,
 		edgeAppSetLister:   informers.KubeSphereSharedInformerFactory().Apps().V1alpha1().EdgeAppSets().Lister(),
 		deploymentListener: informers.KubernetesSharedInformerFactory().Apps().V1().Deployments().Lister(),
 	}
 }
 
 type appSetOperator struct {
+	client             kubernetes.Interface
+	ksclient           kubesphere.Interface
 	edgeAppSetLister   appslisteners.EdgeAppSetLister
 	deploymentListener appsv1.DeploymentLister
+}
+
+func (o *appSetOperator) DeleteEdgeAppSet(ctx context.Context, namespace string, name string, deleteWorkloads bool) (*appsv1alpha1.EdgeAppSet, error) {
+	edgeAppSet, err := o.ksclient.AppsV1alpha1().EdgeAppSets(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	// 删除
+	err = o.ksclient.AppsV1alpha1().EdgeAppSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	if deleteWorkloads {
+		// current only	support deployment
+		for _, selector := range edgeAppSet.Spec.NodeSelectors {
+			labelSelector := labels.Set{apisappsv1alpha1.LabelEdgeAppSet: name}.AsSelector()
+			listOptions := metav1.ListOptions{LabelSelector: labelSelector.String()}
+			err = o.client.AppsV1().Deployments(selector.Project).DeleteCollection(ctx, metav1.DeleteOptions{}, listOptions)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+	}
+	result := &appsv1alpha1.EdgeAppSet{
+		EdgeAppSet: *edgeAppSet,
+		Status:     appsv1alpha1.EdgeAppSetStatus{},
+	}
+	return result, nil
 }
 
 func (o *appSetOperator) GetEdgeAppSet(ctx context.Context, namespace, name string) (*appsv1alpha1.EdgeAppSet, error) {

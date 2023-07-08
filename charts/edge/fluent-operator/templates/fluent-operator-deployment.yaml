@@ -15,6 +15,7 @@ spec:
   template:
     metadata:
       labels:
+        IndexByEdgeWize: "true"
         app.kubernetes.io/component: operator
         app.kubernetes.io/name: fluent-operator
         {{- if .Values.operator.labels }}

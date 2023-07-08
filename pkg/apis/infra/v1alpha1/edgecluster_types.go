@@ -41,8 +41,6 @@ const (
 
 // EdgeClusterSpec defines the desired state of EdgeCluster
 type EdgeClusterSpec struct {
-	Alias string `json:"alias,omitempty"`
-
 	// Namespace is the target namespace where the edge cluster will be installed
 	Namespace string `json:"namespace,omitempty"`
 
@@ -52,8 +50,6 @@ type EdgeClusterSpec struct {
 
 	// Distro is Kubernetes distro to use for the virtual cluster. Allowed distros: k3s, k0s, k8s, eks (default "k3s")
 	Distro string `json:"distro,omitempty"`
-
-	Description string `json:"description,omitempty"`
 
 	// Version is the edge cluster distro version. TODO
 	Version string `json:"version,omitempty"`
@@ -90,6 +86,8 @@ type EdgeClusterStatus struct {
 
 	KSCore Status `json:"ksCore,omitempty"`
 
+	Kubefed Status `json:"kubefed,omitempty"`
+
 	CloudCore Status `json:"cloudcore,omitempty"`
 
 	FluentOperator Status `json:"fluentOperator,omitempty"`
@@ -108,6 +106,7 @@ type EdgeClusterStatus struct {
 // +kubebuilder:printcolumn:name="CloudCore",type=string,priority=1,JSONPath=`.status.cloudcore`
 // +kubebuilder:printcolumn:name="FluentOperator",type=string,priority=1,JSONPath=`.status.fluentOperator`
 // +kubebuilder:printcolumn:name="EdgewizeMonitor",type=string,priority=1,JSONPath=`.status.edgewizeMonitor`
+// +kubebuilder:printcolumn:name="Kubefed",type=string,priority=1,JSONPath=`.status.Kubefed`
 // EdgeCluster is the Schema for the edgeclusters API
 type EdgeCluster struct {
 	metav1.TypeMeta   `json:",inline"`

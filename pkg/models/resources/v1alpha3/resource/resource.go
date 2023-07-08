@@ -19,6 +19,11 @@ package resource
 import (
 	"errors"
 
+	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+
 	"github.com/edgewize-io/edgewize/pkg/api"
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
@@ -45,10 +50,6 @@ import (
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshot"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshotclass"
 	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/volumesnapshotcontent"
-	snapshotv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
 var ErrResourceNotSupported = errors.New("resource is not supported")

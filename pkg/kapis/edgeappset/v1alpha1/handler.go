@@ -17,13 +17,18 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"strconv"
+
+	"github.com/emicklei/go-restful"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
+
 	kapi "github.com/edgewize-io/edgewize/pkg/api"
 	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	kubesphere "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
 	"github.com/edgewize-io/edgewize/pkg/informers"
 	apptemplatemodels "github.com/edgewize-io/edgewize/pkg/models/apptemplate"
 	edgeappsetmodels "github.com/edgewize-io/edgewize/pkg/models/edgeappset"
-	"github.com/emicklei/go-restful"
-	"k8s.io/klog"
 )
 
 type handler struct {
@@ -31,9 +36,9 @@ type handler struct {
 	appTemplateOperator apptemplatemodels.Operator
 }
 
-func newHandler(informers informers.InformerFactory) *handler {
+func newHandler(ksclient kubesphere.Interface, client kubernetes.Interface, informers informers.InformerFactory) *handler {
 	return &handler{
-		operator:            edgeappsetmodels.NewAppSetOperator(informers),
+		operator:            edgeappsetmodels.NewAppSetOperator(ksclient, client, informers),
 		appTemplateOperator: apptemplatemodels.NewAppTemplateOperator(informers),
 	}
 }
@@ -118,6 +123,20 @@ func (h *handler) handleGetEdgeAppSet(req *restful.Request, resp *restful.Respon
 	name := req.PathParameter("name")
 
 	result, err := h.operator.GetEdgeAppSet(req.Request.Context(), namespace, name)
+	if err != nil {
+		klog.Error(err)
+		kapi.HandleError(resp, req, err)
+		return
+	}
+	resp.WriteEntity(result)
+}
+
+func (h *handler) handleDeleteEdgeAppSet(req *restful.Request, resp *restful.Response) {
+	namespace := req.PathParameter("namespace")
+	name := req.PathParameter("name")
+	deleteWorkloads, _ := strconv.ParseBool(req.QueryParameter("delete_workloads"))
+
+	result, err := h.operator.DeleteEdgeAppSet(req.Request.Context(), namespace, name, deleteWorkloads)
 	if err != nil {
 		klog.Error(err)
 		kapi.HandleError(resp, req, err)

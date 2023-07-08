@@ -4,16 +4,27 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 package v1alpha1
 
 type UpdateClusterRequest struct {
 	KubeConfig []byte `json:"kubeconfig"`
+}
+
+type ConfigResponse struct {
+	Code    uint32 `json:"code,omitempty"`
+	Status  string `json:"status,omitempty"`
+	Message string `json:"message,omitempty"`
+	Data    Config `json:"data,omitempty"`
+}
+
+type Config struct {
+	AdvertiseAddress []string `json:"advertiseAddress,omitempty"`
+	DNSNames         []string `json:"dnsNames,omitempty"`
 }

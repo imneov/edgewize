@@ -17,7 +17,7 @@ limitations under the License.
 package apis
 
 import (
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
 func init() {

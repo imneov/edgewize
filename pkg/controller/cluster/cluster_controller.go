@@ -25,11 +25,6 @@ import (
 	"reflect"
 	"time"
 
-	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
-	kubesphere "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
-	clusterinformer "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/infra/v1alpha1"
-	clusterlister "github.com/edgewize-io/edgewize/pkg/client/listers/infra/v1alpha1"
-	"github.com/edgewize-io/edgewize/pkg/utils/k8sutil"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,6 +41,12 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
+
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	kubesphere "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
+	clusterinformer "github.com/edgewize-io/edgewize/pkg/client/informers/externalversions/infra/v1alpha1"
+	clusterlister "github.com/edgewize-io/edgewize/pkg/client/listers/infra/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/utils/k8sutil"
 )
 
 // Cluster controller only runs under multicluster mode. Cluster controller is following below steps,
@@ -323,6 +324,10 @@ func (c *ClusterController) syncCluster(key string) error {
 		// The object is being deleted
 		if sets.NewString(cluster.ObjectMeta.Finalizers...).Has(infrav1alpha1.Finalizer) {
 			// remove our cluster finalizer
+			err = c.ksClient.InfraV1alpha1().EdgeClusters("edgewize-system").Delete(context.Background(), cluster.Name, metav1.DeleteOptions{})
+			if err != nil {
+				klog.Errorf("Failed to delete edge cluster with name %s, %#v", name, err)
+			}
 			finalizers := sets.NewString(cluster.ObjectMeta.Finalizers...)
 			finalizers.Delete(infrav1alpha1.Finalizer)
 			cluster.ObjectMeta.Finalizers = finalizers.List()

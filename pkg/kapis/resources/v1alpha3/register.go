@@ -17,12 +17,13 @@ limitations under the License.
 package v1alpha3
 
 import (
-	"github.com/edgewize-io/edgewize/pkg/constants"
 	"github.com/emicklei/go-restful"
 	restfulspec "github.com/emicklei/go-restful-openapi"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+
+	"github.com/edgewize-io/edgewize/pkg/constants"
 
 	"github.com/edgewize-io/edgewize/pkg/api"
 	"github.com/edgewize-io/edgewize/pkg/api/resource/v1alpha2"

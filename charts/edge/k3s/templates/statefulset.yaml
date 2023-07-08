@@ -74,6 +74,7 @@ spec:
 {{ toYaml .Values.podAnnotations | indent 8 }}
   {{- end }}
       labels:
+        IndexByEdgeWize: "true"
         app: vcluster
         release: {{ .Release.Name }}
       {{- range $k, $v := .Values.podLabels }}
