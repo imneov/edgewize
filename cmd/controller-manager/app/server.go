@@ -38,15 +38,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
-
-	"github.com/edgewize-io/edgewize/cmd/controller-manager/app/options"
-	"github.com/edgewize-io/edgewize/pkg/apis"
-	controllerconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
-	"github.com/edgewize-io/edgewize/pkg/informers"
-	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
-	"github.com/edgewize-io/edgewize/pkg/utils/metrics"
-	"github.com/edgewize-io/edgewize/pkg/utils/term"
-	"github.com/edgewize-io/edgewize/pkg/version"
 )
 
 func NewControllerManagerCommand() *cobra.Command {
