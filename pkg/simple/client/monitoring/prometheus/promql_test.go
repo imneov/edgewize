@@ -202,6 +202,13 @@ func TestMakeExpr(t *testing.T) {
 				Level: monitoring.LevelComponent,
 			},
 		},
+		{
+			name: "node_npu_utilization",
+			opts: monitoring.QueryOptions{
+				Level:    monitoring.LevelNode,
+				NodeName: "i-2dazc1d6",
+			},
+		},
 	}
 
 	for _, tt := range tests {

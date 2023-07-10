@@ -21,6 +21,7 @@ var PromQLs = map[string]string{
 	"node_cpu_utilisation":                  `node:node_cpu_utilisation:avg1m{node="i-2dazc1d6"}`,
 	"node_cpu_total":                        `node:node_num_cpu:sum{node=~"i-2dazc1d6|i-ezjb7gsk"}`,
 	"node_pod_quota":                        `max(kube_node_status_capacity{resource="pods",node=~"i-2dazc1d6|i-ezjb7gsk"}) by (node) unless on (node) (kube_node_status_condition{condition="Ready",status=~"unknown|false"} > 0)`,
+	"node_npu_utilization":                  `round(avg(npu_chip_info_utilization{node="i-2dazc1d6"}) by (node) / 100, 0.00001)`,
 	"workspace_cpu_usage":                   `round(sum by (workspace) (namespace:container_cpu_usage_seconds_total:sum_rate{namespace!="", workspace="system-workspace"}), 0.001)`,
 	"workspace_memory_usage":                `sum by (workspace) (namespace:container_memory_usage_bytes:sum{namespace!="", workspace=~"system-workspace|demo", workspace!=""})`,
 	"namespace_cpu_usage":                   `round(namespace:container_cpu_usage_seconds_total:sum_rate{namespace!="", namespace="kube-system"}, 0.001)`,

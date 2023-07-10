@@ -25,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/edgewize-io/edgewize/cmd/controller-manager/app/options"
-	"github.com/edgewize-io/edgewize/pkg/controller/alerting"
 	"github.com/edgewize-io/edgewize/pkg/controller/cluster"
 	"github.com/edgewize-io/edgewize/pkg/controller/edgeappset"
 	"github.com/edgewize-io/edgewize/pkg/controller/edgecluster"
@@ -37,9 +36,6 @@ var allControllers = []string{
 	"edgecluster",
 	"edgeappset",
 	"cluster",
-	"rulegroup",
-	"clusterrulegroup",
-	"globalrulegroup",
 }
 
 const (
@@ -71,33 +67,6 @@ func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory i
 	// "edgeappset" controller
 	edgeAppSetReconciler := &edgeappset.Reconciler{}
 	addControllerWithSetup(mgr, "edgeappset", edgeAppSetReconciler)
-
-	// controllers for alerting
-	alertingOptionsEnable := cmOptions.AlertingOptions != nil && (cmOptions.AlertingOptions.PrometheusEndpoint != "" || cmOptions.AlertingOptions.ThanosRulerEndpoint != "")
-	if alertingOptionsEnable {
-		if !cmOptions.InHostCluster() {
-			// "rulegroup" controller
-			if cmOptions.IsControllerEnabled("rulegroup") {
-				rulegroupReconciler := &alerting.RuleGroupReconciler{}
-				addControllerWithSetup(mgr, "rulegroup", rulegroupReconciler)
-			}
-			// "clusterrulegroup" controller
-			if cmOptions.IsControllerEnabled("clusterrulegroup") {
-				clusterrulegroupReconciler := &alerting.ClusterRuleGroupReconciler{}
-				addControllerWithSetup(mgr, "clusterrulegroup", clusterrulegroupReconciler)
-			}
-			// "globalrulegroup" controller
-			if cmOptions.IsControllerEnabled("globalrulegroup") {
-				globalrulegroupReconciler := &alerting.GlobalRuleGroupReconciler{}
-				addControllerWithSetup(mgr, "globalrulegroup", globalrulegroupReconciler)
-			}
-		}
-
-		if cmOptions.InHostCluster() {
-			prometheusRuleReconcilers := &alerting.GlobalPrometheusRuleReconcilers{}
-			addControllerWithSetup(mgr, "prometheusrules", prometheusRuleReconcilers)
-		}
-	}
 
 	// log all controllers process result
 	for _, name := range allControllers {

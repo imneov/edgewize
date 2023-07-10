@@ -126,6 +126,15 @@ var ClusterMetrics = []string{
 	"cluster_gpu_memory_usage",
 	"cluster_gpu_memory_available",
 	"cluster_gpu_memory_total",
+
+	// npu
+	"cluster_npu_utilization",
+	"cluster_npu_usage",
+	"cluster_npu_total",
+	"cluster_npu_memory_usage",
+	"cluster_npu_memory_total",
+	"cluster_npu_memory_utilization",
+	"cluster_npu_memory_available",
 }
 
 var NodeMetrics = []string{
@@ -182,6 +191,19 @@ var NodeMetrics = []string{
 	"node_gpu_memory_total",
 	"node_gpu_temp",
 	"node_gpu_power_usage",
+
+	// npu
+	"node_npu_utilization",
+	"node_npu_usage",
+	"node_npu_total",
+	"node_npu_memory_usage",
+	"node_npu_memory_total",
+	"node_npu_memory_utilization",
+	"node_npu_memory_available",
+	"node_npu_power",
+	"node_npu_temp",
+	"node_npu_voltage",
+	"node_npu_health_status",
 }
 
 var WorkspaceMetrics = []string{
@@ -219,6 +241,10 @@ var WorkspaceMetrics = []string{
 	// gpu
 	"workspace_gpu_usage",
 	"workspace_gpu_memory_usage",
+
+	// npu
+	"workspace_npu_usage",
+	"workspace_npu_memory_usage",
 }
 
 var NamespaceMetrics = []string{
@@ -298,6 +324,11 @@ var NamespaceMetrics = []string{
 	"namespace_gpu_limit_hard",
 	"namespace_gpu_usage",
 	"namespace_gpu_memory_usage",
+
+	// npu
+	"namespace_npu_limit_hard",
+	"namespace_npu_usage",
+	"namespace_npu_memory_usage",
 }
 
 var ApplicationMetrics = []string{
@@ -336,6 +367,10 @@ var WorkloadMetrics = []string{
 	// gpu
 	"workload_gpu_usage",
 	"workload_gpu_memory_usage",
+
+	// npu
+	"workload_npu_usage",
+	"workload_npu_memory_usage",
 }
 
 var ServiceMetrics = []string{
@@ -369,6 +404,10 @@ var PodMetrics = []string{
 	// gpu
 	"pod_gpu_usage",
 	"pod_gpu_memory_usage",
+
+	//npu
+	"pod_npu_usage",
+	"pod_npu_memory_usage",
 }
 
 var ContainerMetrics = []string{
@@ -380,6 +419,9 @@ var ContainerMetrics = []string{
 	"container_gpu_memory_usage",
 	"container_processes_usage",
 	"container_threads_usage",
+	// npu
+	"container_npu_usage",
+	"container_npu_memory_usage",
 }
 
 var PVCMetrics = []string{

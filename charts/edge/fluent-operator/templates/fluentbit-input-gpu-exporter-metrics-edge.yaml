@@ -2,17 +2,15 @@
 apiVersion: fluentbit.fluent.io/v1alpha2
 kind: ClusterInput
 metadata:
-  name: prometheus-scrape-metrics-edge
+  name: nvidia-gpu-exporter-metrics-edge
   labels:
     fluentbit.fluent.io/enabled: "true"
-    node-role.kubernetes.io/edge: "true"
     node-role.kubernetes.io/gpu: "true"
-    node-role.kubernetes.io/npu: "true"
 spec:
   prometheusScrapeMetrics:
     tag: kubeedge.*
     host: 127.0.0.1
-    port: 10350
+    port: 9400
     scrapeInterval: 30s
-    metricsPath : /metrics/cadvisor 
+    metricsPath : /metrics
 {{- end }}
