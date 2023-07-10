@@ -53,6 +53,7 @@ config:
     clusterRole: member
   monitoring: {}
   notification: {}
+  edgewizeota: {}
 
 imagePullSecrets: []
 nameOverride: ""
