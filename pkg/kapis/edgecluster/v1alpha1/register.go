@@ -19,9 +19,6 @@ package v1alpha1
 import (
 	"net/http"
 
-	"github.com/edgewize-io/edgewize/pkg/informers"
-	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/resource"
-	"github.com/edgewize-io/edgewize/pkg/version"
 	"github.com/emicklei/go-restful"
 	restfulspec "github.com/emicklei/go-restful-openapi"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -29,6 +26,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+
+	"github.com/edgewize-io/edgewize/pkg/apiserver/config"
+	"github.com/edgewize-io/edgewize/pkg/informers"
+	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/resource"
+	"github.com/edgewize-io/edgewize/pkg/version"
 
 	"github.com/edgewize-io/edgewize/pkg/api"
 	"github.com/edgewize-io/edgewize/pkg/apiserver/runtime"
@@ -43,6 +45,7 @@ const (
 var GroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1alpha1"}
 
 func AddToContainer(container *restful.Container,
+	config *config.Config,
 	ksclient kubesphere.Interface,
 	k8sclient kubernetes.Interface,
 	informerFactory informers.InformerFactory,
@@ -52,7 +55,7 @@ func AddToContainer(container *restful.Container,
 	ksInformers := informerFactory.KubeSphereSharedInformerFactory()
 
 	webservice := runtime.NewWebService(GroupVersion)
-	handler := New(ksclient, k8sclient, k8sInformers, ksInformers, resourcev1alpha3.NewResourceGetter(informerFactory, cache))
+	handler := New(config, ksclient, k8sclient, k8sInformers, ksInformers, resourcev1alpha3.NewResourceGetter(informerFactory, cache))
 
 	// returns deployment yaml for cluster agent
 	//webservice.Route(webservice.GET("/edgeclusters/{cluster}/agent/deployment").
@@ -62,9 +65,14 @@ func AddToContainer(container *restful.Container,
 	//	Returns(http.StatusOK, api.StatusOK, nil).
 	//	Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
 
+	webservice.Route(webservice.GET("/config").
+		Doc("").
+		To(handler.getConfig).
+		Returns(http.StatusOK, api.StatusOK, nil).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
+
 	webservice.Route(webservice.POST("/edgeclusters/validation").
 		Doc("").
-		Param(webservice.BodyParameter("cluster", "cluster specification")).
 		To(handler.validateEdgeCluster).
 		Returns(http.StatusOK, api.StatusOK, nil).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
@@ -78,14 +86,18 @@ func AddToContainer(container *restful.Container,
 
 	webservice.Route(webservice.GET("/edgeclusters").
 		Doc("").
-		Param(webservice.BodyParameter("cluster", "cluster specification")).
 		To(handler.listEdgeCluster).
 		Returns(http.StatusOK, api.StatusOK, nil).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
 
 	webservice.Route(webservice.GET("/nodes/join").
 		Doc("").
-		Param(webservice.BodyParameter("cluster", "cluster specification")).
+		Param(webservice.BodyParameter("version", "kubeedge version")).
+		Param(webservice.BodyParameter("runtime", "edge container runtime, containerd or docker")).
+		Param(webservice.BodyParameter("node_name", "edge node name")).
+		Param(webservice.BodyParameter("node_group", "node group of edge node")).
+		Param(webservice.BodyParameter("image-repository", "private image repository address")).
+		Param(webservice.BodyParameter("add_default_taint", "if add default taint")).
 		To(handler.joinNode).
 		Returns(http.StatusOK, api.StatusOK, nil).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))

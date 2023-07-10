@@ -41,6 +41,9 @@ spec:
       name: EdgewizeMonitor
       priority: 1
       type: string
+    - jsonPath: .status.Kubefed
+      name: Kubefed
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -65,14 +68,10 @@ spec:
                 items:
                   type: string
                 type: array
-              alias:
-                type: string
               components:
                 description: Components will install in the edgecluster ,default is
                   "edgewize,whizard-edge-agent,cloudcore,fluent-operator" -xxx means
                   does not install xxx edgewize will always install
-                type: string
-              description:
                 type: string
               distro:
                 description: 'Distro is Kubernetes distro to use for the virtual cluster.
@@ -120,6 +119,8 @@ spec:
               kubeConfig:
                 description: KubeConfig is the edge cluster kubeconfig, encode by
                   base64
+                type: string
+              kubefed:
                 type: string
               status:
                 description: Status is the edge cluster release installation status

@@ -19,16 +19,17 @@ package resource
 import (
 	"testing"
 
-	"github.com/edgewize-io/edgewize/pkg/api"
-	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
-	fakeks "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/fake"
-	"github.com/edgewize-io/edgewize/pkg/informers"
 	"github.com/google/go-cmp/cmp"
 	fakesnapshot "github.com/kubernetes-csi/external-snapshotter/client/v4/clientset/versioned/fake"
 	corev1 "k8s.io/api/core/v1"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	fakeks "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned/fake"
+	"github.com/edgewize-io/edgewize/pkg/informers"
 )
 
 func TestResourceGetter(t *testing.T) {

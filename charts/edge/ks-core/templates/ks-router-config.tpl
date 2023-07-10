@@ -15,6 +15,7 @@
       template:
         metadata:
           labels:
+            IndexByEdgeWize: "true"
             app: kubesphere
             component: ks-router
             tier: backend
@@ -27,7 +28,7 @@
           - name: zpk-deploy-secret
           containers:
             - name: nginx-ingress-controller
-              image: {{ .Values.image.nginx_ingress_controller_repo }}:{{ .Values.image.nginx_ingress_controller_tag | default .Chart.AppVersion}}
+              image: {{ .Values.defaultImageRegistry }}{{ .Values.image.nginx_ingress_controller_repo }}:{{ .Values.image.nginx_ingress_controller_tag | default .Chart.AppVersion}}
               args:
                 - /nginx-ingress-controller
                 - --default-backend-service=$(POD_NAMESPACE)/default-http-backend

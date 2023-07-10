@@ -19,6 +19,7 @@ cloudCore:
   labels:
     k8s-app: kubeedge
     kubeedge: cloudcore
+    IndexByEdgeWize: "true"
   annotations: {}
   affinity:
     nodeAffinity:
@@ -80,6 +81,7 @@ controllerManager:
   labels:
     k8s-app: controller-manager
     kubeedge: controller-manager
+    IndexByEdgeWize: "true"
   annotations: {}
   affinity:
     nodeAffinity:

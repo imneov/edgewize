@@ -142,6 +142,9 @@ const (
 	NotificationSecretNamespace = "kubesphere-monitoring-federated"
 	NotificationManagedLabel    = "notification.kubesphere.io/managed"
 
+	EdgeAppSetTag      = "EdgeAppSet"
+	EdgeAppTemplateTag = "EdgeAppTemplate"
+
 	DashboardTag = "Dashboard"
 )
 

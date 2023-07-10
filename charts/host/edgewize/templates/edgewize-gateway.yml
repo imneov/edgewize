@@ -21,6 +21,7 @@ spec:
   template:
     metadata:
       labels:
+        IndexByEdgeWize: "true"
         app: edgewize-gateway
         tier: backend
     spec:

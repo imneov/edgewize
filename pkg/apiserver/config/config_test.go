@@ -21,11 +21,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"gopkg.in/yaml.v2"
+
 	"github.com/edgewize-io/edgewize/pkg/simple/client/alerting"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/edgewize"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/monitoring/prometheus"
-	"github.com/google/go-cmp/cmp"
-	"gopkg.in/yaml.v2"
 
 	"github.com/edgewize-io/edgewize/pkg/models/terminal"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/cache"

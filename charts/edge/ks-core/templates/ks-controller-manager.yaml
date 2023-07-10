@@ -22,6 +22,7 @@ spec:
   template:
     metadata:
       labels:
+        IndexByEdgeWize: "true"
         app: ks-controller-manager
         tier: backend
         # version: {{ .Chart.AppVersion }}
@@ -37,7 +38,7 @@ spec:
         - controller-manager
         - --logtostderr=true
         - --leader-elect=true
-        image: {{ .Values.image.ks_controller_manager_repo }}:{{ .Values.image.ks_controller_manager_tag | default .Chart.AppVersion }}
+        image: {{ .Values.defaultImageRegistry }}{{ .Values.image.ks_controller_manager_repo }}:{{ .Values.image.ks_controller_manager_tag | default .Chart.AppVersion }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: ks-controller-manager
         ports:

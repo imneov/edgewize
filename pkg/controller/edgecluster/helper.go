@@ -33,13 +33,14 @@ import (
 	"path/filepath"
 	"time"
 
-	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
-	"github.com/edgewize-io/edgewize/pkg/helm"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog"
+
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/helm"
 )
 
 func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool, values chartutil.Values) (infrav1alpha1.Status, error) {
@@ -47,14 +48,16 @@ func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool
 	if err != nil {
 		return "", err
 	}
-	klog.V(3).Infof("chart status ,chart: %s, status: %s", name, chartStatus)
+	klog.V(3).Infof("current chart info, chart: %s, status: %s, kubeconfig: %s, values: %v,", name, chartStatus, kubeconfig, values)
 	switch chartStatus {
 	case release.StatusUnknown, release.StatusUninstalled:
+		klog.V(3).Infof("begin to install chart, chart: %s, kubeconfig: %s", name, kubeconfig)
 		err = helm.Install(file, name, namespace, kubeconfig, createNamespace, values)
 		if err != nil {
 			klog.Errorf("install chart error, err: %v", err)
 			return "", err
 		}
+		klog.V(3).Infof("install chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
 		return infrav1alpha1.InstallingStatus, nil
 	case release.StatusUninstalling:
 		return infrav1alpha1.UninstallingStatus, nil

@@ -22,7 +22,8 @@ import (
 	"fmt"
 
 	v2beta1 "github.com/edgewize-io/edgewize/pkg/apis/alerting/v2beta1"
-	v1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	v1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/apps/v1alpha1"
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -61,10 +62,18 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	case v2beta1.SchemeGroupVersion.WithResource("rulegroups"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Alerting().V2beta1().RuleGroups().Informer()}, nil
 
+		// Group=apps.edgewize.io, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("apptemplates"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().AppTemplates().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("apptemplateversions"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().AppTemplateVersions().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("edgeappsets"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().EdgeAppSets().Informer()}, nil
+
 		// Group=infra.edgewize.io, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("clusters"):
+	case infrav1alpha1.SchemeGroupVersion.WithResource("clusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Infra().V1alpha1().Clusters().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("edgeclusters"):
+	case infrav1alpha1.SchemeGroupVersion.WithResource("edgeclusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Infra().V1alpha1().EdgeClusters().Informer()}, nil
 
 	}

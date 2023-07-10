@@ -33,6 +33,7 @@ spec:
   template:
     metadata:
       labels:
+        IndexByEdgeWize: "true"
         app: vcluster-hostpath-mapper
         release: {{ .Release.Name }}
         component: hostpath-mapper

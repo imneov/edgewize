@@ -31,8 +31,14 @@ spec:
     - jsonPath: .status.cloudcore
       name: CloudCore
       type: string
+    - jsonPath: .status.fluentOperator
+      name: FluentOperator
+      type: string
     - jsonPath: .status.edgewizeMonitor
       name: EdgewizeMonitor
+      type: string
+    - jsonPath: .status.Kubefed
+      name: Kubefed
       type: string
     name: v1alpha1
     schema:
@@ -58,14 +64,10 @@ spec:
                 items:
                   type: string
                 type: array
-              alias:
-                type: string
               components:
                 description: Components will install in the edgecluster ,default is
-                  "whizard-edge-agent,edgewize,cloudcore,fluent-operator" -xxx means
+                  "edgewize,whizard-edge-agent,cloudcore,fluent-operator" -xxx means
                   does not install xxx edgewize will always install
-                type: string
-              description:
                 type: string
               distro:
                 description: 'Distro is Kubernetes distro to use for the virtual cluster.
@@ -92,15 +94,21 @@ spec:
             properties:
               cloudcore:
                 type: string
+              configFile:
+                type: string
               edgewize:
                 type: string
               edgewizeMonitor:
                 type: string
               fluentOperator:
                 type: string
+              ksCore:
+                type: string
               kubeConfig:
                 description: KubeConfig is the edge cluster kubeconfig, encode by
                   base64
+                type: string
+              kubefed:
                 type: string
               status:
                 description: Status is the edge cluster release installation status

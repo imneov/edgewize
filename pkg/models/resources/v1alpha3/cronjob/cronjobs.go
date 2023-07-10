@@ -19,12 +19,13 @@ package cronjob
 import (
 	"strings"
 
-	"github.com/edgewize-io/edgewize/pkg/api"
-	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
-	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3"
 	"k8s.io/api/batch/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
+
+	"github.com/edgewize-io/edgewize/pkg/api"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	"github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3"
 )
 
 type cronJobGetter struct {

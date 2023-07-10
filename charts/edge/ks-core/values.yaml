@@ -2,6 +2,8 @@
 
 replicaCount: 1
 
+defaultImageRegistry: ""
+
 image:
   # Overrides the image tag whose default is the chart appVersion.
   ks_controller_manager_repo: kubesphere/ks-controller-manager
@@ -49,7 +51,7 @@ config:
   # Jwt Secret is required by ks-apiserver, a random string would be generated if it's empty
   jwtSecret: ""
   multicluster:
-    enabled: false
+    enabled: true
     clusterRole: member
   monitoring: {}
   notification: {}

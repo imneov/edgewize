@@ -5,6 +5,8 @@ global:
   tag: v0.4.2
   imagePullSecrets: []
 
+edgeClusterName: ""
+
 ## @section Common parameters
 ##
 

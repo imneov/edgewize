@@ -16,6 +16,5 @@ limitations under the License.
 
 package db
 
-//
 type Interface interface {
 }

@@ -15,3 +15,5 @@ data:
   {{- toYaml .Values.values.cloudcore | nindent 4 }}
   ks-core: |
   {{- toYaml .Values.values.ksCore | nindent 4 }}
+  kubefed: |
+  {{- toYaml .Values.values.kubefed | nindent 4 }}

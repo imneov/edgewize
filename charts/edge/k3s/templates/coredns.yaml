@@ -128,6 +128,7 @@ data:
 {{ toYaml .Values.coredns.podAnnotations | indent 12 }}
   {{- end }}
           labels:
+            IndexByEdgeWize: "true"
             k8s-app: kube-dns
           {{- range $k, $v := .Values.coredns.podLabels }}
             {{ $k }}: {{ $v | quote }}

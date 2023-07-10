@@ -26,8 +26,6 @@ import (
 	"sync"
 	"time"
 
-	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
-	"github.com/edgewize-io/edgewize/pkg/apiserver/dispatch"
 	"github.com/emicklei/go-restful"
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -41,6 +39,9 @@ import (
 	"k8s.io/klog"
 	runtimecache "sigs.k8s.io/controller-runtime/pkg/cache"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/dispatch"
 
 	apiserverconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"
 	"github.com/edgewize-io/edgewize/pkg/apiserver/filters"
@@ -58,6 +59,7 @@ import (
 	"github.com/edgewize-io/edgewize/pkg/utils/metrics"
 
 	alertingv2beta1 "github.com/edgewize-io/edgewize/pkg/kapis/alerting/v2beta1"
+	edgeappsetv1alpha1 "github.com/edgewize-io/edgewize/pkg/kapis/edgeappset/v1alpha1"
 	monitoringv1alpha3 "github.com/edgewize-io/edgewize/pkg/kapis/monitoring/v1alpha3"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/monitoring"
 )
@@ -149,11 +151,16 @@ func (s *APIServer) installKubeSphereAPIs(stopCh <-chan struct{}) {
 	urlruntime.Must(resourcev1alpha3.AddToContainer(s.container, s.InformerFactory, s.RuntimeCache))
 	urlruntime.Must(terminalv1alpha2.AddToContainer(s.container, s.KubernetesClient.Kubernetes(), s.KubernetesClient.Config(), s.Config.TerminalOptions))
 	urlruntime.Must(clusterkapisv1alpha1.AddToContainer(s.container,
+		s.Config,
 		s.KubernetesClient.KubeSphere(),
 		s.KubernetesClient.Kubernetes(),
 		s.InformerFactory,
 		s.RuntimeCache,
 		s.KubernetesClient.Kubernetes().Discovery()))
+	urlruntime.Must(edgeappsetv1alpha1.AddToContainer(s.container,
+		s.KubernetesClient.KubeSphere(),
+		s.KubernetesClient.Kubernetes(),
+		s.InformerFactory))
 	urlruntime.Must(monitoringv1alpha3.AddToContainer(
 		s.container,
 		s.KubernetesClient.Kubernetes(),

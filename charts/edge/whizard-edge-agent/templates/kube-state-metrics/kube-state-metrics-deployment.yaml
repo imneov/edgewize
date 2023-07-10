@@ -20,6 +20,7 @@ spec:
       annotations:
         kubectl.kubernetes.io/default-container: kube-state-metrics
       labels:
+        IndexByEdgeWize: "true"
         app.kubernetes.io/component: exporter
         app.kubernetes.io/name: kube-state-metrics
         app.kubernetes.io/part-of: kube-prometheus

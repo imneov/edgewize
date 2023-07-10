@@ -19,24 +19,18 @@ package v1alpha1
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
-	"github.com/edgewize-io/edgewize/pkg/api"
-	clusterv1alpha1 "github.com/edgewize-io/edgewize/pkg/api/cluster/v1alpha1"
-	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
-	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
-	kubesphere "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
-	"github.com/edgewize-io/edgewize/pkg/client/informers/externalversions"
-	clusterlister "github.com/edgewize-io/edgewize/pkg/client/listers/infra/v1alpha1"
-	"github.com/edgewize-io/edgewize/pkg/constants"
-	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/resource"
-	"github.com/edgewize-io/edgewize/pkg/utils/k8sutil"
-	"github.com/edgewize-io/edgewize/pkg/version"
 	"github.com/emicklei/go-restful"
+	"github.com/golang-jwt/jwt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/cli-runtime/pkg/printers"
@@ -45,6 +39,19 @@ import (
 	v1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog"
+
+	"github.com/edgewize-io/edgewize/pkg/api"
+	clusterv1alpha1 "github.com/edgewize-io/edgewize/pkg/api/cluster/v1alpha1"
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/config"
+	"github.com/edgewize-io/edgewize/pkg/apiserver/query"
+	kubesphere "github.com/edgewize-io/edgewize/pkg/client/clientset/versioned"
+	"github.com/edgewize-io/edgewize/pkg/client/informers/externalversions"
+	clusterlister "github.com/edgewize-io/edgewize/pkg/client/listers/infra/v1alpha1"
+	"github.com/edgewize-io/edgewize/pkg/constants"
+	resourcev1alpha3 "github.com/edgewize-io/edgewize/pkg/models/resources/v1alpha3/resource"
+	"github.com/edgewize-io/edgewize/pkg/utils/k8sutil"
+	"github.com/edgewize-io/edgewize/pkg/version"
 )
 
 const (
@@ -56,6 +63,7 @@ const (
 var errClusterConnectionIsNotProxy = fmt.Errorf("cluster is not using proxy connection")
 
 type handler struct {
+	config                 *config.Config
 	k8sclient              kubernetes.Interface
 	ksclient               kubesphere.Interface
 	serviceLister          v1.ServiceLister
@@ -66,8 +74,9 @@ type handler struct {
 	yamlPrinter *printers.YAMLPrinter
 }
 
-func New(ksclient kubesphere.Interface, k8sclient kubernetes.Interface, k8sInformers k8sinformers.SharedInformerFactory, ksInformers externalversions.SharedInformerFactory, resourceGetterV1alpha3 *resourcev1alpha3.ResourceGetter) *handler {
+func New(config *config.Config, ksclient kubesphere.Interface, k8sclient kubernetes.Interface, k8sInformers k8sinformers.SharedInformerFactory, ksInformers externalversions.SharedInformerFactory, resourceGetterV1alpha3 *resourcev1alpha3.ResourceGetter) *handler {
 	return &handler{
+		config:                 config,
 		ksclient:               ksclient,
 		k8sclient:              k8sclient,
 		serviceLister:          k8sInformers.Core().V1().Services().Lister(),
@@ -77,6 +86,19 @@ func New(ksclient kubesphere.Interface, k8sclient kubernetes.Interface, k8sInfor
 
 		yamlPrinter: &printers.YAMLPrinter{},
 	}
+}
+
+// ValidateCluster validate cluster kubeconfig and kubesphere apiserver address, check their accessibility
+func (h *handler) getConfig(request *restful.Request, response *restful.Response) {
+	result := clusterv1alpha1.ConfigResponse{
+		Code:   http.StatusOK,
+		Status: StatusSucceeded,
+		Data: clusterv1alpha1.Config{
+			AdvertiseAddress: h.config.EdgeWizeOptions.Gateway.AdvertiseAddress,
+			DNSNames:         h.config.EdgeWizeOptions.Gateway.DNSNames,
+		},
+	}
+	response.WriteEntity(result)
 }
 
 // updateKubeConfig updates the kubeconfig of the specific cluster, this API is used to update expired kubeconfig.
@@ -155,7 +177,6 @@ func (h *handler) updateKubeConfig(request *restful.Request, response *restful.R
 	response.WriteHeader(http.StatusOK)
 }
 
-// ValidateCluster validate cluster kubeconfig and kubesphere apiserver address, check their accessibility
 func (h *handler) listEdgeCluster(request *restful.Request, response *restful.Response) {
 	query := query.ParseQueryParameter(request)
 	resourceType := "clusters"
@@ -276,4 +297,61 @@ func validateKubeSphereAPIServer(config *rest.Config) (*version.Info, error) {
 	}
 
 	return &ver, nil
+}
+
+const (
+	ClusterName string = "clustername"
+	ClusterType string = "clustertype"
+	NodeGroup   string = "nodegroup"
+)
+
+func newJoinTokenSecret(nodeGroup, clusterName, clusterType string) (string, error) {
+	// set double TokenRefreshDuration as expirationTime, which can guarantee that the validity period
+	// of the token obtained at anytime is greater than or equal to TokenRefreshDuration
+	expiresAt := time.Now().Add(time.Hour * 24).Unix()
+
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	token.Claims = jwt.StandardClaims{
+		ExpiresAt: expiresAt,
+	}
+	token.Header[ClusterName] = clusterName
+	token.Header[ClusterType] = clusterType
+	token.Header[NodeGroup] = nodeGroup
+
+	keyPEM, err := getCaKey()
+	if err != nil {
+		klog.Error(err, "failed to get ca key")
+		return "", err
+	}
+	tokenString, err := token.SignedString(keyPEM)
+	if err != nil {
+		klog.Error(err, "failed to sign token")
+		return "", err
+	}
+
+	caHash, err := getCaHash()
+	if err != nil {
+		klog.Error(err, "failed to get ca hash")
+		return "", err
+	}
+	// combine caHash and tokenString into caHashAndToken
+	caHashToken := strings.Join([]string{caHash, tokenString}, ".")
+	// save caHashAndToken to secret
+	return caHashToken, nil
+}
+
+// getCaHash gets ca-hash
+func getCaHash() (string, error) {
+	caDER, err := os.ReadFile("/etc/certs/rootCA.crt")
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(caDER)
+	return hex.EncodeToString(digest[:]), nil
+}
+
+// getCaKey gets caKey to encrypt token
+func getCaKey() ([]byte, error) {
+	return os.ReadFile("/etc/certs/rootCA.key")
 }

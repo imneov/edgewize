@@ -15,6 +15,7 @@ spec:
   template:
     metadata:
       labels:
+        IndexByEdgeWize: "true"
         app.kubernetes.io/instance: whizard-agent-proxy
         app.kubernetes.io/name: whizard-agent-proxy
     spec:

@@ -22,12 +22,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/edgewize-io/edgewize/pkg/simple/client/edgewize"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
+
+	"github.com/edgewize-io/edgewize/pkg/simple/client/edgewize"
 
 	"github.com/edgewize-io/edgewize/pkg/constants"
 	"github.com/edgewize-io/edgewize/pkg/models/terminal"
@@ -198,7 +199,7 @@ func (conf *Config) stripEmptyOptions() {
 		conf.CacheOptions = nil
 	}
 
-	if conf.EdgeWizeOptions != nil && len(conf.EdgeWizeOptions.HostClusterName) == 0 {
+	if conf.EdgeWizeOptions != nil && conf.EdgeWizeOptions.Gateway != nil && len(conf.EdgeWizeOptions.Gateway.AdvertiseAddress) == 0 {
 		conf.EdgeWizeOptions = nil
 	}
 
