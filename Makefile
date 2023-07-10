@@ -52,7 +52,7 @@ help:
 
 .PHONY: binary
 # Build all of binary
-binary: | edgewize-apiserver edgewize-controller-manager; $(info $(M)...Build all of binary.) @ ## Build all of binary.
+binary: | edgewize-apiserver edgewize-controller-manager edgewize-gateway ; $(info $(M)...Build all of binary.) @ ## Build all of binary.
 
 # Build edgewize-apiserver binary
 edgewize-apiserver: ; $(info $(M)...Begin to build edgewize-apiserver binary.)  @ ## Build edgewize-apiserver.
