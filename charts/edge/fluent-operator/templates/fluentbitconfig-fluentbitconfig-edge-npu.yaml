@@ -2,20 +2,20 @@
 apiVersion: fluentbit.fluent.io/v1alpha2
 kind: ClusterFluentBitConfig
 metadata:
-  name: fluent-bit-config-edge
+  name: fluent-bit-config-edge-npu
   labels:
-    app.kubernetes.io/name: fluent-bit-edge
+    app.kubernetes.io/name: fluent-bit-npu
 spec:
   service:
     parsersFile: parsers.conf
   inputSelector:
     matchLabels:
       fluentbit.fluent.io/enabled: "true"
-      node-role.kubernetes.io/edge: "true"
+      node-role.kubernetes.io/npu: "true"
   filterSelector:
     matchLabels:
       fluentbit.fluent.io/enabled: "true"
-      node-role.kubernetes.io/edge: "true"
+      node-role.kubernetes.io/npu: "true"
   outputSelector:
     matchLabels:
       fluentbit.fluent.io/enabled: "true"

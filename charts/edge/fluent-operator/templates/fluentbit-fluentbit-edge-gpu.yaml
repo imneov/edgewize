@@ -2,10 +2,10 @@
 apiVersion: fluentbit.fluent.io/v1alpha2
 kind: FluentBit
 metadata:
-  name: fluentbit-edge
+  name: fluentbit-edge-gpu
   namespace: fluent
   labels:
-    app.kubernetes.io/name: fluent-bit-edge
+    app.kubernetes.io/name: fluent-bit-gpu
 spec:
   image: {{ .Values.defaultImageRegistry }}{{ .Values.fluentbit.image.repository }}:{{ .Values.fluentbit.image.tag }}
   {{- if .Values.fluentbit.imagePullSecrets }}
@@ -14,10 +14,10 @@ spec:
   {{- end }}
   positionDB:
     hostPath:
-      path: /var/lib/fluent-bit/edge/
+      path: /var/lib/fluent-bit/gpu/
   resources:
 {{- toYaml .Values.fluentbit.resources | nindent 4  }}
-  fluentBitConfigName: fluent-bit-config-edge
+  fluentBitConfigName: fluent-bit-config-edge-gpu
   tolerations:
     - key: node-role.kubernetes.io/edge
       operator: Exists
@@ -26,13 +26,11 @@ spec:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
-        - matchExpressions:
-          - key: accelerator
-            operator: DoesNotExist
-          - key: nvidia.com/gpu.present
-            operator: DoesNotExist
-          - key: node-role.kubernetes.io/edge
-            operator: Exists
+          - matchExpressions:
+              - key: nvidia.com/gpu.present
+                operator: Exists
+              - key: node-role.kubernetes.io/edge
+                operator: Exists
   hostNetwork : true
   volumes:
     - name: host-proc

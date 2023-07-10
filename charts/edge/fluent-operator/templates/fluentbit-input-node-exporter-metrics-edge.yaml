@@ -6,6 +6,8 @@ metadata:
   labels:
     fluentbit.fluent.io/enabled: "true"
     node-role.kubernetes.io/edge: "true"
+    node-role.kubernetes.io/gpu: "true"
+    node-role.kubernetes.io/npu: "true"
 spec:
   nodeExporterMetrics:
     tag: kubeedge.*
