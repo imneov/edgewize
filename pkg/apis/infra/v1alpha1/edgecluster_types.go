@@ -95,6 +95,8 @@ type EdgeClusterStatus struct {
 	FluentOperator Status `json:"fluentOperator,omitempty"`
 
 	EdgewizeMonitor Status `json:"edgewizeMonitor,omitempty"`
+
+	EdgeOtaServer Status `json:"edgeOtaServer,omitempty"`
 }
 
 // +genclient

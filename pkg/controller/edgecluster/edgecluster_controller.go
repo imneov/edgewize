@@ -68,7 +68,7 @@ const (
 	WhizardEdgeGatewayConfigName = "whizard-edge-gateway-configmap"
 )
 
-var DefaultComponents = "edgewize,whizard-edge-agent,cloudcore,fluent-operator,ks-core"
+var DefaultComponents = "edgewize,whizard-edge-agent,cloudcore,fluent-operator,ks-core,edge-ota-server"
 
 func init() {
 	if dc := os.Getenv("DEFAULT_COMPONENTS"); dc != "" {
@@ -414,6 +414,12 @@ func (r *Reconciler) InstallEdgeClusterComponents(ctx context.Context, instance 
 					logger.Error(err, "install cloudcore error")
 					return err
 				}
+			case "edge-ota-server":
+				err = r.ReconcileEdgeOtaServer(ctx, instance)
+				if err != nil {
+					logger.Error(err, "edge-ota-server error")
+					return err
+				}
 			default:
 				logger.Info(fmt.Sprintf("unknown component %s", component))
 			}
@@ -525,6 +531,37 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 		} else {
 			instance.Status.EdgewizeMonitor = status
 		}
+		return nil
+	}
+	return nil
+}
+func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	logger := log.FromContext(ctx, "ReconcileEdgeOtaServer", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.V(4).Info("kubeconfig is null, skip install edge-ota-server")
+		return nil
+	}
+
+	switch instance.Status.EdgeWize {
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
+		namespace := "kubeedge"
+		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+		if err != nil {
+			return err
+		}
+		values, err := r.GetValuesFromConfigMap(ctx, "edge-ota-server")
+		if err != nil {
+			logger.Error(err, "get vcluster values error, use default")
+			values = map[string]interface{}{}
+		}
+		klog.V(3).Infof("ReconcileEdgeOtaServer: %v", values)
+		status, err := InstallChart("edge-ota-server", "edge-ota-server", namespace, instance.Name, true, values)
+		if err != nil {
+			logger.Error(err, "install edge-ota-server error")
+			instance.Status.EdgeOtaServer = infrav1alpha1.ErrorStatus
+			return err
+		}
+		instance.Status.EdgeOtaServer = status
 		return nil
 	}
 	return nil

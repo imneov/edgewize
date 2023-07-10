@@ -1,0 +1,33 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: edge-ota-server
+  name: edge-ota-server
+  namespace: kubeedge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edge-ota-server
+  template:
+    metadata:
+      labels:
+        app: edge-ota-server
+    spec:
+      serviceAccount: edge-ota-server-sa
+      containers:
+      - command:
+        - edge-ota-server
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: edge-ota-server
+        resources:
+          limits:
+            cpu: 300m
+            memory: 500Mi
+          requests:
+            cpu: 300m
+            memory: 500Mi
+      restartPolicy: Always
