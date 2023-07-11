@@ -156,6 +156,10 @@ func (s *HTTPProxyServer) selectServer(r *http.Request) (*url.URL, error) {
 		}
 		return nil, nil
 	})
+	if err != nil {
+		klog.Error("parse token error", err, "bearerToken", bearerToken)
+		return nil, err
+	}
 	klog.V(3).Infof("authorizationHeader(%v) token(%v) %v", authorizationHeader, token, err)
 	clusterName := getHeaderString(token.Header, ClusterName)
 	clusterType := getHeaderString(token.Header, ClusterType)
