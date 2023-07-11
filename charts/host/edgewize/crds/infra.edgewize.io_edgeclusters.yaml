@@ -27,18 +27,23 @@ spec:
       type: string
     - jsonPath: .status.edgewize
       name: EdgeWize
+      priority: 1
       type: string
     - jsonPath: .status.cloudcore
       name: CloudCore
+      priority: 1
       type: string
     - jsonPath: .status.fluentOperator
       name: FluentOperator
+      priority: 1
       type: string
     - jsonPath: .status.edgewizeMonitor
       name: EdgewizeMonitor
+      priority: 1
       type: string
     - jsonPath: .status.Kubefed
       name: Kubefed
+      priority: 1
       type: string
     name: v1alpha1
     schema:
@@ -78,12 +83,20 @@ spec:
                   will be created and hosted (default to "host") it depends on the
                   multi-cluster component.
                 type: string
+              kubeConfig:
+                description: KubeConfig is the edge cluster kubeconfig, encode by
+                  base64
+                format: byte
+                type: string
               location:
                 description: Location is the location of the current cluster. TODO
                 type: string
               namespace:
                 description: Namespace is the target namespace where the edge cluster
                   will be installed
+                type: string
+              type:
+                description: Type is the edge cluster installation method
                 type: string
               version:
                 description: Version is the edge cluster distro version. TODO
@@ -95,6 +108,8 @@ spec:
               cloudcore:
                 type: string
               configFile:
+                type: string
+              edgeOtaServer:
                 type: string
               edgewize:
                 type: string
