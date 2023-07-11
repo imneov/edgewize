@@ -22,6 +22,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -343,10 +344,12 @@ func newJoinTokenSecret(nodeGroup, clusterName, clusterType string) (string, err
 
 // getCaHash gets ca-hash
 func getCaHash() (string, error) {
-	caDER, err := os.ReadFile("/etc/certs/rootCA.crt")
+	caPEM, err := os.ReadFile("/etc/certs/rootCA.crt")
 	if err != nil {
 		return "", err
 	}
+	caDER := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: caPEM})
+
 	digest := sha256.Sum256(caDER)
 	return hex.EncodeToString(digest[:]), nil
 }
