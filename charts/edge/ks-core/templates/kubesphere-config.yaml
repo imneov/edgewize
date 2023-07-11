@@ -34,6 +34,8 @@ data:
       thanosRuleResourceLabels:  {{ .Values.config.alerting.thanosRuleResourceLabels | default "" }}
     notification:
       endpoint: {{ .Values.config.notification.endpoint | default "http://notification-manager-svc.kubesphere-monitoring-system.svc:19093" }}
+    edgewizeota:
+      endpoint: {{ .Values.config.edgewizeota.endpoint | default "http://edge-ota-server.kubeedge.svc/api/" }}
 
     {{- with .Values.config.servicemesh }}
     servicemesh:
