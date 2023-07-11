@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -348,9 +349,20 @@ func getCaHash() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	caDER := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: caPEM})
+	block, _ := pem.Decode(caPEM)
+	if block == nil {
+		klog.Error("failed to decode PEM block containing public key")
+		return "", err
+	}
 
-	digest := sha256.Sum256(caDER)
+	// 解析 PEM 数据为 x509.Certificate 结构
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		klog.Errorf("failed to parse certificate: %v", err)
+		return "", err
+	}
+
+	digest := sha256.Sum256(cert.Raw)
 	return hex.EncodeToString(digest[:]), nil
 }
 
