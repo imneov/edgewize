@@ -20,8 +20,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -343,11 +345,24 @@ func newJoinTokenSecret(nodeGroup, clusterName, clusterType string) (string, err
 
 // getCaHash gets ca-hash
 func getCaHash() (string, error) {
-	caDER, err := os.ReadFile("/etc/certs/rootCA.crt")
+	caPEM, err := os.ReadFile("/etc/certs/rootCA.crt")
 	if err != nil {
 		return "", err
 	}
-	digest := sha256.Sum256(caDER)
+	block, _ := pem.Decode(caPEM)
+	if block == nil {
+		klog.Error("failed to decode PEM block containing public key")
+		return "", err
+	}
+
+	// 解析 PEM 数据为 x509.Certificate 结构
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		klog.Errorf("failed to parse certificate: %v", err)
+		return "", err
+	}
+
+	digest := sha256.Sum256(cert.Raw)
 	return hex.EncodeToString(digest[:]), nil
 }
 
