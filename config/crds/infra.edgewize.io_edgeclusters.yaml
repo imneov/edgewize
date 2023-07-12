@@ -43,6 +43,7 @@ spec:
       type: string
     - jsonPath: .status.Kubefed
       name: Kubefed
+      priority: 1
       type: string
     name: v1alpha1
     schema:
@@ -107,6 +108,8 @@ spec:
               cloudcore:
                 type: string
               configFile:
+                type: string
+              edgeOtaServer:
                 type: string
               edgewize:
                 type: string

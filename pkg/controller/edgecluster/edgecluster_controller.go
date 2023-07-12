@@ -69,7 +69,6 @@ const (
 	WhizardEdgeGatewayConfigName = "whizard-edge-gateway-configmap"
 )
 
-
 var DefaultComponents = "edgewize,whizard-edge-agent,cloudcore,fluent-operator,ks-core,kubefed,edge-ota-server"
 
 func init() {
@@ -293,7 +292,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 	}
 
 	switch instance.Spec.Type {
-	case infrav1alpha1.InstallTypeAuto:
+	default:
 		if instance.Status.Status != infrav1alpha1.RunningStatus {
 			err := r.InstallEdgeCluster(ctx, instance)
 			if err != nil {
