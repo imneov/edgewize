@@ -56,6 +56,11 @@ config:
   monitoring: {}
   notification: {}
   edgewizeota: {}
+  alerting:
+    endpoint: ""
+    prometheusEndpoint: ""
+    thanosRulerEndpoint: http://query-frontend-whizard-operated.kubesphere-monitoring-system.svc:10902
+    thanosRuleResourceLabels: ""
 
 imagePullSecrets: []
 nameOverride: ""
