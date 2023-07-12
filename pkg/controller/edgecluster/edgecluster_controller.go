@@ -550,7 +550,7 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 
 	switch instance.Status.EdgeOtaServer {
 	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
-		namespace := "kubeedge"
+		namespace := "edgewize-system"
 		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
 		if err != nil {
 			return err

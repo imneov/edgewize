@@ -5,7 +5,7 @@ metadata:
   labels:
     app: edge-ota-server
   name: edge-ota-server
-  namespace: kubeedge
+  namespace: edgewize-system
 spec:
   replicas: 1
   selector:
