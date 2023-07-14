@@ -30,7 +30,8 @@ RUN tar xvzf /tmp/kustomize_${KUSTOMIZE_VERSION}_${TARGETOS}_${TARGETARCH}.tar.g
 RUN mv /tmp/kustomize ${OUTDIR}/usr/local/bin/
 
 # Install kubectl for development
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl && chmod +x ./kubectl && mv ./kubectl ${OUTDIR}/usr/local/bin/kubectl
+ADD https://storage.googleapis.com/kubernetes-release/release/v1.27.3/bin/linux/amd64/kubectl /tmp
+RUN chmod +x /tmp/kubectl && mv /tmp/kubectl ${OUTDIR}/usr/local/bin/kubectl
 
 # Build
 
