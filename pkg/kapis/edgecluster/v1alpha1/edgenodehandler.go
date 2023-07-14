@@ -221,9 +221,12 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 	if hasDefaultTaint {
 		withEdgeTaint = " --with-edge-taint"
 	}
-	cmd = fmt.Sprintf("arch=$(uname -m); curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && chmod +x keadm && ./keadm join --kubeedge-version=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s ", uri, version, strings.ReplaceAll(version, "v", ""), advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, secret, withEdgeTaint)
+	cmd = fmt.Sprintf("arch=$(uname -m); curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && chmod +x keadm && ./keadm join --kubeedge-version=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s", uri, version, strings.ReplaceAll(version, "v", ""), advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, secret, withEdgeTaint)
+	if nodeGroup != "" {
+		cmd = cmd + " --labels=apps.edgewize.io/nodegroup=" + nodeGroup
+	}
 	if runtime == "docker" {
-		cmd = cmd + "--remote-runtime-endpoint=unix:///var/run/dockershim.sock --runtimetype=docker"
+		cmd = cmd + " --remote-runtime-endpoint=unix:///var/run/dockershim.sock --runtimetype=docker"
 	}
 	if imageRepository != "" {
 		cmd = fmt.Sprintf("%s --image-repository=%s ", cmd, imageRepository)
