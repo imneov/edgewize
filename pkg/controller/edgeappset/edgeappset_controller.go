@@ -19,12 +19,12 @@ package edgeappset
 import (
 	"context"
 	"fmt"
-
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
@@ -151,14 +151,8 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 	klog.V(5).Infof("origin deploy: %+v", instance.Spec.DeploymentTemplate)
 
 	if instance.Status.WorkloadCount < len(instance.Spec.NodeSelectors) {
-		for i, selector := range instance.Spec.NodeSelectors {
-			var name string
-			if selector.NodeGroup != "" {
-				name = fmt.Sprintf("%s-%s-%d", instance.Name, selector.NodeGroup, i)
-			} else {
-				name = fmt.Sprintf("%s-%d", instance.Name, i)
-			}
-
+		for _, selector := range instance.Spec.NodeSelectors {
+			name := fmt.Sprintf("%s-%d", instance.Name, rand.String(5))
 			if _, ok := deployments[name]; ok {
 				continue
 			}
@@ -174,7 +168,11 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 			//	*metav1.NewControllerRef(instance, instance.GetObjectKind().GroupVersionKind()),
 			//}
 			deploy.Namespace = selector.Project
-			deploy.Spec = instance.Spec.DeploymentTemplate.Spec
+			deploy.Spec = appsv1.DeploymentSpec{
+				Replicas: instance.Spec.DeploymentTemplate.Spec.Replicas,
+				Template: instance.Spec.DeploymentTemplate.Spec.Template,
+				Strategy: instance.Spec.DeploymentTemplate.Spec.Strategy,
+			}
 			deploy.Spec.Template.Labels = map[string]string{
 				"app": deploy.Name,
 			}

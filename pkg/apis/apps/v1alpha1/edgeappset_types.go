@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -40,10 +39,18 @@ type NodeSelector struct {
 	NodeName  string `json:"nodeName,omitempty"`
 }
 
+type DeploymentTemplate struct {
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Specification of the desired behavior of the Deployment.
+	// +optional
+	Spec DeploymentSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+}
+
 type EdgeAppSetSpec struct {
 	AppTemplateName    string             `json:"appTemplateName,omitempty"`
 	Version            string             `json:"version,omitempty"`
-	DeploymentTemplate *appsv1.Deployment `json:"deploymentTemplate,omitempty"`
+	DeploymentTemplate DeploymentTemplate `json:"deploymentTemplate,omitempty"`
 	NodeSelectors      []NodeSelector     `json:"nodeSelectors,omitempty"`
 }
 
