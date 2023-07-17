@@ -174,7 +174,11 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 			//	*metav1.NewControllerRef(instance, instance.GetObjectKind().GroupVersionKind()),
 			//}
 			deploy.Namespace = selector.Project
-			deploy.Spec = instance.Spec.DeploymentTemplate.Spec
+			deploy.Spec = appsv1.DeploymentSpec{
+				Replicas: instance.Spec.DeploymentTemplate.Spec.Replicas,
+				Template: instance.Spec.DeploymentTemplate.Spec.Template,
+				Strategy: instance.Spec.DeploymentTemplate.Spec.Strategy,
+			}
 			deploy.Spec.Template.Labels = map[string]string{
 				"app": deploy.Name,
 			}
