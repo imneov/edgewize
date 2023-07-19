@@ -41,7 +41,11 @@ spec:
       name: EdgewizeMonitor
       priority: 1
       type: string
-    - jsonPath: .status.Kubefed
+    - jsonPath: .status.ksCore
+      name: KS-Core
+      priority: 1
+      type: string
+    - jsonPath: .status.kubefed
       name: Kubefed
       priority: 1
       type: string

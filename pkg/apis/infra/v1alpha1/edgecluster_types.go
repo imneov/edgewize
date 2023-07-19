@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"gopkg.in/yaml.v2"
+	"helm.sh/helm/v3/pkg/chartutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,12 +41,11 @@ const (
 type ValueString string
 
 func (v ValueString) ToValues() map[string]interface{} {
-	result := make(map[string]interface{})
-	err := yaml.Unmarshal([]byte(v), &result)
+	values, err := chartutil.ReadValues([]byte(v))
 	if err != nil {
-		return result
+		return chartutil.Values{}
 	}
-	return result
+	return values
 }
 
 type Component struct {
@@ -127,7 +126,9 @@ type EdgeClusterStatus struct {
 // +kubebuilder:printcolumn:name="CloudCore",type=string,priority=1,JSONPath=`.status.cloudcore`
 // +kubebuilder:printcolumn:name="FluentOperator",type=string,priority=1,JSONPath=`.status.fluentOperator`
 // +kubebuilder:printcolumn:name="EdgewizeMonitor",type=string,priority=1,JSONPath=`.status.edgewizeMonitor`
-// +kubebuilder:printcolumn:name="Kubefed",type=string,priority=1,JSONPath=`.status.Kubefed`
+// +kubebuilder:printcolumn:name="KS-Core",type=string,priority=1,JSONPath=`.status.ksCore`
+// +kubebuilder:printcolumn:name="Kubefed",type=string,priority=1,JSONPath=`.status.kubefed`
+
 // EdgeCluster is the Schema for the edgeclusters API
 type EdgeCluster struct {
 	metav1.TypeMeta   `json:",inline"`

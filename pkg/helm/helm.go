@@ -5,7 +5,7 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 )
 
-func Install(file, name, namespace, kubeconfig string, createNamespace bool, values chartutil.Values) error {
+func Install(file, name, namespace, kubeconfig string, values chartutil.Values) error {
 	cha, err := LoadChart(file)
 	if err != nil {
 		return err
@@ -15,7 +15,7 @@ func Install(file, name, namespace, kubeconfig string, createNamespace bool, val
 	if err = installer.Init(); err != nil {
 		return err
 	}
-	if err = installer.Install(values, createNamespace); err != nil {
+	if err = installer.Install(values); err != nil {
 		return err
 	}
 	return nil

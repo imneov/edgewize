@@ -65,11 +65,11 @@ func (i *Installer) Init() error {
 	return nil
 }
 
-func (i *Installer) Install(values chartutil.Values, createNamespace bool) error {
+func (i *Installer) Install(values chartutil.Values) error {
 	installer := action.NewInstall(i.configuration)
 	installer.Namespace = i.namespace
 	installer.ReleaseName = i.name
-	installer.CreateNamespace = createNamespace
+	installer.CreateNamespace = false
 	if _, err := installer.Run(i.chart, values); err != nil {
 		return errors.Wrap(err, "Installation failure")
 	}

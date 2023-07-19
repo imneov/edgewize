@@ -52,7 +52,7 @@ func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool
 	switch chartStatus {
 	case release.StatusUnknown, release.StatusUninstalled:
 		klog.V(3).Infof("begin to install chart, chart: %s, kubeconfig: %s", name, kubeconfig)
-		err = helm.Install(file, name, namespace, kubeconfig, createNamespace, values)
+		err = helm.Install(file, name, namespace, kubeconfig, values)
 		if err != nil {
 			klog.Errorf("install chart error, err: %v", err)
 			return "", err
@@ -80,7 +80,7 @@ func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Val
 	switch chartStatus {
 	case release.StatusUnknown, release.StatusUninstalled:
 		klog.V(3).Infof("begin to install chart, chart: %s, kubeconfig: %s", name, kubeconfig)
-		err = helm.Upgrade(file, name, namespace, kubeconfig, values)
+		err = helm.Install(file, name, namespace, kubeconfig, values)
 		if err != nil {
 			klog.Errorf("install chart error, err: %v", err)
 			return "", err
