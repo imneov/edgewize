@@ -525,7 +525,7 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
-			upgrade = reflect.DeepEqual(oldComponent.Values, values)
+			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
 		}
 		status, err := UpgradeChart("whizard-edge-agent", "whizard-edge-agent", namespace, instance.Name, values, upgrade)
 		if err != nil {
@@ -574,7 +574,7 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
-			upgrade = reflect.DeepEqual(oldComponent.Values, values)
+			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
 		}
 		status, err := UpgradeChart("edge-ota-server", "edge-ota-server", namespace, instance.Name, values, upgrade)
 		if err != nil {
@@ -622,7 +622,7 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
-			upgrade = reflect.DeepEqual(oldComponent.Values, values)
+			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
 		}
 		status, err := UpgradeChart("ks-core", "ks-core", namespace, instance.Name, values, upgrade)
 		if err != nil {
@@ -700,7 +700,7 @@ func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alph
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
-			upgrade = reflect.DeepEqual(oldComponent.Values, values)
+			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
 		}
 		status, err := UpgradeChart("kubefed", "kubefed", namespace, instance.Name, values, upgrade)
 		if err != nil {
@@ -750,7 +750,7 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
-			upgrade = reflect.DeepEqual(oldComponent.Values, values)
+			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
 		}
 		status, err := UpgradeChart("edgewize", "edgewize", namespace, instance.Name, values, upgrade)
 		if err != nil {
@@ -821,7 +821,7 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
-			upgrade = reflect.DeepEqual(oldComponent.Values, values)
+			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
 		}
 		status, err := UpgradeChart("cloudcore", "cloudcore", namespace, instance.Name, values, upgrade)
 		if err != nil {
@@ -873,7 +873,7 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
-			upgrade = reflect.DeepEqual(oldComponent.Values, values)
+			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
 		}
 		status, err := UpgradeChart("fluent-operator", "fluent-operator", namespace, instance.Name, values, upgrade)
 		if err != nil {
