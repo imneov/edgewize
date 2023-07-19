@@ -65,11 +65,11 @@ func (i *Installer) Init() error {
 	return nil
 }
 
-func (i *Installer) Install(values chartutil.Values, createNamespace bool) error {
+func (i *Installer) Install(values chartutil.Values) error {
 	installer := action.NewInstall(i.configuration)
 	installer.Namespace = i.namespace
 	installer.ReleaseName = i.name
-	installer.CreateNamespace = createNamespace
+	installer.CreateNamespace = false
 	if _, err := installer.Run(i.chart, values); err != nil {
 		return errors.Wrap(err, "Installation failure")
 	}
@@ -90,11 +90,11 @@ func (i *Installer) Status() (release.Status, error) {
 	return last.Info.Status, nil
 }
 
-func (i *Installer) Upgrade() error {
+func (i *Installer) Upgrade(values chartutil.Values) error {
 	upgrader := action.NewUpgrade(i.configuration)
 	upgrader.Namespace = i.namespace
-
-	if _, err := upgrader.Run(i.name, i.chart, nil); err != nil {
+	upgrader.Install = true
+	if _, err := upgrader.Run(i.name, i.chart, values); err != nil {
 		return errors.Wrap(err, "upgrade failure")
 	}
 	return nil

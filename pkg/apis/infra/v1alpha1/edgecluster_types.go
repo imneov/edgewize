@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"helm.sh/helm/v3/pkg/chartutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,6 +25,7 @@ type Status string
 
 const (
 	RunningStatus      Status = "running"
+	PendingStatus      Status = "pending"
 	InstallingStatus   Status = "installing"
 	UninstallingStatus Status = "uninstalling"
 	ErrorStatus        Status = "error"
@@ -36,8 +38,24 @@ const (
 	InstallTypeManual InstallType = "manual"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+type ValueString string
+
+func (v ValueString) ToValues() map[string]interface{} {
+	values, err := chartutil.ReadValues([]byte(v))
+	if err != nil {
+		return chartutil.Values{}
+	}
+	return values
+}
+
+type Component struct {
+	Name            string      `json:"name,omitempty"`
+	File            string      `json:"file,omitempty"`
+	Namespace       string      `json:"namespace,omitempty"`
+	SystemNamespace bool        `json:"systemNamespace,omitempty"`
+	Values          ValueString `json:"values,omitempty"`
+	Dependencies    []string    `json:"dependencies,omitempty"`
+}
 
 // EdgeClusterSpec defines the desired state of EdgeCluster
 type EdgeClusterSpec struct {
@@ -57,10 +75,8 @@ type EdgeClusterSpec struct {
 	// Location is the location of the current cluster. TODO
 	Location string `json:"location,omitempty"`
 
-	// Components will install in the edgecluster ,default is "edgewize,whizard-edge-agent,cloudcore,fluent-operator"
-	//   -xxx means does not install xxx
-	//   edgewize will always install
-	Components string `json:"components,omitempty"`
+	// Components will install in the edgecluster
+	Components []Component `json:"components,omitempty"`
 
 	AdvertiseAddress []string `json:"advertiseAddress,omitempty"`
 
@@ -81,6 +97,8 @@ type EdgeClusterStatus struct {
 
 	// KubeConfig is the edge cluster kubeconfig, encode by base64
 	KubeConfig string `json:"kubeConfig,omitempty"`
+
+	Components map[string]Component `json:"components,omitempty"`
 
 	EdgeWize Status `json:"edgewize,omitempty"`
 
@@ -108,7 +126,9 @@ type EdgeClusterStatus struct {
 // +kubebuilder:printcolumn:name="CloudCore",type=string,priority=1,JSONPath=`.status.cloudcore`
 // +kubebuilder:printcolumn:name="FluentOperator",type=string,priority=1,JSONPath=`.status.fluentOperator`
 // +kubebuilder:printcolumn:name="EdgewizeMonitor",type=string,priority=1,JSONPath=`.status.edgewizeMonitor`
-// +kubebuilder:printcolumn:name="Kubefed",type=string,priority=1,JSONPath=`.status.Kubefed`
+// +kubebuilder:printcolumn:name="KS-Core",type=string,priority=1,JSONPath=`.status.ksCore`
+// +kubebuilder:printcolumn:name="Kubefed",type=string,priority=1,JSONPath=`.status.kubefed`
+
 // EdgeCluster is the Schema for the edgeclusters API
 type EdgeCluster struct {
 	metav1.TypeMeta   `json:",inline"`
