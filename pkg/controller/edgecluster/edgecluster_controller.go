@@ -32,7 +32,6 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
-	infrav1alpha2 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha2"
 	"github.com/edgewize-io/edgewize/pkg/helm"
 	"github.com/edgewize-io/edgewize/pkg/utils/sliceutil"
 	"github.com/go-logr/logr"
@@ -109,7 +108,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.MaxConcurrentReconciles,
 		}).
-		For(&infrav1alpha2.EdgeCluster{}).
+		For(&infrav1alpha1.EdgeCluster{}).
 		Complete(r)
 }
 
@@ -123,7 +122,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	logger := r.Logger.WithValues("edgecluster", req.NamespacedName)
 	logger.V(4).Info("receive request", "req", req)
 	rootCtx := context.Background()
-	instance := &infrav1alpha2.EdgeCluster{}
+	instance := &infrav1alpha1.EdgeCluster{}
 	if err := r.Get(rootCtx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -134,7 +133,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !sliceutil.HasString(instance.ObjectMeta.Finalizers, finalizer) {
 			logger.V(4).Info("edge cluster is created, add finalizer and update", "req", req, "finalizer", finalizer)
-			if err := r.UpdateEdgeCluster(rootCtx, req.NamespacedName, func(_instance *infrav1alpha2.EdgeCluster) error {
+			if err := r.UpdateEdgeCluster(rootCtx, req.NamespacedName, func(_instance *infrav1alpha1.EdgeCluster) error {
 				_instance.ObjectMeta.Finalizers = append(_instance.ObjectMeta.Finalizers, finalizer)
 				return r.Update(rootCtx, _instance)
 			}); err != nil {
@@ -147,7 +146,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			if _, err := r.undoReconcile(ctx, instance); err != nil {
 				logger.Error(err, "undoReconcile failed", "instance", instance.Name)
 			}
-			if err := r.UpdateEdgeCluster(rootCtx, req.NamespacedName, func(_instance *infrav1alpha2.EdgeCluster) error {
+			if err := r.UpdateEdgeCluster(rootCtx, req.NamespacedName, func(_instance *infrav1alpha1.EdgeCluster) error {
 				// remove our finalizer from the list and update it.
 				_instance.ObjectMeta.Finalizers = sliceutil.RemoveString(_instance.ObjectMeta.Finalizers, func(item string) bool {
 					return item == finalizer
@@ -165,12 +164,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	return r.doReconcile(ctx, req.NamespacedName, instance)
 }
 
-func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha2.EdgeCluster) (ctrl.Result, error) {
+func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (ctrl.Result, error) {
 	logger := log.FromContext(ctx, "func", "undoReconcile", "instance", instance.Name)
 	logger.V(4).Info("delete edge cluster", "instance", instance)
 	kubeconfig := instance.Status.ConfigFile
 	switch instance.Status.Status {
-	case infrav1alpha2.InstallingStatus, infrav1alpha2.RunningStatus, infrav1alpha2.ErrorStatus:
+	case infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		status, err := helm.Status(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, kubeconfig)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -178,7 +177,7 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha2.
 		switch status {
 		case "deployed", "superseded", "failed", "pending-install", "pending-upgrade", "pending-rollback":
 			logger.V(4).Info("begin uninstall edge cluster ", "status", status)
-			instance.Status.Status = infrav1alpha2.UninstallingStatus
+			instance.Status.Status = infrav1alpha1.UninstallingStatus
 			err = helm.Uninstall(instance.Name, instance.Spec.Namespace, kubeconfig)
 			if err != nil {
 				logger.Error(err, "uninstall edge cluster error")
@@ -220,7 +219,7 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha2.
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, instance *infrav1alpha2.EdgeCluster) (ctrl.Result, error) {
+func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, instance *infrav1alpha1.EdgeCluster) (ctrl.Result, error) {
 	logger := log.FromContext(ctx, "doReconcile", instance.Name)
 	if instance.Name == "" || instance.Spec.Namespace == "" {
 		return ctrl.Result{}, errors.New("cluster name and namespace cannot be empty")
@@ -230,13 +229,13 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 			logger.Error(err, "update edge cluster status error")
 		}
 	}()
-	if err := r.UpdateEdgeCluster(ctx, nn, func(_instance *infrav1alpha2.EdgeCluster) error {
+	if err := r.UpdateEdgeCluster(ctx, nn, func(_instance *infrav1alpha1.EdgeCluster) error {
 		logger.V(3).Info("origin value", "distro", _instance.Spec.Distro, "components", _instance.Spec.Components, "advertiseaddress", _instance.Spec.AdvertiseAddress)
 		if _instance.Spec.Distro == "" {
 			_instance.Spec.Distro = DefaultDistro
 		}
 		if _instance.Spec.Type == "" {
-			_instance.Spec.Type = infrav1alpha2.InstallTypeAuto
+			_instance.Spec.Type = infrav1alpha1.InstallTypeAuto
 		}
 		if _instance.Spec.Components == nil || len(_instance.Spec.Components) == 0 {
 			components, err := r.GetDefaultComponents(ctx)
@@ -298,7 +297,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 
 	switch instance.Spec.Type {
 	default:
-		if instance.Status.Status != infrav1alpha2.RunningStatus {
+		if instance.Status.Status != infrav1alpha1.RunningStatus {
 			err := r.InstallEdgeCluster(ctx, instance)
 			if err != nil {
 				logger.Error(err, "install cluster error", "name", instance.Name, "distro", instance.Spec.Distro)
@@ -306,9 +305,9 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 			}
 			return ctrl.Result{}, nil
 		}
-	case infrav1alpha2.InstallTypeManual:
-		if instance.Status.Status != infrav1alpha2.RunningStatus {
-			instance.Status.Status = infrav1alpha2.RunningStatus
+	case infrav1alpha1.InstallTypeManual:
+		if instance.Status.Status != infrav1alpha1.RunningStatus {
+			instance.Status.Status = infrav1alpha1.RunningStatus
 			instance.Status.KubeConfig = string(instance.Spec.KubeConfig)
 		}
 	}
@@ -343,7 +342,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) InstallEdgeCluster(ctx context.Context, instance *infrav1alpha2.EdgeCluster) error {
+func (r *Reconciler) InstallEdgeCluster(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
 	logger := log.FromContext(ctx, "InstallEdgeCluster", instance.Name)
 	needCreateNS := true
 	kubeconfig, err := r.LoadExternalKubeConfig(ctx, instance.Spec.Namespace)
@@ -382,7 +381,7 @@ func (r *Reconciler) InstallEdgeCluster(ctx context.Context, instance *infrav1al
 	return nil
 }
 
-func (r *Reconciler) InstallEdgeClusterComponents(ctx context.Context, instance *infrav1alpha2.EdgeCluster) error {
+func (r *Reconciler) InstallEdgeClusterComponents(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
 	logger := log.FromContext(ctx, "InstallEdgeClusterComponents", instance.Name)
 	var err error
 	for _, component := range instance.Spec.Components {
@@ -429,9 +428,9 @@ func (r *Reconciler) InstallEdgeClusterComponents(ctx context.Context, instance 
 	return nil
 }
 
-func (r *Reconciler) UpdateEdgeCluster(ctx context.Context, nn types.NamespacedName, updateFunc func(*infrav1alpha2.EdgeCluster) error) error {
+func (r *Reconciler) UpdateEdgeCluster(ctx context.Context, nn types.NamespacedName, updateFunc func(*infrav1alpha1.EdgeCluster) error) error {
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() (err error) {
-		instance := &infrav1alpha2.EdgeCluster{}
+		instance := &infrav1alpha1.EdgeCluster{}
 		if err := r.Get(ctx, nn, instance); err != nil {
 			return client.IgnoreNotFound(err)
 		}
@@ -439,7 +438,7 @@ func (r *Reconciler) UpdateEdgeCluster(ctx context.Context, nn types.NamespacedN
 	})
 }
 
-func (r *Reconciler) GetKubeConfig(instance *infrav1alpha2.EdgeCluster) (*clientcmdapi.Config, error) {
+func (r *Reconciler) GetKubeConfig(instance *infrav1alpha1.EdgeCluster) (*clientcmdapi.Config, error) {
 	// 读取外部 kubeconfig 创建 k8s client
 	file := filepath.Join(homedir.HomeDir(), ".kube", "external", instance.Spec.Namespace)
 	secret := &corev1.Secret{}
@@ -496,7 +495,7 @@ func (r *Reconciler) GetKubeConfig(instance *infrav1alpha2.EdgeCluster) (*client
 	return config, nil
 }
 
-func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *infrav1alpha2.EdgeCluster, component infrav1alpha2.Component) error {
+func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
 	logger := log.FromContext(ctx, "ReconcileWhizardEdgeAgent", instance.Name)
 	if instance.Status.KubeConfig == "" {
 		logger.V(4).Info("kubeconfig is null, skip install whizard-edge-agent")
@@ -504,7 +503,7 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 	}
 
 	switch instance.Status.EdgewizeMonitor {
-	case "", infrav1alpha2.InstallingStatus, infrav1alpha2.RunningStatus, infrav1alpha2.ErrorStatus:
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		namespace := component.Namespace
 		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
 		if err != nil {
@@ -522,7 +521,7 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 		}
 		upgrade := false
 		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha2.Component)
+			instance.Status.Components = make(map[string]infrav1alpha1.Component)
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
@@ -531,16 +530,16 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 		status, err := UpgradeChart("whizard-edge-agent", "whizard-edge-agent", namespace, instance.Name, values, upgrade)
 		if err != nil {
 			logger.Error(err, "install whizard-edge-agent error", "instance", instance.Name)
-			instance.Status.EdgewizeMonitor = infrav1alpha2.ErrorStatus
+			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
 			return err
 		}
-		if status == infrav1alpha2.InstallingStatus {
+		if status == infrav1alpha1.InstallingStatus {
 			instance.Status.Components[component.Name] = component
 		}
 		err = r.RegisterWhizardEdgeGatewayRouters(ctx, instance.Name, instance)
 		if err != nil {
 			logger.Error(err, "update whizard edge gateway config failed")
-			instance.Status.EdgewizeMonitor = infrav1alpha2.ErrorStatus
+			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
 		} else {
 			instance.Status.EdgewizeMonitor = status
 		}
@@ -549,7 +548,7 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 	return nil
 }
 
-func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infrav1alpha2.EdgeCluster, component infrav1alpha2.Component) error {
+func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
 	logger := log.FromContext(ctx, "ReconcileEdgeOtaServer", instance.Name)
 	if instance.Status.KubeConfig == "" {
 		logger.V(4).Info("kubeconfig is null, skip install edge-ota-server")
@@ -557,7 +556,7 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 	}
 
 	switch instance.Status.EdgeOtaServer {
-	case "", infrav1alpha2.InstallingStatus, infrav1alpha2.RunningStatus, infrav1alpha2.ErrorStatus:
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		namespace := component.Namespace
 		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
 		if err != nil {
@@ -571,7 +570,7 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 		}
 		upgrade := false
 		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha2.Component)
+			instance.Status.Components = make(map[string]infrav1alpha1.Component)
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
@@ -580,11 +579,11 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 		status, err := UpgradeChart("edge-ota-server", "edge-ota-server", namespace, instance.Name, values, upgrade)
 		if err != nil {
 			logger.Error(err, "install edge-ota-server error")
-			instance.Status.EdgeOtaServer = infrav1alpha2.ErrorStatus
+			instance.Status.EdgeOtaServer = infrav1alpha1.ErrorStatus
 			return err
 		}
 		instance.Status.EdgeOtaServer = status
-		if status == infrav1alpha2.InstallingStatus {
+		if status == infrav1alpha1.InstallingStatus {
 			instance.Status.Components[component.Name] = component
 		}
 		return nil
@@ -592,14 +591,14 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 	return nil
 }
 
-func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha2.EdgeCluster, component infrav1alpha2.Component) error {
+func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
 	logger := log.FromContext(ctx, "ReconcileKSCore", instance.Name)
 	if instance.Status.KubeConfig == "" {
 		logger.V(4).Info("kubeconfig is null, skip install ks-core")
 		return nil
 	}
 	switch instance.Status.KSCore {
-	case "", infrav1alpha2.InstallingStatus, infrav1alpha2.RunningStatus, infrav1alpha2.ErrorStatus:
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		namespace := component.Namespace
 		r.applyYaml(instance.Name, "/charts/cluster-configuration.yaml")
 		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
@@ -619,7 +618,7 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 		}
 		upgrade := false
 		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha2.Component)
+			instance.Status.Components = make(map[string]infrav1alpha1.Component)
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
@@ -628,13 +627,13 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 		status, err := UpgradeChart("ks-core", "ks-core", namespace, instance.Name, values, upgrade)
 		if err != nil {
 			logger.Error(err, "install ks-core error")
-			instance.Status.KSCore = infrav1alpha2.ErrorStatus
+			instance.Status.KSCore = infrav1alpha1.ErrorStatus
 			return err
 		}
 		instance.Status.KSCore = status
-		if status == infrav1alpha2.InstallingStatus {
+		if status == infrav1alpha1.InstallingStatus {
 			instance.Status.Components[component.Name] = component
-		} else if instance.Status.KSCore == infrav1alpha2.RunningStatus {
+		} else if instance.Status.KSCore == infrav1alpha1.RunningStatus {
 			r.applyYaml(instance.Name, "/charts/role-templates.yaml")
 			member := &ksclusterv1alpha1.Cluster{}
 			err = r.Get(ctx, types.NamespacedName{Name: instance.Name}, member)
@@ -675,14 +674,14 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 	return nil
 }
 
-func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alpha2.EdgeCluster, component infrav1alpha2.Component) error {
+func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
 	logger := log.FromContext(ctx, "ReconcileKubefed", instance.Name)
 	if instance.Status.KubeConfig == "" {
 		logger.V(4).Info("kubeconfig is null, skip install kubefed")
 		return nil
 	}
 	switch instance.Status.Kubefed {
-	case "", infrav1alpha2.InstallingStatus, infrav1alpha2.RunningStatus, infrav1alpha2.ErrorStatus:
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		namespace := component.Namespace
 		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
 		if err != nil {
@@ -697,7 +696,7 @@ func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alph
 		}
 		upgrade := false
 		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha2.Component)
+			instance.Status.Components = make(map[string]infrav1alpha1.Component)
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
@@ -706,13 +705,13 @@ func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alph
 		status, err := UpgradeChart("kubefed", "kubefed", namespace, instance.Name, values, upgrade)
 		if err != nil {
 			logger.Error(err, "install kubefed error")
-			instance.Status.Kubefed = infrav1alpha2.ErrorStatus
+			instance.Status.Kubefed = infrav1alpha1.ErrorStatus
 			return err
 		}
 		instance.Status.Kubefed = status
-		if status == infrav1alpha2.InstallingStatus {
+		if status == infrav1alpha1.InstallingStatus {
 			instance.Status.Components[component.Name] = component
-		} else if instance.Status.Kubefed == infrav1alpha2.RunningStatus {
+		} else if instance.Status.Kubefed == infrav1alpha1.RunningStatus {
 			r.applyYaml(instance.Name, "/charts/federatedcrds.yaml")
 		}
 		return nil
@@ -720,14 +719,14 @@ func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alph
 	return nil
 }
 
-func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alpha2.EdgeCluster, component infrav1alpha2.Component) error {
+func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
 	logger := log.FromContext(ctx, "ReconcileEdgeWize", instance.Name)
 	if instance.Status.KubeConfig == "" {
 		logger.V(4).Info("kubeconfig is null, skip install edgewize agent")
 		return nil
 	}
 	switch instance.Status.EdgeWize {
-	case "", infrav1alpha2.InstallingStatus, infrav1alpha2.RunningStatus, infrav1alpha2.ErrorStatus:
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		namespace := component.Namespace
 		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
 		if err != nil {
@@ -747,7 +746,7 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 		}
 		upgrade := false
 		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha2.Component)
+			instance.Status.Components = make(map[string]infrav1alpha1.Component)
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
@@ -755,14 +754,14 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 		}
 		status, err := UpgradeChart("edgewize", "edgewize", namespace, instance.Name, values, upgrade)
 		if err != nil {
-			instance.Status.EdgeWize = infrav1alpha2.ErrorStatus
+			instance.Status.EdgeWize = infrav1alpha1.ErrorStatus
 			logger.Error(err, "install edgewize error")
 			return err
 		}
 		instance.Status.EdgeWize = status
-		if status == infrav1alpha2.InstallingStatus {
+		if status == infrav1alpha1.InstallingStatus {
 			instance.Status.Components[component.Name] = component
-		} else if instance.Status.EdgeWize == infrav1alpha2.RunningStatus {
+		} else if instance.Status.EdgeWize == infrav1alpha1.RunningStatus {
 			// 等待 edgewize running 后再更新 kubeconfig，否则前端边缘集群显示 running，进入集群页面会报错
 			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 				edge := &infrav1alpha1.Cluster{}
@@ -789,14 +788,14 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 	return nil
 }
 
-func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1alpha2.EdgeCluster, component infrav1alpha2.Component) error {
+func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
 	logger := log.FromContext(ctx, "ReconcileCloudCore", instance.Name)
 	if instance.Status.KubeConfig == "" {
 		logger.V(4).Info("kubeconfig is null, skip install cloudcore")
 		return nil
 	}
 	switch instance.Status.CloudCore {
-	case "", infrav1alpha2.InstallingStatus, infrav1alpha2.RunningStatus, infrav1alpha2.ErrorStatus:
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		namespace := component.Namespace
 		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
 		if err != nil {
@@ -818,7 +817,7 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 		}
 		upgrade := false
 		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha2.Component)
+			instance.Status.Components = make(map[string]infrav1alpha1.Component)
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
@@ -827,13 +826,13 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 		status, err := UpgradeChart("cloudcore", "cloudcore", namespace, instance.Name, values, upgrade)
 		if err != nil {
 			klog.Warning("install cloudcore error, will try again at the next Reconcile.", "error", err)
-			instance.Status.CloudCore = infrav1alpha2.ErrorStatus
+			instance.Status.CloudCore = infrav1alpha1.ErrorStatus
 			return err
 		}
 		instance.Status.CloudCore = status
-		if status == infrav1alpha2.InstallingStatus {
+		if status == infrav1alpha1.InstallingStatus {
 			instance.Status.Components[component.Name] = component
-		} else if status == infrav1alpha2.RunningStatus {
+		} else if status == infrav1alpha1.RunningStatus {
 			err := r.UpdateCloudCoreService(ctx, instance.Name, "kubeedge", instance)
 			if err != nil {
 				logger.Info("update edgewize-cloudcore-service error", "error", err)
@@ -844,14 +843,14 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 	return nil
 }
 
-func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infrav1alpha2.EdgeCluster, component infrav1alpha2.Component) error {
+func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
 	logger := log.FromContext(ctx, "ReconcileCloudCore", instance.Name)
 	if instance.Status.KubeConfig == "" {
 		logger.Info("kubeconfig is null, skip install fluent-operator")
 		return nil
 	}
 	switch instance.Status.FluentOperator {
-	case "", infrav1alpha2.InstallingStatus, infrav1alpha2.RunningStatus, infrav1alpha2.ErrorStatus:
+	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
 		namespace := component.Namespace
 		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
 		if err != nil {
@@ -870,7 +869,7 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 		}
 		upgrade := false
 		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha2.Component)
+			instance.Status.Components = make(map[string]infrav1alpha1.Component)
 		}
 		oldComponent, ok := instance.Status.Components[component.Name]
 		if ok {
@@ -879,11 +878,11 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 		status, err := UpgradeChart("fluent-operator", "fluent-operator", namespace, instance.Name, values, upgrade)
 		if err != nil {
 			logger.Error(err, "install fluent-operator error")
-			instance.Status.FluentOperator = infrav1alpha2.ErrorStatus
+			instance.Status.FluentOperator = infrav1alpha1.ErrorStatus
 			return err
 		}
 		instance.Status.FluentOperator = status
-		if status == infrav1alpha2.InstallingStatus {
+		if status == infrav1alpha1.InstallingStatus {
 			instance.Status.Components[component.Name] = component
 		}
 		return nil
@@ -922,7 +921,7 @@ func (r *Reconciler) SetKSCoreValues(ctx context.Context, values chartutil.Value
 	return nil
 }
 
-func SetCloudCoreValues(values chartutil.Values, instance *infrav1alpha2.EdgeCluster) error {
+func SetCloudCoreValues(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) error {
 	if len(instance.Spec.AdvertiseAddress) > 0 {
 		cloudcore := values["cloudCore"].(map[string]interface{})
 		modules := cloudcore["modules"].(map[string]interface{})
@@ -934,7 +933,7 @@ func SetCloudCoreValues(values chartutil.Values, instance *infrav1alpha2.EdgeClu
 }
 
 // edge node send data to whizard edge gateway
-func (r *Reconciler) SetClusterOutput(values chartutil.Values, instance *infrav1alpha2.EdgeCluster) (err error) {
+func (r *Reconciler) SetClusterOutput(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
 	port, err := values.PathValue("fluentbit.kubeedge.prometheusRemoteWrite.port")
 	if err != nil {
 		return err
@@ -967,7 +966,7 @@ func (r *Reconciler) SetClusterOutput(values chartutil.Values, instance *infrav1
 	return nil
 }
 
-func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.Values, instance *infrav1alpha2.EdgeCluster) (err error) {
+func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
 	gatewayService := &corev1.Service{}
 	key := types.NamespacedName{
 		Namespace: MonitorNamespace,
@@ -988,7 +987,7 @@ func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.V
 	return
 }
 
-func (r *Reconciler) RegisterWhizardEdgeGatewayRouters(ctx context.Context, kubeconfig string, instance *infrav1alpha2.EdgeCluster) (err error) {
+func (r *Reconciler) RegisterWhizardEdgeGatewayRouters(ctx context.Context, kubeconfig string, instance *infrav1alpha1.EdgeCluster) (err error) {
 	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
 	config, err := clientcmd.BuildConfigFromFlags("", file)
 	if err != nil {
@@ -1068,7 +1067,7 @@ func (r *Reconciler) RegisterWhizardEdgeGatewayRouters(ctx context.Context, kube
 	return
 }
 
-func (r *Reconciler) UnregisterWhizardEdgeGatewayRouters(ctx context.Context, instance *infrav1alpha2.EdgeCluster) (err error) {
+func (r *Reconciler) UnregisterWhizardEdgeGatewayRouters(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (err error) {
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() (err error) {
 		edgeGatewayConfigMap := &corev1.ConfigMap{}
 		key := types.NamespacedName{
@@ -1201,23 +1200,23 @@ func (r *Reconciler) GetValuesFromConfigMap(ctx context.Context, component strin
 	return values, nil
 }
 
-func (r *Reconciler) GetDefaultComponents(ctx context.Context) ([]infrav1alpha2.Component, error) {
+func (r *Reconciler) GetDefaultComponents(ctx context.Context) ([]infrav1alpha1.Component, error) {
 	valuesMap, err := r.GetValuesMap(ctx)
 	if err != nil {
 		klog.Error("get values map error", err.Error())
 		return nil, err
 	}
-	result := make([]infrav1alpha2.Component, 0)
+	result := make([]infrav1alpha1.Component, 0)
 	for name, namespace := range ComponentsNamespace {
 		val, ok := valuesMap[name]
 		if !ok {
 			klog.V(3).Infof("component %s not found in values map", name)
 			continue
 		}
-		component := infrav1alpha2.Component{
+		component := infrav1alpha1.Component{
 			Name:            name,
 			File:            fmt.Sprintf("/charts/%s", name),
-			Values:          infrav1alpha2.ValueString(val),
+			Values:          infrav1alpha1.ValueString(val),
 			Namespace:       namespace,
 			SystemNamespace: true,
 		}
@@ -1300,7 +1299,7 @@ func (r *Reconciler) CreateNameSpace(ctx context.Context, kubeconfig, namespace 
 
 type ServiceMap map[string]corev1.ServiceSpec
 
-func (r *Reconciler) UpdateCloudCoreService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha2.EdgeCluster) error {
+func (r *Reconciler) UpdateCloudCoreService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha1.EdgeCluster) error {
 	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
 	config, err := clientcmd.BuildConfigFromFlags("", file)
 	if err != nil {
@@ -1355,7 +1354,7 @@ func (r *Reconciler) UpdateCloudCoreService(ctx context.Context, kubeconfig, nam
 	return nil
 }
 
-func (r *Reconciler) DeleteCloudCoreService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha2.EdgeCluster) error {
+func (r *Reconciler) DeleteCloudCoreService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha1.EdgeCluster) error {
 	cm := &corev1.ConfigMap{}
 	key := types.NamespacedName{
 		Namespace: CurrentNamespace,
@@ -1502,7 +1501,7 @@ func (r *Reconciler) InitCert(ctx context.Context, kubeconfig string, name, name
 	return nil
 }
 
-func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1alpha2.EdgeCluster, kubeconfig string, namespace string) error {
+func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1alpha1.EdgeCluster, kubeconfig string, namespace string) error {
 	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
 	config, err := clientcmd.BuildConfigFromFlags("", file)
 	if err != nil {
