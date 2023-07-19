@@ -43,3 +43,19 @@ func Uninstall(name, namespace, kubeconfig string) error {
 	}
 	return nil
 }
+
+func Upgrade(file, name, namespace, kubeconfig string, values chartutil.Values) error {
+	cha, err := LoadChart(file)
+	if err != nil {
+		return err
+	}
+
+	installer := NewHelmInstaller(cha, name, namespace, kubeconfig)
+	if err = installer.Init(); err != nil {
+		return err
+	}
+	if err = installer.Upgrade(values); err != nil {
+		return err
+	}
+	return nil
+}

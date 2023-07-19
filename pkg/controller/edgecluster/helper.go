@@ -39,11 +39,11 @@ import (
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog"
 
-	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
+	infrav1alpha2 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha2"
 	"github.com/edgewize-io/edgewize/pkg/helm"
 )
 
-func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool, values chartutil.Values) (infrav1alpha1.Status, error) {
+func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool, values chartutil.Values) (infrav1alpha2.Status, error) {
 	chartStatus, err := helm.Status(file, name, namespace, kubeconfig)
 	if err != nil {
 		return "", err
@@ -58,17 +58,55 @@ func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool
 			return "", err
 		}
 		klog.V(3).Infof("install chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
-		return infrav1alpha1.InstallingStatus, nil
+		return infrav1alpha2.InstallingStatus, nil
 	case release.StatusUninstalling:
-		return infrav1alpha1.UninstallingStatus, nil
+		return infrav1alpha2.UninstallingStatus, nil
 	case release.StatusDeployed:
-		return infrav1alpha1.RunningStatus, nil
+		return infrav1alpha2.RunningStatus, nil
 	case release.StatusFailed:
-		return infrav1alpha1.ErrorStatus, nil
+		return infrav1alpha2.ErrorStatus, nil
 	case release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback:
-		return infrav1alpha1.InstallingStatus, nil
+		return infrav1alpha2.PendingStatus, nil
 	}
-	return infrav1alpha1.ErrorStatus, nil
+	return infrav1alpha2.ErrorStatus, nil
+}
+
+func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Values, upgrade bool) (infrav1alpha2.Status, error) {
+	chartStatus, err := helm.Status(file, name, namespace, kubeconfig)
+	if err != nil {
+		return "", err
+	}
+	klog.V(3).Infof("current chart info, chart: %s, status: %s, kubeconfig: %s, values: %v,", name, chartStatus, kubeconfig, values)
+	switch chartStatus {
+	case release.StatusUnknown, release.StatusUninstalled:
+		klog.V(3).Infof("begin to install chart, chart: %s, kubeconfig: %s", name, kubeconfig)
+		err = helm.Upgrade(file, name, namespace, kubeconfig, values)
+		if err != nil {
+			klog.Errorf("install chart error, err: %v", err)
+			return "", err
+		}
+		klog.V(3).Infof("install chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
+		return infrav1alpha2.InstallingStatus, nil
+	case release.StatusUninstalling:
+		return infrav1alpha2.UninstallingStatus, nil
+	case release.StatusDeployed:
+		if upgrade {
+			klog.V(3).Infof("begin to upgrade chart, chart: %s, kubeconfig: %s", name, kubeconfig)
+			err = helm.Upgrade(file, name, namespace, kubeconfig, values)
+			if err != nil {
+				klog.Errorf("upgrade chart error, err: %v", err)
+				return "", err
+			}
+			klog.V(3).Infof("upgrade chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
+			return infrav1alpha2.InstallingStatus, nil
+		}
+		return infrav1alpha2.RunningStatus, nil
+	case release.StatusFailed:
+		return infrav1alpha2.ErrorStatus, nil
+	case release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback:
+		return infrav1alpha2.PendingStatus, nil
+	}
+	return infrav1alpha2.ErrorStatus, nil
 }
 
 func SaveToLocal(name string, config []byte) error {

@@ -70,10 +70,25 @@ spec:
                   type: string
                 type: array
               components:
-                description: Components will install in the edgecluster ,default is
-                  "edgewize,whizard-edge-agent,cloudcore,fluent-operator" -xxx means
-                  does not install xxx edgewize will always install
-                type: string
+                description: Components will install in the edgecluster
+                items:
+                  properties:
+                    dependencies:
+                      items:
+                        type: string
+                      type: array
+                    file:
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                    systemNamespace:
+                      type: boolean
+                    values:
+                      type: string
+                  type: object
+                type: array
               distro:
                 description: 'Distro is Kubernetes distro to use for the virtual cluster.
                   Allowed distros: k3s, k0s, k8s, eks (default "k3s")'
@@ -107,6 +122,25 @@ spec:
             properties:
               cloudcore:
                 type: string
+              components:
+                additionalProperties:
+                  properties:
+                    dependencies:
+                      items:
+                        type: string
+                      type: array
+                    file:
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                    systemNamespace:
+                      type: boolean
+                    values:
+                      type: string
+                  type: object
+                type: object
               configFile:
                 type: string
               edgeOtaServer:

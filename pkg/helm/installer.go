@@ -90,11 +90,11 @@ func (i *Installer) Status() (release.Status, error) {
 	return last.Info.Status, nil
 }
 
-func (i *Installer) Upgrade() error {
+func (i *Installer) Upgrade(values chartutil.Values) error {
 	upgrader := action.NewUpgrade(i.configuration)
 	upgrader.Namespace = i.namespace
-
-	if _, err := upgrader.Run(i.name, i.chart, nil); err != nil {
+	upgrader.Install = true
+	if _, err := upgrader.Run(i.name, i.chart, values); err != nil {
 		return errors.Wrap(err, "upgrade failure")
 	}
 	return nil
