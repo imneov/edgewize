@@ -17,7 +17,7 @@ limitations under the License.
 package apis
 
 import (
-	"github.com/edgewize-io/edgewize/pkg/apis/quota/v1alpha2"
+	"github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha2"
 )
 
 func init() {
