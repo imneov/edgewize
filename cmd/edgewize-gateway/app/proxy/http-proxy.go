@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 
@@ -29,6 +30,7 @@ type HTTPProxyServer struct {
 	proxyPort                                   int
 	serverCAFile, serverCertFile, serverKeyFile string
 	clientCertFile, clientKeyFile               string
+	caKey                                       []byte
 }
 
 func NewHTTPProxyServer(opt *options.ServerRunOptions, proxyPort int, backendServers *ServerEndpoints) *HTTPProxyServer {
@@ -45,6 +47,14 @@ func NewHTTPProxyServer(opt *options.ServerRunOptions, proxyPort int, backendSer
 
 func (s *HTTPProxyServer) Run(ctx context.Context) error {
 	klog.Infof("port: %d, certs: %s, %s, %s, %s", s.proxyPort, s.serverCertFile, s.clientCertFile, s.serverKeyFile, s.clientKeyFile)
+
+	// Load ca key
+	caKey, err := os.ReadFile(s.serverCAFile)
+	if err != nil {
+		klog.Errorf("Get ca key error %v", err)
+		return err
+	}
+	s.caKey = caKey
 
 	// Load the backend server certificate and private key
 	serverCert, err := LoadX509KeyFromFile(s.serverCertFile, s.serverKeyFile)
@@ -154,7 +164,7 @@ func (s *HTTPProxyServer) selectServer(r *http.Request) (*url.URL, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("there was an error")
 		}
-		return nil, nil
+		return s.caKey, nil
 	})
 	if err != nil {
 		klog.Error("parse token error", err, "bearerToken", bearerToken)
