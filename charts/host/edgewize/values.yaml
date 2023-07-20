@@ -189,8 +189,13 @@ controller:
   extraVolumes: [ ]
 
 gateway:
-  advertiseAddress: [ ]
-  dnsNames: [ ]
+  certificateAuthority: # CA certificate for the gateway, optional, if not set, it will generate a self-signed certificate
+    crt: "" # base64 encoded ca crt
+    key: "" # base64 encoded ca key
+  advertiseAddress:
+    - "192.168.1.1"
+  dnsNames:
+    - gateway.edgewize.io
   replicaCount: 1
   image:
     registry: ""
