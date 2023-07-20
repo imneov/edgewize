@@ -81,6 +81,13 @@ spec:
       nodePort: {{ .Values.gateway.nodePort.tunnelport }}
       {{ end }}
       name: tunnelport
+    - port: 30080
+      protocol: TCP
+      targetPort: 30080
+      {{- if .Values.gateway.nodePort.otaport }}
+      nodePort: {{ .Values.gateway.nodePort.otaport }}
+      {{ end }}
+      name: otaport
   selector:
     app: edgewize-gateway
     tier: backend

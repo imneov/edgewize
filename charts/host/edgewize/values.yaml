@@ -220,10 +220,13 @@ gateway:
       containerPort: 30002
     - protocol: TCP
       containerPort: 30004
+    - protocol: TCP
+      containerPort: 30080
   nodePort:
     cloudhub: 30000
     cloudhubHttps: 30002
     tunnelport: 30004
+    otaport: 30080
   ## edgewize-apiserver resource requests and limits
   ## ref: https://kubernetes.io/docs/user-guide/compute-resources/
   ## @param resources.limits The resources limits for the haproxy containers

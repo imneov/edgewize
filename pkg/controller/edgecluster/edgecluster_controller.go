@@ -589,6 +589,11 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 		instance.Status.EdgeOtaServer = status
 		if status == infrav1alpha1.InstallingStatus {
 			instance.Status.Components[component.Name] = component
+		} else if status == infrav1alpha1.RunningStatus {
+			err := r.UpdateEdgeOtaService(ctx, instance.Name, "edgewize-sysetm", instance)
+			if err != nil {
+				logger.Info("update edgewize-edge-ota-service error", "error", err)
+			}
 		}
 		return nil
 	}
@@ -1313,6 +1318,62 @@ func (r *Reconciler) CreateNameSpace(ctx context.Context, kubeconfig, namespace 
 
 type ServiceMap map[string]corev1.ServiceSpec
 
+func (r *Reconciler) UpdateEdgeOtaService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha1.EdgeCluster) error {
+	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
+	config, err := clientcmd.BuildConfigFromFlags("", file)
+	if err != nil {
+		klog.Error("create rest config from kubeconfig string error", err.Error())
+		return err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		klog.Error("create clientset from config error", err.Error())
+		return err
+	}
+
+	// TODO kubeedge -> instance.Spec.Namespace
+	svc, err := clientset.CoreV1().Services(namespace).Get(ctx, "edge-ota-server", metav1.GetOptions{})
+	if err != nil {
+		klog.Error("get service edge-ota-server error ", err.Error())
+		return err
+	}
+	cm := &corev1.ConfigMap{}
+	key := types.NamespacedName{
+		Namespace: CurrentNamespace,
+		Name:      "edgewize-cloudcore-service",
+	}
+	err = r.Get(ctx, key, cm)
+	if err != nil {
+		klog.Error("get configmap edgewize-cloudcore-service error ", err.Error())
+		return err
+	}
+	svcMap := ServiceMap{}
+	if data, ok := cm.Data[EdgeWizeServers]; ok {
+		err = yaml.Unmarshal([]byte(data), &svcMap)
+		if err != nil {
+			klog.Errorf("invalid %s, err:%v", EdgeWizeServers, err)
+			//	cm.Data = make(map[string]string) // TODO
+		}
+	}
+	otaServerName := fmt.Sprintf("otaServer-%s", instance.Name)
+	svcMap[otaServerName] = svc.Spec
+	data, err := yaml.Marshal(svcMap)
+	if err != nil {
+		klog.Error("Marshal svc.Spec error", err.Error())
+		return err
+	}
+	if cm.Data == nil {
+		cm.Data = make(map[string]string)
+	}
+	cm.Data[EdgeWizeServers] = string(data)
+	err = r.Update(ctx, cm)
+	if err != nil {
+		klog.Error("update edgewize-cloudcore-service configmap error ", err.Error())
+		return err
+	}
+	return nil
+}
+
 func (r *Reconciler) UpdateCloudCoreService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha1.EdgeCluster) error {
 	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
 	config, err := clientcmd.BuildConfigFromFlags("", file)
@@ -1347,7 +1408,7 @@ func (r *Reconciler) UpdateCloudCoreService(ctx context.Context, kubeconfig, nam
 		err = yaml.Unmarshal([]byte(data), &svcMap)
 		if err != nil {
 			klog.Errorf("invalid %s, err:%v", EdgeWizeServers, err)
-			cm.Data = make(map[string]string) // TODO
+			//	cm.Data = make(map[string]string) // TODO
 		}
 	}
 	svcMap[instance.Name] = svc.Spec
