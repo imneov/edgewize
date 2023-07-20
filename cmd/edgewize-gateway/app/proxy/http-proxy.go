@@ -2,89 +2,50 @@ package proxy
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
-	"strings"
 	"sync"
 
-	"github.com/golang-jwt/jwt"
 	"k8s.io/klog"
 
 	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/options"
 )
 
-const (
-	ClusterName string = "clustername"
-	ClusterType string = "clustertype"
-)
-
 type HTTPProxyServer struct {
 	sync.RWMutex
-	backendServers                              *ServerEndpoints
-	proxyPort                                   int
-	serverCAFile, serverCertFile, serverKeyFile string
-	clientCertFile, clientKeyFile               string
-	caKey                                       []byte
+	backendServers *ServerEndpoints
+	proxyPort      int
+	listenPort     int
 }
 
-func NewHTTPProxyServer(opt *options.ServerRunOptions, proxyPort int, backendServers *ServerEndpoints) *HTTPProxyServer {
+func NewHTTPProxyServer(opt *options.ServerRunOptions, proxyPort int, listenPort int, backendServers *ServerEndpoints) *HTTPProxyServer {
 	return &HTTPProxyServer{
 		backendServers: backendServers,
 		proxyPort:      proxyPort,
-		serverCAFile:   opt.CertDir + options.ServerCAFile,
-		serverCertFile: opt.CertDir + options.ServerCertFile,
-		serverKeyFile:  opt.CertDir + options.ServerKeyFile,
-		clientCertFile: opt.CertDir + options.ClientCertFile,
-		clientKeyFile:  opt.CertDir + options.ClientKeyFile,
+		listenPort:     listenPort,
 	}
 }
 
 func (s *HTTPProxyServer) Run(ctx context.Context) error {
-	klog.Infof("port: %d, certs: %s, %s, %s, %s", s.proxyPort, s.serverCertFile, s.clientCertFile, s.serverKeyFile, s.clientKeyFile)
-
-	// Load ca key
-	caKey, err := os.ReadFile(s.serverCAFile)
-	if err != nil {
-		klog.Errorf("Get ca key error %v", err)
-		return err
-	}
-	s.caKey = caKey
-
-	// Load the backend server certificate and private key
-	serverCert, err := LoadX509KeyFromFile(s.serverCertFile, s.serverKeyFile)
-	if err != nil {
-		err := fmt.Errorf("Error loading server certificate and private key (%s,%s): %v", s.serverCertFile, s.serverKeyFile, err)
-		return err
-	}
-
-	// Create a TLS configuration with mutual authentication
-	tlsConfig := &tls.Config{
-		ClientAuth:         tls.RequestClientCert,
-		Certificates:       []tls.Certificate{serverCert},
-		InsecureSkipVerify: true,
-	}
 
 	// Create HTTPS server
 	server := &http.Server{
-		Addr:      fmt.Sprintf(":%d", s.proxyPort),
-		TLSConfig: tlsConfig,
-		Handler:   s,
+		Addr:    fmt.Sprintf(":%d", s.listenPort),
+		Handler: s,
 	}
 
 	// Listen for incoming HTTPS connections with TLS encryption and handle errors
-	err = server.ListenAndServeTLS("", "")
+	err := server.ListenAndServe()
 	if err != nil {
 		klog.Errorf("Error occurred while listening: %v", err)
 		return err
 	}
 	return nil
 }
+
 func (s *HTTPProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var (
 		backend *url.URL
@@ -129,77 +90,27 @@ func (s *HTTPProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}
 
-	// Load the client certificate and private key
-	cliCert, err := LoadX509KeyFromFile(s.clientCertFile, s.clientKeyFile)
-	if err != nil {
-		klog.Error("error load client certificate and private key", err)
-		return
-	}
-
 	// Create a new http transport with a custom TLS client configuration
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			// Skip verification of the server's certificate chain
-			InsecureSkipVerify: true,
-			// Set the client certificate to use for authentication
-			Certificates: []tls.Certificate{cliCert},
-		},
-	}
+	transport := &http.Transport{}
 	proxy.Transport = transport
 	proxy.ServeHTTP(w, r)
 }
 
 func (s *HTTPProxyServer) selectServer(r *http.Request) (*url.URL, error) {
-	authorizationHeader := r.Header.Get("authorization")
+	clusterName := r.Header.Get("cluster")
 
-	klog.V(7).Infof("authorizationHeader  %v", authorizationHeader)
-
-	bearerToken := strings.Split(authorizationHeader, " ")
-	if len(bearerToken) != 2 {
-		err := fmt.Errorf("bearerToken(%s) size error, got %d want 2", bearerToken, len(bearerToken))
-		klog.Error(err)
-		return nil, err
+	clusterNameDecorate := fmt.Sprintf("otaServer-%s", clusterName)
+	backend, ok := s.backendServers.Get(clusterNameDecorate)
+	if !ok {
+		klog.Errorf("can't find backend server for cluster(%s)", clusterName)
+		return nil, fmt.Errorf("con't find backend server for cluster(%s)", clusterName)
 	}
-	token, err := jwt.Parse(bearerToken[1], func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("there was an error")
-		}
-		return s.caKey, nil
-	})
+	backend = fmt.Sprintf("http://%s:%d", backend, s.proxyPort)
+	ret, err := url.Parse(backend)
 	if err != nil {
-		klog.Error("parse token error", err, "bearerToken", bearerToken)
-		return nil, err
+		klog.Errorf("parse backend server(%s) error: %v", backend, err)
+	} else {
+		klog.Infof("ret, %v", *ret)
 	}
-	klog.V(3).Infof("authorizationHeader(%v) token(%v) %v", authorizationHeader, token, err)
-	clusterName := getHeaderString(token.Header, ClusterName)
-	clusterType := getHeaderString(token.Header, ClusterType)
-	if clusterType == "EdgeCluster" {
-		backend, ok := s.backendServers.Get(clusterName)
-		if !ok {
-			klog.Errorf("can't find backend server for cluster(%s)", clusterName)
-			return nil, fmt.Errorf("con't find backend server for cluster(%s)", clusterName)
-		}
-		backend = fmt.Sprintf("https://%s:%d", backend, s.proxyPort)
-		ret, err := url.Parse(backend)
-		if err != nil {
-			klog.Errorf("parse backend server(%s) error: %v", backend, err)
-		} else {
-			klog.Infof("ret, %v", *ret)
-		}
-		return ret, err
-	}
-	klog.Errorf("unsupport cluster type(%s)", clusterType)
-	return nil, errors.New("unsupport cluster type")
-}
-
-func getHeaderString(header map[string]interface{}, key string) (val string) {
-	ret, ok := header[key]
-	if !ok {
-		return ""
-	}
-	res, ok := ret.(string)
-	if !ok {
-		return ""
-	}
-	return res
+	return ret, err
 }
