@@ -63,7 +63,6 @@ const (
 	WhizardGatewayServiceName    = "gateway-whizard-operated"
 	MonitorNamespace             = "kubesphere-monitoring-system"
 	EdgeWizeServers              = "edgewize-servers.yaml"
-	EdgeOtaServers               = "edge-ota-servers.yaml"
 	EdgeDeploySecret             = "edge-deploy-secret"
 	MonitorPromServiceName       = "prometheus-k8s"
 	WhizardEdgeGatewayConfigName = "whizard-edge-gateway-configmap"
@@ -1349,14 +1348,15 @@ func (r *Reconciler) UpdateEdgeOtaService(ctx context.Context, kubeconfig, names
 		return err
 	}
 	svcMap := ServiceMap{}
-	if data, ok := cm.Data[EdgeOtaServers]; ok {
+	if data, ok := cm.Data[EdgeWizeServers]; ok {
 		err = yaml.Unmarshal([]byte(data), &svcMap)
 		if err != nil {
-			klog.Errorf("invalid %s, err:%v", EdgeOtaServers, err)
+			klog.Errorf("invalid %s, err:%v", EdgeWizeServers, err)
 			//	cm.Data = make(map[string]string) // TODO
 		}
 	}
-	svcMap[instance.Name] = svc.Spec
+	otaServerName := fmt.Sprintf("otaServer-%s", instance.Name)
+	svcMap[otaServerName] = svc.Spec
 	data, err := yaml.Marshal(svcMap)
 	if err != nil {
 		klog.Error("Marshal svc.Spec error", err.Error())
@@ -1365,7 +1365,7 @@ func (r *Reconciler) UpdateEdgeOtaService(ctx context.Context, kubeconfig, names
 	if cm.Data == nil {
 		cm.Data = make(map[string]string)
 	}
-	cm.Data[EdgeOtaServers] = string(data)
+	cm.Data[EdgeWizeServers] = string(data)
 	err = r.Update(ctx, cm)
 	if err != nil {
 		klog.Error("update edgewize-cloudcore-service configmap error ", err.Error())
