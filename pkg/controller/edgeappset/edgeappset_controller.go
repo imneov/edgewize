@@ -22,6 +22,7 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -172,11 +173,13 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 				Replicas: instance.Spec.DeploymentTemplate.Spec.Replicas,
 				Template: instance.Spec.DeploymentTemplate.Spec.Template,
 				Strategy: instance.Spec.DeploymentTemplate.Spec.Strategy,
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"app": deploy.Name,
+					},
+				},
 			}
 			deploy.Spec.Template.Labels = map[string]string{
-				"app": deploy.Name,
-			}
-			deploy.Spec.Selector.MatchLabels = map[string]string{
 				"app": deploy.Name,
 			}
 			// 部署到指定节点

@@ -102,6 +102,16 @@ func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Val
 		}
 		return infrav1alpha1.RunningStatus, nil
 	case release.StatusFailed:
+		if upgrade {
+			klog.V(3).Infof("begin to upgrade chart, chart: %s, kubeconfig: %s", name, kubeconfig)
+			err = helm.Upgrade(file, name, namespace, kubeconfig, values)
+			if err != nil {
+				klog.Errorf("upgrade chart error, err: %v", err)
+				return "", err
+			}
+			klog.V(3).Infof("upgrade chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
+			return infrav1alpha1.InstallingStatus, nil
+		}
 		return infrav1alpha1.ErrorStatus, nil
 	case release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback:
 		return infrav1alpha1.PendingStatus, nil
