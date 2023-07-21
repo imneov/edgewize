@@ -99,7 +99,7 @@ func (s *HTTPProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *HTTPProxyServer) selectServer(r *http.Request) (*url.URL, error) {
 	clusterName := r.Header.Get("cluster")
 
-	clusterNameDecorate := fmt.Sprintf("otaServer-%s", clusterName)
+	clusterNameDecorate := fmt.Sprintf("otaserver-%s", clusterName)
 	backend, ok := s.backendServers.Get(clusterNameDecorate)
 	if !ok {
 		klog.Errorf("can't find backend server for cluster(%s)", clusterName)

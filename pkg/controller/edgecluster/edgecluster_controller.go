@@ -1355,7 +1355,7 @@ func (r *Reconciler) UpdateEdgeOtaService(ctx context.Context, kubeconfig, names
 			//	cm.Data = make(map[string]string) // TODO
 		}
 	}
-	otaServerName := fmt.Sprintf("otaServer-%s", instance.Name)
+	otaServerName := fmt.Sprintf("otaserver-%s", instance.Name)
 	svcMap[otaServerName] = svc.Spec
 	data, err := yaml.Marshal(svcMap)
 	if err != nil {
