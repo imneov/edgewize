@@ -159,7 +159,7 @@ func run(s *options.ServerRunOptions, ctx context.Context, backendServers *proxy
 		errCh <- err
 	}()
 	go func() {
-		otahttpserver := proxy.NewHTTPProxyServer(s, 30080, 80, backendServers) // ws
+		otahttpserver := proxy.NewHTTPProxyServer(s, 80, 30080, backendServers) // ws
 		err := otahttpserver.Run(ctx)
 		if err == http.ErrServerClosed {
 			klog.Errorf("error in hubhttpserver: %v", err)
