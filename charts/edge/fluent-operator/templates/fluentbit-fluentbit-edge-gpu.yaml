@@ -39,6 +39,9 @@ spec:
     - name: host-sys
       hostPath:
         path: /sys/
+    - name: host-kubeedge
+      hostPath:
+        path: /etc/kubeedge/
   volumesMounts:
     - mountPath: /host/sys
       mountPropagation: HostToContainer
@@ -47,5 +50,9 @@ spec:
     - mountPath: /host/proc
       mountPropagation: HostToContainer
       name: host-proc
+      readOnly: true
+    - mountPath: /etc/kubeedge
+      mountPropagation: HostToContainer
+      name: host-kubeedge
       readOnly: true
 {{- end }}

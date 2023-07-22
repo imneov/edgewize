@@ -1,9 +1,10 @@
 ## @param global.imageRegistry Global Docker image registry
 ## @param global.tag Global Docker image tag
 global:
-  imageRegistry:
-  tag: v0.5.1
-  imagePullSecrets: [ ]
+  imageRegistry: "harbor.wuxs.vip"
+  tag: v0.6.1
+  imagePullSecrets:
+    - "zpk-deploy-secret"
 
 ## @section Common parameters
 ##
@@ -188,10 +189,25 @@ controller:
   ##
   extraVolumes: [ ]
 
+certificateAuthority: # CA certificate for the gateway, optional, if not set, it will generate a self-signed certificate
+  crt: "" # base64 encoded ca crt
+  key: "" # base64 encoded ca key
+
+whizardEdgeGateway:
+  advertiseAddress:
+    - "192.168.1.1"
+  replicas: 3
+  tlsEnable: true
+  nodePort: 30991
+  image:
+    registry: ""
+    repository: kubesphere/whizard-edge-gateway
+    tag: "v0.3.2"
+    digest: ""
+    pullPolicy: IfNotPresent
+    pullSecrets: []
+
 gateway:
-  certificateAuthority: # CA certificate for the gateway, optional, if not set, it will generate a self-signed certificate
-    crt: "" # base64 encoded ca crt
-    key: "" # base64 encoded ca key
   advertiseAddress:
     - "192.168.1.1"
   dnsNames:
@@ -303,6 +319,7 @@ values:
         prometheusRemoteWrite:
           host: "" # Whizard edge gateway host
           port: "" # Whizard edge gateway port
+          tlsEnable: true
     fluentd:
       imagePullSecrets:
         - name: edge-deploy-secret
