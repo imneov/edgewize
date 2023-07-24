@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"k8s.io/client-go/util/retry"
@@ -84,6 +85,7 @@ type Reconciler struct {
 	Logger                  logr.Logger
 	Recorder                record.EventRecorder
 	MaxConcurrentReconciles int
+	Instances               sync.Map
 }
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -97,7 +99,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		r.Recorder = mgr.GetEventRecorderFor(controllerName)
 	}
 	if r.MaxConcurrentReconciles <= 0 {
-		r.MaxConcurrentReconciles = 1
+		r.MaxConcurrentReconciles = 3
 	}
 	err := os.MkdirAll(filepath.Join(homedir.HomeDir(), ".kube", "member"), 0644)
 	if err != nil {
@@ -126,6 +128,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if err := r.Get(rootCtx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	// make different edge cluster reconcile concurrently
+	if _, ok := r.Instances.Load(instance.Name); ok {
+		klog.Infof("edge cluster %s is reconciling, retry after 5s", instance.Name)
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	} else {
+		r.Instances.Store(instance.Name, struct{}{})
+	}
+	defer func() {
+		r.Instances.Delete(instance.Name)
+	}()
 
 	// name of your custom finalizer
 	finalizer := "edgeclusterfinalizer.infra.edgewize.io"
@@ -336,7 +348,8 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 	err = r.InstallEdgeClusterComponents(ctx, instance)
 	if err != nil {
 		logger.Error(err, "install edge cluster components error")
-		return ctrl.Result{}, err
+		// retry when install edge cluster components error
+		return ctrl.Result{RequeueAfter: time.Second * 3}, err
 	}
 
 	return ctrl.Result{}, nil
@@ -502,52 +515,57 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 		return nil
 	}
 
-	switch instance.Status.EdgewizeMonitor {
-	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
-		namespace := component.Namespace
-		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
-		if err != nil {
-			return err
-		}
-		values := component.Values.ToValues()
-		err = r.SetMonitorComponent(ctx, values, instance)
-		if err != nil {
-			logger.Error(err, "get gateway svc ip error, need to configure manually", "instance", instance.Name)
-		}
-		klog.V(3).Infof("whizard-edge-agent values: %v, instance: %s", values, instance.Name)
-		err = r.CreateNameSpace(ctx, instance.Name, namespace)
-		if err != nil {
-			return err
-		}
-		upgrade := false
-		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha1.Component)
-		}
-		oldComponent, ok := instance.Status.Components[component.Name]
-		if ok {
-			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
-		} else {
-			upgrade = true
-		}
-		status, err := UpgradeChart("whizard-edge-agent", "whizard-edge-agent", namespace, instance.Name, values, upgrade)
-		if err != nil {
-			logger.Error(err, "install whizard-edge-agent error", "instance", instance.Name)
-			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
-			return err
-		}
-		if status == infrav1alpha1.InstallingStatus {
-			instance.Status.Components[component.Name] = component
-		}
-		err = r.RegisterWhizardEdgeGatewayRouters(ctx, instance.Name, instance)
-		if err != nil {
-			logger.Error(err, "update whizard edge gateway config failed")
-			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
-		} else {
-			instance.Status.EdgewizeMonitor = status
-		}
-		return nil
+	namespace := component.Namespace
+	err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	values := component.Values.ToValues()
+	err = r.SetMonitorComponent(ctx, values, instance)
+	if err != nil {
+		logger.Error(err, "get gateway svc ip error, need to configure manually", "instance", instance.Name)
+	}
+	klog.V(3).Infof("whizard-edge-agent values: %v, instance: %s", values, instance.Name)
+	err = r.CreateNameSpace(ctx, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+	if instance.Status.EdgewizeMonitor == infrav1alpha1.InstallingStatus {
+		klog.V(3).Infof("whizard-edge-agent is installing, skip upgrade")
+		upgrade = false
+	} else if instance.Status.EdgewizeMonitor == infrav1alpha1.ErrorStatus {
+		upgrade = true
+	}
+	klog.V(3).Infof("whizard-edge-agent upgrade: %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("whizard-edge-agent", "whizard-edge-agent", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		logger.Error(err, "install whizard-edge-agent error", "instance", instance.Name)
+		instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
+		return err
+	}
+	klog.V(3).Infof("whizard-edge-agent status: %s, instance: %s", status, instance.Name)
+	if status == infrav1alpha1.InstallingStatus {
+		instance.Status.Components[component.Name] = component
+	}
+	err = r.RegisterWhizardEdgeGatewayRouters(ctx, instance.Name, instance)
+	if err != nil {
+		logger.Error(err, "update whizard edge gateway config failed")
+		instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
+	} else {
+		instance.Status.EdgewizeMonitor = status
 	}
 	return nil
+
 }
 
 func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
@@ -557,47 +575,52 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 		return nil
 	}
 
-	switch instance.Status.EdgeOtaServer {
-	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
-		namespace := component.Namespace
-		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+	namespace := component.Namespace
+	err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	values := component.Values.ToValues()
+	klog.V(3).Infof("ReconcileEdgeOtaServer: %v", values)
+	err = r.CreateNameSpace(ctx, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+	if instance.Status.EdgeOtaServer == infrav1alpha1.InstallingStatus {
+		klog.V(3).Infof("edge-ota-server is installing, skip upgrade")
+		upgrade = false
+	} else if instance.Status.EdgeOtaServer == infrav1alpha1.ErrorStatus {
+		upgrade = true
+	}
+	klog.V(3).Infof("edge-ota-server upgrade: %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("edge-ota-server", "edge-ota-server", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		logger.Error(err, "install edge-ota-server error")
+		instance.Status.EdgeOtaServer = infrav1alpha1.ErrorStatus
+		return err
+	}
+	klog.V(3).Infof("edge-ota-server status: %s, instance: %s", status, instance.Name)
+	instance.Status.EdgeOtaServer = status
+	if status == infrav1alpha1.InstallingStatus {
+		instance.Status.Components[component.Name] = component
+	} else if status == infrav1alpha1.RunningStatus {
+		err := r.UpdateEdgeOtaService(ctx, instance.Name, "edgewize-sysetm", instance)
 		if err != nil {
-			return err
+			logger.Info("update edgewize-edge-ota-service error", "error", err)
 		}
-		values := component.Values.ToValues()
-		klog.V(3).Infof("ReconcileEdgeOtaServer: %v", values)
-		err = r.CreateNameSpace(ctx, instance.Name, namespace)
-		if err != nil {
-			return err
-		}
-		upgrade := false
-		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha1.Component)
-		}
-		oldComponent, ok := instance.Status.Components[component.Name]
-		if ok {
-			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
-		} else {
-			upgrade = true
-		}
-		status, err := UpgradeChart("edge-ota-server", "edge-ota-server", namespace, instance.Name, values, upgrade)
-		if err != nil {
-			logger.Error(err, "install edge-ota-server error")
-			instance.Status.EdgeOtaServer = infrav1alpha1.ErrorStatus
-			return err
-		}
-		instance.Status.EdgeOtaServer = status
-		if status == infrav1alpha1.InstallingStatus {
-			instance.Status.Components[component.Name] = component
-		} else if status == infrav1alpha1.RunningStatus {
-			err := r.UpdateEdgeOtaService(ctx, instance.Name, "edgewize-sysetm", instance)
-			if err != nil {
-				logger.Info("update edgewize-edge-ota-service error", "error", err)
-			}
-		}
-		return nil
 	}
 	return nil
+
 }
 
 func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
@@ -606,81 +629,86 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 		logger.V(4).Info("kubeconfig is null, skip install ks-core")
 		return nil
 	}
-	switch instance.Status.KSCore {
-	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
-		namespace := component.Namespace
-		r.applyYaml(instance.Name, "/charts/cluster-configuration.yaml")
-		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+
+	namespace := component.Namespace
+	r.applyYaml(instance.Name, "charts/edge/cluster-configuration.yaml")
+	err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+	if err != nil {
+		logger.Error(err, "init image pull secret error, use default", "instance", instance.Name)
+		return err
+	}
+	values := component.Values.ToValues()
+	err = r.SetKSCoreValues(ctx, values)
+	if err != nil {
+		logger.Error(err, "set ks-core values error, skip", "instance", instance.Name)
+	}
+	klog.V(3).Infof("ks-core values: %v, instance: %s", values, instance.Name)
+	err = r.CreateNameSpace(ctx, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+	if instance.Status.KSCore == infrav1alpha1.InstallingStatus {
+		klog.V(3).Infof("ks-core is installing, skip upgrade")
+		upgrade = false
+	} else if instance.Status.KSCore == infrav1alpha1.ErrorStatus {
+		upgrade = true
+	}
+	klog.V(3).Infof("ks-core upgrade: %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("ks-core", "ks-core", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		logger.Error(err, "install ks-core error")
+		instance.Status.KSCore = infrav1alpha1.ErrorStatus
+		return err
+	}
+	klog.V(3).Infof("ks-core status: %s, instance: %s", status, instance.Name)
+	instance.Status.KSCore = status
+	if status == infrav1alpha1.InstallingStatus {
+		instance.Status.Components[component.Name] = component
+	} else if instance.Status.KSCore == infrav1alpha1.RunningStatus {
+		r.applyYaml(instance.Name, "charts/edge/role-templates.yaml")
+		member := &ksclusterv1alpha1.Cluster{}
+		err = r.Get(ctx, types.NamespacedName{Name: instance.Name}, member)
 		if err != nil {
-			logger.Error(err, "init image pull secret error, use default", "instance", instance.Name)
-			return err
-		}
-		values := component.Values.ToValues()
-		err = r.SetKSCoreValues(ctx, values)
-		if err != nil {
-			logger.Error(err, "set ks-core values error, skip", "instance", instance.Name)
-		}
-		klog.V(3).Infof("ks-core values: %v, instance: %s", values, instance.Name)
-		err = r.CreateNameSpace(ctx, instance.Name, namespace)
-		if err != nil {
-			return err
-		}
-		upgrade := false
-		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha1.Component)
-		}
-		oldComponent, ok := instance.Status.Components[component.Name]
-		if ok {
-			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
-		} else {
-			upgrade = true
-		}
-		status, err := UpgradeChart("ks-core", "ks-core", namespace, instance.Name, values, upgrade)
-		if err != nil {
-			logger.Error(err, "install ks-core error")
-			instance.Status.KSCore = infrav1alpha1.ErrorStatus
-			return err
-		}
-		instance.Status.KSCore = status
-		if status == infrav1alpha1.InstallingStatus {
-			instance.Status.Components[component.Name] = component
-		} else if instance.Status.KSCore == infrav1alpha1.RunningStatus {
-			r.applyYaml(instance.Name, "/charts/role-templates.yaml")
-			member := &ksclusterv1alpha1.Cluster{}
-			err = r.Get(ctx, types.NamespacedName{Name: instance.Name}, member)
-			if err != nil {
-				if apierrors.IsNotFound(err) {
-					member = &ksclusterv1alpha1.Cluster{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: instance.Name,
-							Annotations: map[string]string{
-								"kubesphere.io/creator": "admin",
-							},
-							Labels: map[string]string{
-								"cluster-role.kubesphere.io/edge": "",
-							},
+			if apierrors.IsNotFound(err) {
+				member = &ksclusterv1alpha1.Cluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: instance.Name,
+						Annotations: map[string]string{
+							"kubesphere.io/creator": "admin",
 						},
-						Spec: ksclusterv1alpha1.ClusterSpec{
-							JoinFederation: true,
-							Connection: ksclusterv1alpha1.Connection{
-								Type:       ksclusterv1alpha1.ConnectionTypeDirect,
-								KubeConfig: []byte(instance.Status.KubeConfig),
-							},
+						Labels: map[string]string{
+							"cluster-role.kubesphere.io/edge": "",
 						},
-					}
-					err := r.Create(ctx, member)
-					if err != nil {
-						logger.Error(err, "create kubesphere member cluster error")
-						return err
-					}
-					klog.V(4).Infof("crete kubesphere member cluster success, name: %s", instance.Name)
-				} else {
-					logger.Error(err, "get kubesphere member cluster error")
+					},
+					Spec: ksclusterv1alpha1.ClusterSpec{
+						JoinFederation: true,
+						Connection: ksclusterv1alpha1.Connection{
+							Type:       ksclusterv1alpha1.ConnectionTypeDirect,
+							KubeConfig: []byte(instance.Status.KubeConfig),
+						},
+					},
+				}
+				err := r.Create(ctx, member)
+				if err != nil {
+					logger.Error(err, "create kubesphere member cluster error")
 					return err
 				}
+				klog.V(4).Infof("crete kubesphere member cluster success, name: %s", instance.Name)
+			} else {
+				logger.Error(err, "get kubesphere member cluster error")
+				return err
 			}
 		}
-		return nil
 	}
 	return nil
 }
@@ -691,43 +719,51 @@ func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alph
 		logger.V(4).Info("kubeconfig is null, skip install kubefed")
 		return nil
 	}
-	switch instance.Status.Kubefed {
-	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
-		namespace := component.Namespace
-		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
-		if err != nil {
-			logger.Error(err, "init image pull secret error, use default")
-			return err
-		}
-		values := component.Values.ToValues()
-		klog.V(3).Infof("Kubefed values: %v, instance: %s", values, instance.Name)
-		err = r.CreateNameSpace(ctx, instance.Name, namespace)
-		if err != nil {
-			return err
-		}
-		upgrade := false
-		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha1.Component)
-		}
-		oldComponent, ok := instance.Status.Components[component.Name]
-		if ok {
-			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
-		} else {
-			upgrade = true
-		}
-		status, err := UpgradeChart("kubefed", "kubefed", namespace, instance.Name, values, upgrade)
-		if err != nil {
-			logger.Error(err, "install kubefed error")
-			instance.Status.Kubefed = infrav1alpha1.ErrorStatus
-			return err
-		}
-		instance.Status.Kubefed = status
-		if status == infrav1alpha1.InstallingStatus {
-			instance.Status.Components[component.Name] = component
-		} else if instance.Status.Kubefed == infrav1alpha1.RunningStatus {
-			r.applyYaml(instance.Name, "/charts/federatedcrds.yaml")
-		}
+	if instance.Status.KSCore != infrav1alpha1.RunningStatus {
+		klog.V(3).Infof("ks-core is not running, skip install kubefed")
 		return nil
+	}
+	namespace := component.Namespace
+	err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+	if err != nil {
+		logger.Error(err, "init image pull secret error, use default")
+		return err
+	}
+	values := component.Values.ToValues()
+	klog.V(3).Infof("Kubefed values: %v, instance: %s", values, instance.Name)
+	err = r.CreateNameSpace(ctx, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+	if instance.Status.Kubefed == infrav1alpha1.InstallingStatus {
+		klog.V(3).Infof("kubefed is installing, skip upgrade")
+		upgrade = false
+	} else if instance.Status.Kubefed == infrav1alpha1.ErrorStatus {
+		upgrade = true
+	}
+	klog.V(3).Infof("kubefed upgrade: %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("kubefed", "kubefed", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		logger.Error(err, "install kubefed error")
+		instance.Status.Kubefed = infrav1alpha1.ErrorStatus
+		return err
+	}
+	klog.V(3).Infof("kubefed status: %s, instance: %s", status, instance.Name)
+	instance.Status.Kubefed = status
+	if status == infrav1alpha1.InstallingStatus {
+		instance.Status.Components[component.Name] = component
+	} else if instance.Status.Kubefed == infrav1alpha1.RunningStatus {
+		r.applyYaml(instance.Name, "charts/edge/federatedcrds.yaml")
 	}
 	return nil
 }
@@ -738,69 +774,74 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 		logger.V(4).Info("kubeconfig is null, skip install edgewize agent")
 		return nil
 	}
-	switch instance.Status.EdgeWize {
-	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
-		namespace := component.Namespace
-		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
-		if err != nil {
-			return err
-		}
-		err = r.InitCert(ctx, instance.Name, "edgewize-root-ca", namespace, nil)
-		if err != nil {
-			klog.Warning("init edgewize certs error, use default", err)
-		}
-		values := component.Values.ToValues()
-		values["role"] = "member"
-		values["edgeClusterName"] = instance.Name
-		klog.V(3).Infof("edgewize values: %v, instance: %s", values, instance.Name)
-		err = r.CreateNameSpace(ctx, instance.Name, namespace)
-		if err != nil {
-			return err
-		}
-		upgrade := false
-		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha1.Component)
-		}
-		oldComponent, ok := instance.Status.Components[component.Name]
-		if ok {
-			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
-		} else {
-			upgrade = true
-		}
-		status, err := UpgradeChart("edgewize", "edgewize", namespace, instance.Name, values, upgrade)
-		if err != nil {
-			instance.Status.EdgeWize = infrav1alpha1.ErrorStatus
-			logger.Error(err, "install edgewize error")
-			return err
-		}
-		instance.Status.EdgeWize = status
-		if status == infrav1alpha1.InstallingStatus {
-			instance.Status.Components[component.Name] = component
-		} else if instance.Status.EdgeWize == infrav1alpha1.RunningStatus {
-			// 等待 edgewize running 后再更新 kubeconfig，否则前端边缘集群显示 running，进入集群页面会报错
-			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-				edge := &infrav1alpha1.Cluster{}
-				key := types.NamespacedName{Name: instance.Name}
-				err := r.Get(ctx, key, edge)
-				if err != nil {
-					logger.Error(err, "get edge cluster error")
-					return err
-				}
-				edge.Spec.Connection.KubeConfig = []byte(instance.Status.KubeConfig)
-				err = r.Update(ctx, edge)
-				if err != nil {
-					logger.Error(err, "update edge cluster error")
-					return err
-				}
-				return nil
-			})
+	namespace := component.Namespace
+	err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	err = r.InitCert(ctx, instance.Name, "edgewize-root-ca", namespace, nil)
+	if err != nil {
+		klog.Warning("init edgewize certs error, use default", err)
+	}
+	values := component.Values.ToValues()
+	values["role"] = "member"
+	values["edgeClusterName"] = instance.Name
+	klog.V(3).Infof("edgewize values: %v, instance: %s", values, instance.Name)
+	err = r.CreateNameSpace(ctx, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+	if instance.Status.EdgeWize == infrav1alpha1.InstallingStatus {
+		klog.V(3).Infof("edgewize is installing, skip upgrade")
+		upgrade = false
+	} else if instance.Status.EdgeWize == infrav1alpha1.ErrorStatus {
+		upgrade = true
+	}
+	klog.V(3).Infof("edgewize upgrade: %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("edgewize", "edgewize", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		instance.Status.EdgeWize = infrav1alpha1.ErrorStatus
+		logger.Error(err, "install edgewize error")
+		return err
+	}
+	klog.V(3).Infof("edgewize status: %s, instance: %s", status, instance.Name)
+	instance.Status.EdgeWize = status
+	if status == infrav1alpha1.InstallingStatus {
+		instance.Status.Components[component.Name] = component
+	} else if instance.Status.EdgeWize == infrav1alpha1.RunningStatus {
+		// 等待 edgewize running 后再更新 kubeconfig，否则前端边缘集群显示 running，进入集群页面会报错
+		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			edge := &infrav1alpha1.Cluster{}
+			key := types.NamespacedName{Name: instance.Name}
+			err := r.Get(ctx, key, edge)
 			if err != nil {
+				logger.Error(err, "get edge cluster error")
 				return err
 			}
+			edge.Spec.Connection.KubeConfig = []byte(instance.Status.KubeConfig)
+			err = r.Update(ctx, edge)
+			if err != nil {
+				logger.Error(err, "update edge cluster error")
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			return err
 		}
-		return nil
 	}
 	return nil
+
 }
 
 func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
@@ -809,55 +850,60 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 		logger.V(4).Info("kubeconfig is null, skip install cloudcore")
 		return nil
 	}
-	switch instance.Status.CloudCore {
-	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
-		namespace := component.Namespace
-		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+	namespace := component.Namespace
+	err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	err = r.InitCert(ctx, instance.Name, "cloudhub", namespace, SignCloudCoreCert)
+	if err != nil {
+		klog.Warning("init cloudhub certs error, use default", err)
+	}
+	values := component.Values.ToValues()
+	err = SetCloudCoreValues(values, instance)
+	if err != nil {
+		klog.Warningf("set cloudcore values error, err: %v", err)
+	}
+	klog.V(3).Infof("cloudcore values: %v, instance: %s", values, instance.Name)
+	err = r.CreateNameSpace(ctx, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+	if instance.Status.CloudCore == infrav1alpha1.InstallingStatus {
+		klog.V(3).Infof("cloudcore is installing, skip upgrade")
+		upgrade = false
+	} else if instance.Status.CloudCore == infrav1alpha1.ErrorStatus {
+		upgrade = true
+	}
+	klog.V(3).Infof("cloudcore upgrade: %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("cloudcore", "cloudcore", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		klog.Warning("install cloudcore error, will try again at the next Reconcile.", "error", err)
+		instance.Status.CloudCore = infrav1alpha1.ErrorStatus
+		return err
+	}
+	klog.V(3).Infof("cloudcore status: %s, instance: %s", status, instance.Name)
+	instance.Status.CloudCore = status
+	if status == infrav1alpha1.InstallingStatus {
+		instance.Status.Components[component.Name] = component
+	} else if status == infrav1alpha1.RunningStatus {
+		err := r.UpdateCloudCoreService(ctx, instance.Name, "kubeedge", instance)
 		if err != nil {
-			return err
+			logger.Info("update edgewize-cloudcore-service error", "error", err)
 		}
-		err = r.InitCert(ctx, instance.Name, "cloudhub", namespace, SignCloudCoreCert)
-		if err != nil {
-			klog.Warning("init cloudhub certs error, use default", err)
-		}
-		values := component.Values.ToValues()
-		err = SetCloudCoreValues(values, instance)
-		if err != nil {
-			klog.Warningf("set cloudcore values error, err: %v", err)
-		}
-		klog.V(3).Infof("cloudcore values: %v, instance: %s", values, instance.Name)
-		err = r.CreateNameSpace(ctx, instance.Name, namespace)
-		if err != nil {
-			return err
-		}
-		upgrade := false
-		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha1.Component)
-		}
-		oldComponent, ok := instance.Status.Components[component.Name]
-		if ok {
-			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
-		} else {
-			upgrade = true
-		}
-		status, err := UpgradeChart("cloudcore", "cloudcore", namespace, instance.Name, values, upgrade)
-		if err != nil {
-			klog.Warning("install cloudcore error, will try again at the next Reconcile.", "error", err)
-			instance.Status.CloudCore = infrav1alpha1.ErrorStatus
-			return err
-		}
-		instance.Status.CloudCore = status
-		if status == infrav1alpha1.InstallingStatus {
-			instance.Status.Components[component.Name] = component
-		} else if status == infrav1alpha1.RunningStatus {
-			err := r.UpdateCloudCoreService(ctx, instance.Name, "kubeedge", instance)
-			if err != nil {
-				logger.Info("update edgewize-cloudcore-service error", "error", err)
-			}
-		}
-		return nil
 	}
 	return nil
+
 }
 
 func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
@@ -866,45 +912,49 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 		logger.Info("kubeconfig is null, skip install fluent-operator")
 		return nil
 	}
-	switch instance.Status.FluentOperator {
-	case "", infrav1alpha1.InstallingStatus, infrav1alpha1.RunningStatus, infrav1alpha1.ErrorStatus:
-		namespace := component.Namespace
-		err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
-		if err != nil {
-			return err
-		}
-		values := component.Values.ToValues()
-		klog.V(3).Infof("fluent-operator values: %v, instance: %s", values, instance.Name)
-		err = r.SetClusterOutput(values, instance)
-		if err != nil {
-			logger.Error(err, "configure ClusterOutput failed, skip install fluent-operator")
-			return nil
-		}
-		err = r.CreateNameSpace(ctx, instance.Name, namespace)
-		if err != nil {
-			return err
-		}
-		upgrade := false
-		if instance.Status.Components == nil {
-			instance.Status.Components = make(map[string]infrav1alpha1.Component)
-		}
-		oldComponent, ok := instance.Status.Components[component.Name]
-		if ok {
-			upgrade = !reflect.DeepEqual(oldComponent.Values, values)
-		} else {
-			upgrade = true
-		}
-		status, err := UpgradeChart("fluent-operator", "fluent-operator", namespace, instance.Name, values, upgrade)
-		if err != nil {
-			logger.Error(err, "install fluent-operator error")
-			instance.Status.FluentOperator = infrav1alpha1.ErrorStatus
-			return err
-		}
-		instance.Status.FluentOperator = status
-		if status == infrav1alpha1.InstallingStatus {
-			instance.Status.Components[component.Name] = component
-		}
+	namespace := component.Namespace
+	err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	values := component.Values.ToValues()
+	klog.V(3).Infof("fluent-operator values: %v, instance: %s", values, instance.Name)
+	err = r.SetClusterOutput(values, instance)
+	if err != nil {
+		logger.Error(err, "configure ClusterOutput failed, skip install fluent-operator")
 		return nil
+	}
+	err = r.CreateNameSpace(ctx, instance.Name, namespace)
+	if err != nil {
+		return err
+	}
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+	if instance.Status.FluentOperator == infrav1alpha1.InstallingStatus {
+		klog.V(3).Infof("fluent-operator is installing, skip upgrade")
+		upgrade = false
+	} else if instance.Status.FluentOperator == infrav1alpha1.ErrorStatus {
+		upgrade = true
+	}
+	klog.V(3).Infof("fluent-operator upgrade: %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("fluent-operator", "fluent-operator", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		logger.Error(err, "install fluent-operator error")
+		instance.Status.FluentOperator = infrav1alpha1.ErrorStatus
+		return err
+	}
+	klog.V(3).Infof("fluent-operator status: %s, instance: %s", status, instance.Name)
+	instance.Status.FluentOperator = status
+	if status == infrav1alpha1.InstallingStatus {
+		instance.Status.Components[component.Name] = component
 	}
 	return nil
 }
@@ -1234,7 +1284,7 @@ func (r *Reconciler) GetDefaultComponents(ctx context.Context) ([]infrav1alpha1.
 		}
 		component := infrav1alpha1.Component{
 			Name:            name,
-			File:            fmt.Sprintf("/charts/%s", name),
+			File:            fmt.Sprintf("charts/edge/%s", name),
 			Values:          infrav1alpha1.ValueString(val),
 			Namespace:       namespace,
 			SystemNamespace: true,
@@ -1640,12 +1690,13 @@ func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1a
 	return nil
 }
 
-func (r Reconciler) applyYaml(kubeconfig, filepath string) {
-	cmd := fmt.Sprintf("apply -f %s --kubeconfig /root/.kube/%s", filepath, kubeconfig)
-	_, err := exec.Command("/usr/local/bin/kubectl", strings.Split(cmd, " ")...).Output()
+func (r *Reconciler) applyYaml(kubeconfig, filepath string) {
+	cmd := fmt.Sprintf("apply -f %s --kubeconfig %s/.kube/%s", filepath, homedir.HomeDir(), kubeconfig)
+	output, err := exec.Command("/usr/local/bin/kubectl", strings.Split(cmd, " ")...).Output()
 	if err != nil {
 		klog.Errorf("apply %s error: %s", filepath, err)
 	} else {
 		klog.V(3).Infof("apply %s success", filepath)
 	}
+	klog.V(3).Infof("apply %s output: %s", filepath, string(output))
 }
