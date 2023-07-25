@@ -614,7 +614,7 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 	if status == infrav1alpha1.InstallingStatus {
 		instance.Status.Components[component.Name] = component
 	} else if status == infrav1alpha1.RunningStatus {
-		err := r.UpdateEdgeOtaService(ctx, instance.Name, "edgewize-sysetm", instance)
+		err := r.UpdateEdgeOtaService(ctx, instance.Name, namespace, instance)
 		if err != nil {
 			logger.Info("update edgewize-edge-ota-service error", "error", err)
 		}
