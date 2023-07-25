@@ -94,6 +94,7 @@ func (i *Installer) Upgrade(values chartutil.Values) error {
 	upgrader := action.NewUpgrade(i.configuration)
 	upgrader.Namespace = i.namespace
 	upgrader.Install = true
+	upgrader.MaxHistory = 1
 	if _, err := upgrader.Run(i.name, i.chart, values); err != nil {
 		return errors.Wrap(err, "upgrade failure")
 	}
@@ -102,6 +103,7 @@ func (i *Installer) Upgrade(values chartutil.Values) error {
 
 func (i *Installer) Uninstall() error {
 	uninstallClint := action.NewUninstall(i.configuration)
+	uninstallClint.KeepHistory = false
 	_, err := uninstallClint.Run(i.name)
 	if err != nil {
 		err = errors.Wrap(err, "call uninstall err")
