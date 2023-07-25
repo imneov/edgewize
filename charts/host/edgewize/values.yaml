@@ -1,10 +1,11 @@
 ## @param global.imageRegistry Global Docker image registry
 ## @param global.tag Global Docker image tag
 global:
-  imageRegistry: "harbor.wuxs.vip"
+  imageRegistry: ""
   tag: v0.6.1
-  imagePullSecrets:
-    - "zpk-deploy-secret"
+  imagePullSecrets: [ ]
+  # - secretName
+
 
 ## @section Common parameters
 ##
@@ -62,7 +63,7 @@ podSecurityContext: { }
 # fsGroup: 2000
 
 securityContext: { }
-  # capabilities:
+# capabilities:
 #   drop:
 #   - ALL
 # readOnlyRootFilesystem: true
@@ -205,7 +206,7 @@ whizardEdgeGateway:
     tag: "v0.3.2"
     digest: ""
     pullPolicy: IfNotPresent
-    pullSecrets: []
+    pullSecrets: [ ]
 
 gateway:
   advertiseAddress:
@@ -343,7 +344,7 @@ values:
           - name: edge-deploy-secret
   edgeOtaServer:
     defaultImageRegistry: ""
-    imagePullSecrets: 
+    imagePullSecrets:
       - name: edge-deploy-secret
     service:
       type: "ClusterIP" # NodePort
@@ -386,13 +387,16 @@ values:
         enabled: true
         clusterRole: member
     kube_version: v1.23.5+k3s1
-
+    imagePullSecrets:
+      - name: edge-deploy-secret
     console:
       port: 30881
       type: ClusterIP
   kubefed:
     controllermanager:
       defaultImageRegistry: "harbor.wuxs.vip/"
+      imagePullSecrets:
+        - name: edge-deploy-secret
       commonAffinity: { }
       commonNodeSelector: { }
       commonTolerations: [ ]

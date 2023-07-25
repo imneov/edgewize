@@ -183,8 +183,10 @@ spec:
         component: kubesphere-router
     spec:
       terminationGracePeriodSeconds: 60
+      {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
-      - name: zpk-deploy-secret
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: default-http-backend
         # Any image is permissible as long as:
