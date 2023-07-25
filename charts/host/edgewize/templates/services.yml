@@ -18,7 +18,7 @@ spec:
       {{- toYaml . | nindent 8 }}
     {{- end }}
   selector:
-    app: edgewize
+    app: edgewize-apiserver
     tier: backend
     # version: {{ .Chart.AppVersion }}
 {{- if .Values.apiserver.nodePort }}
@@ -42,7 +42,7 @@ spec:
       protocol: TCP
       targetPort: 8443
   selector:
-    app: edgewize
+    app: edgewize-controller-manager
     tier: backend
     # version: {{ .Chart.AppVersion }}
   sessionAffinity: None

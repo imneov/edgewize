@@ -2,10 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: edgewize
+    app: edgewize-controller-manager
     tier: backend
     version: {{ .Chart.AppVersion }}
-  name: edgewize
+  name: edgewize-controller-manager
 spec:
   strategy:
     rollingUpdate:
@@ -16,14 +16,14 @@ spec:
   revisionHistoryLimit: 10
   selector:
     matchLabels:
-      app: edgewize
+      app: edgewize-controller-manager
       tier: backend
   template:
     metadata:
       labels:
-        app: edgewize
-        tier: backend
         IndexByEdgeWize: "true"
+        app: edgewize-controller-manager
+        tier: backend
     spec:
       serviceAccountName: {{ template "edgewize.serviceAccountName" . }}
       {{- include "controller.imagePullSecrets" . | nindent 6 }}
@@ -42,43 +42,6 @@ spec:
       schedulerName: default-scheduler
       terminationGracePeriodSeconds: 30
       containers:
-        - name: edgewize-apiserver
-          image: {{ template "edgewize-apiserver.image" . }}
-          imagePullPolicy: {{ .Values.apiserver.image.pullPolicy }}
-          {{- if .Values.apiserver.containerPorts }}
-          ports: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.containerPorts "context" $) | nindent 12 }}
-          {{- end }}
-          {{- if .Values.apiserver.command }}
-          command: {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.command "context" $) | nindent 12 }}
-          {{- end }}
-          env:
-            - name: "ROLE"
-              value: {{ .Values.role }}
-            - name: EDGE_CLUSTER_NAME
-              value: {{ .Values.edgeClusterName }}
-            {{- if .Values.apiserver.extraEnvVars }}
-            {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.extraEnvVars "context" $) | nindent 12 }}
-            {{- end }}
-          {{- if .Values.apiserver.resources }}
-          resources: {{- toYaml .Values.apiserver.resources | nindent 12 }}
-          {{- end }}
-          volumeMounts:
-            - mountPath: /etc/edgewize/
-              name: edgewize-config
-            - mountPath: /etc/localtime
-              name: host-time
-              readOnly: true
-            - name: edgewize-root-ca
-              mountPath: /etc/certs/rootCA.crt
-              readOnly: true
-              subPath: rootCA.crt
-            - name: edgewize-root-ca
-              mountPath: /etc/certs/rootCA.key
-              readOnly: true
-              subPath: rootCA.crt
-          {{- if .Values.apiserver.extraVolumeMounts }}
-          {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.extraVolumeMounts "context" $) | nindent 12 }}
-          {{- end }}
         - name: edgewize-controller-manager
           image: {{ template "edgewize-controller-manager.image" . }}
           imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
@@ -91,8 +54,10 @@ spec:
           env:
             - name: "ROLE"
               value: {{ .Values.role }}
-            - name: EDGE_CLUSTER_NAME
-              value: {{ .Values.edgeClusterName }}
+            {{- if .Values.global.imageRegistry }}
+            - name: "IMAGE_REGISTRY"
+              value: {{ .Values.global.imageRegistry }}
+            {{- end }}
             {{- if .Values.controller.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
@@ -102,6 +67,9 @@ spec:
           volumeMounts:
             - mountPath: /etc/edgewize/
               name: edgewize-config
+            - mountPath: /root/.kube/external/
+              name: edgewize-namespaces-config
+              readOnly: true
             - mountPath: /etc/localtime
               name: host-time
               readOnly: true
@@ -110,11 +78,11 @@ spec:
             - name: edgewize-root-ca
               mountPath: /etc/certs/rootCA.crt
               readOnly: true
-              subPath: rootCA.crt
+              subPath: cacrt
             - name: edgewize-root-ca
               mountPath: /etc/certs/rootCA.key
               readOnly: true
-              subPath: rootCA.crt
+              subPath: cakey
           {{- if .Values.controller.extraVolumeMounts }}
           {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
@@ -122,6 +90,10 @@ spec:
         - name: edgewize-config
           configMap:
             name: edgewize-config
+            defaultMode: 420
+        - name: edgewize-namespaces-config
+          configMap:
+            name: edgewize-namespaces-config
             defaultMode: 420
         - name: host-time
           hostPath:
@@ -137,7 +109,4 @@ spec:
             secretName: edgewize-root-ca
         {{- if .Values.controller.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraVolumes "context" $) | nindent 8 }}
-        {{- end }}
-        {{- if .Values.apiserver.extraVolumes }}
-        {{- include "common.tplvalues.render" (dict "value" .Values.apiserver.extraVolumes "context" $) | nindent 8 }}
         {{- end }}
