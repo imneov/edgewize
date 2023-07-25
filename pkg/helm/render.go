@@ -12,7 +12,7 @@ import (
 )
 
 func LoadChart(distro string) (*chart.Chart, error) {
-	path := "charts/" + distro
+	path := "charts/edge/" + distro
 	filenames, err := GetFilesRecursive(path)
 	if err != nil {
 		if os.IsNotExist(err) {

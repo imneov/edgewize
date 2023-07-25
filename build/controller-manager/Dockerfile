@@ -30,7 +30,7 @@ RUN tar xvzf /tmp/kustomize_${KUSTOMIZE_VERSION}_${TARGETOS}_${TARGETARCH}.tar.g
 RUN mv /tmp/kustomize ${OUTDIR}/usr/local/bin/
 
 # Install kubectl for development
-ADD https://storage.googleapis.com/kubernetes-release/release/v1.27.3/bin/linux/amd64/kubectl /tmp
+ADD https://storage.googleapis.com/kubernetes-release/release/v1.22.12/bin/linux/amd64/kubectl /tmp
 RUN chmod +x /tmp/kubectl && mv /tmp/kubectl ${OUTDIR}/usr/local/bin/kubectl
 
 # Build
@@ -53,7 +53,7 @@ FROM alpine:3.16.2
 
 COPY --from=base_os_context /out/ /
 COPY --from=build_context /out/ /
-COPY ./charts/edge /charts
+COPY ./charts/edge /charts/edge
 
 WORKDIR /
 
