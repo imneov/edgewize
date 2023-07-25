@@ -3,6 +3,7 @@
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
+defaultImageRegistry: ""
 
 image:
   repository: kubesphere/edge-ota-server

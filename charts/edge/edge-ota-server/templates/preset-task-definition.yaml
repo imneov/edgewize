@@ -4,7 +4,6 @@ metadata:
   labels:
     app: edge-ota-server
   name: edge-ota-server-preset-task-definition
-  namespace: edgewize-system
 data:
   taskdefine.yaml : |
 

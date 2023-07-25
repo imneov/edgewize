@@ -5,7 +5,6 @@ metadata:
   labels:
     app: edge-ota-server
   name: edge-ota-server
-  namespace: edgewize-system
 spec:
   replicas: 1
   selector:
@@ -17,10 +16,14 @@ spec:
         app: edge-ota-server
     spec:
       serviceAccount: edge-ota-server-sa
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{ toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - command:
         - edge-ota-server
-        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.defaultImageRegistry }}{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: edge-ota-server
         resources:

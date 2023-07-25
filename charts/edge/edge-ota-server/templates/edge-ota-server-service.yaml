@@ -4,7 +4,6 @@ metadata:
   labels:
     app: edge-ota-server
   name: edge-ota-server
-  namespace: edgewize-system
 spec:
   ports:
   - name: http

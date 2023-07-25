@@ -17,3 +17,5 @@ data:
   {{- toYaml .Values.values.ksCore | nindent 4 }}
   kubefed: |
   {{- toYaml .Values.values.kubefed | nindent 4 }}
+  edge-ota-server: |
+  {{- toYaml .Values.values.edgeOtaServer | nindent 4 }}

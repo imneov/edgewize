@@ -324,6 +324,17 @@ values:
         tag: "v1.13.0-edgewize"
         pullSecrets:
           - name: edge-deploy-secret
+  edgeOtaServer:
+    defaultImageRegistry: ""
+      service:
+        type: "ClusterIP" # NodePort
+        port: 80
+      image:
+        repository: kubesphere/edge-ota-server
+        pullPolicy: IfNotPresent
+        tag: "v0.1.0"
+        pullSecrets:
+          - name: edge-deploy-secret
   edgewize:
     global:
       imageRegistry: ""

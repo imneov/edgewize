@@ -4,7 +4,6 @@ metadata:
   labels:
     app: edge-ota-server
   name: edge-ota-server-sa
-  namespace: edgewize-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
