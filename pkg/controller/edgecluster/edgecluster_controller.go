@@ -1013,6 +1013,11 @@ func (r *Reconciler) SetClusterOutput(values chartutil.Values, instance *infrav1
 		return err
 	}
 
+	tlsEnable, err := values.PathValue("fluentbit.kubeedge.prometheusRemoteWrite.tlsEnable")
+	if err != nil {
+		return err
+	}
+
 	enabled, err := values.PathValue("fluentbit.kubeedge.enable")
 	if err != nil {
 		return err
@@ -1029,6 +1034,7 @@ func (r *Reconciler) SetClusterOutput(values chartutil.Values, instance *infrav1
 		"prometheusRemoteWrite": map[string]interface{}{
 			"host":      host,
 			"port":      port,
+			"tlsEnable": tlsEnable,
 			"routerKey": instance.Name,
 		},
 	}
