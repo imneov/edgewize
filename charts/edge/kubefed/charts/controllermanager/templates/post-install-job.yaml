@@ -42,8 +42,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     spec:
+      {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
-      - name: zpk-deploy-secret
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       nodeSelector:
         {{- toYaml .Values.commonNodeSelector | nindent 8 }}
       tolerations:

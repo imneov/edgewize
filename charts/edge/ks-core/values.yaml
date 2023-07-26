@@ -6,12 +6,12 @@ defaultImageRegistry: ""
 
 image:
   # Overrides the image tag whose default is the chart appVersion.
-  ks_controller_manager_repo: kubesphere/ks-controller-manager
+  ks_controller_manager_repo: kse/ks-controller-manager
   ks_controller_manager_tag: ""
 
-  ks_apiserver_repo: kubesphere/ks-apiserver
+  ks_apiserver_repo: kse/ks-apiserver
   ks_apiserver_tag: ""
-  ks_console_repo: "kubesphere/ks-console"
+  ks_console_repo: "kse/ks-console"
   ks_console_tag: ""
 
   ks_kubectl_repo: kubesphere/kubectl
@@ -63,6 +63,7 @@ config:
     thanosRuleResourceLabels: ""
 
 imagePullSecrets: []
+# - name: secretName
 nameOverride: ""
 fullnameOverride: ""
 

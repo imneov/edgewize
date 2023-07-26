@@ -24,8 +24,10 @@
             prometheus.io/scrape: 'true'
         spec:
           serviceAccountName: kubesphere-router-serviceaccount
+          {{- with .Values.imagePullSecrets }}
           imagePullSecrets:
-          - name: zpk-deploy-secret
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           containers:
             - name: nginx-ingress-controller
               image: {{ .Values.defaultImageRegistry }}{{ .Values.image.nginx_ingress_controller_repo }}:{{ .Values.image.nginx_ingress_controller_tag | default .Chart.AppVersion}}
