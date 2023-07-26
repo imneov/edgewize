@@ -696,6 +696,7 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 							Type:       ksclusterv1alpha1.ConnectionTypeDirect,
 							KubeConfig: []byte(instance.Status.KubeConfig),
 						},
+						Provider: "EdgeWize",
 					},
 				}
 				err := r.Create(ctx, member)
