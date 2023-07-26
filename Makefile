@@ -115,6 +115,12 @@ openapi: ;$(info $(M)...Begin to openapi.)  @ ## Openapi.
 	go run ./tools/cmd/crd-doc-gen/main.go
 	go run ./tools/cmd/doc-gen/main.go
 
+base-image: ;$(info $(M)...Begin to build the base docker image.)  @ ## Build the docker image.
+	DRY_RUN=true hack/docker_build_base.sh
+
+base-image-push: ;$(info $(M)...Begin to build the base docker image.)  @ ## Build the docker image.
+	hack/docker_build_base.sh
+
 container: ;$(info $(M)...Begin to build the docker image.)  @ ## Build the docker image.
 	DRY_RUN=true hack/docker_build.sh
 
