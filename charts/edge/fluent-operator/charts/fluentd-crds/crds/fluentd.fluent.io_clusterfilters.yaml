@@ -5,22 +5,22 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
-  name: filters.fluentd.fluent.io
+  name: clusterfilters.fluentd.fluent.io
 spec:
   group: fluentd.fluent.io
   names:
-    kind: Filter
-    listKind: FilterList
-    plural: filters
+    kind: ClusterFilter
+    listKind: ClusterFilterList
+    plural: clusterfilters
     shortNames:
-    - fdf
-    singular: filter
-  scope: Namespaced
+    - cfdf
+    singular: clusterfilter
+  scope: Cluster
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Filter is the Schema for the filters API
+        description: ClusterFilter is the Schema for the clusterfilters API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -35,7 +35,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: FilterSpec defines the desired state of Filter
+            description: ClusterFilterSpec defines the desired state of ClusterFilter
             properties:
               filters:
                 items:
@@ -180,7 +180,7 @@ spec:
                               type: string
                             timeFormat:
                               description: Process value according to the specified
-                                format. This is available only when time_type is *string
+                                format. This is available only when time_type is string
                               type: string
                             timeFormatFallbacks:
                               description: Uses the specified time format as a fallback
@@ -194,11 +194,11 @@ spec:
                               type: string
                             timeType:
                               description: parses/formats value according to this
-                                type, default is *string
+                                type, default is string
                               enum:
                               - float
                               - unixtime
-                              - '*string'
+                              - string
                               - mixed
                               type: string
                             timeout:
@@ -338,7 +338,7 @@ spec:
                               type: boolean
                             timeFormat:
                               description: Process value according to the specified
-                                format. This is available only when time_type is *string
+                                format. This is available only when time_type is string
                               type: string
                             timeFormatFallbacks:
                               description: Uses the specified time format as a fallback
@@ -348,11 +348,11 @@ spec:
                               type: string
                             timeType:
                               description: parses/formats value according to this
-                                type, default is *string
+                                type, default is string
                               enum:
                               - float
                               - unixtime
-                              - '*string'
+                              - string
                               - mixed
                               type: string
                             timezone:
@@ -392,7 +392,7 @@ spec:
                                 timeFormat:
                                   description: Process value according to the specified
                                     format. This is available only when time_type
-                                    is *string
+                                    is string
                                   type: string
                                 timeFormatFallbacks:
                                   description: Uses the specified time format as a
@@ -402,11 +402,11 @@ spec:
                                   type: string
                                 timeType:
                                   description: parses/formats value according to this
-                                    type, default is *string
+                                    type, default is string
                                   enum:
                                   - float
                                   - unixtime
-                                  - '*string'
+                                  - string
                                   - mixed
                                   type: string
                                 timezone:
@@ -427,11 +427,14 @@ spec:
                               type: string
                           type: object
                       type: object
+                    tag:
+                      description: Which tag to be matched.
+                      type: string
                   type: object
                 type: array
             type: object
           status:
-            description: FilterStatus defines the observed state of Filter
+            description: ClusterFilterStatus defines the observed state of ClusterFilter
             type: object
         type: object
     served: true
