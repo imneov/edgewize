@@ -77,6 +77,12 @@ func AddToContainer(container *restful.Container,
 		Returns(http.StatusOK, api.StatusOK, nil).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
 
+	webservice.Route(webservice.POST("/clusters/validation").
+		Doc("").
+		To(handler.validateEdgeCluster).
+		Returns(http.StatusOK, api.StatusOK, nil).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
+
 	webservice.Route(webservice.PUT("/edgeclusters/{cluster}/kubeconfig").
 		Doc("Update cluster kubeconfig.").
 		Param(webservice.PathParameter("cluster", "Name of the cluster.").Required(true)).
@@ -84,7 +90,20 @@ func AddToContainer(container *restful.Container,
 		Returns(http.StatusOK, api.StatusOK, nil).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
 
+	webservice.Route(webservice.PUT("/clusters/{cluster}/kubeconfig").
+		Doc("Update cluster kubeconfig.").
+		Param(webservice.PathParameter("cluster", "Name of the cluster.").Required(true)).
+		To(handler.updateKubeConfig).
+		Returns(http.StatusOK, api.StatusOK, nil).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
+
 	webservice.Route(webservice.GET("/edgeclusters").
+		Doc("").
+		To(handler.listEdgeCluster).
+		Returns(http.StatusOK, api.StatusOK, nil).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeClusterTag}))
+
+	webservice.Route(webservice.GET("/clusters").
 		Doc("").
 		To(handler.listEdgeCluster).
 		Returns(http.StatusOK, api.StatusOK, nil).
