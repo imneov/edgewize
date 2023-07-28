@@ -73,6 +73,7 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 	imageRepository := request.QueryParameter("image-repository")
 	hasDefaultTaint, _ := strconv.ParseBool(request.QueryParameter("add_default_taint"))
 	//withNodePort, _ := strconv.ParseBool(request.QueryParameter("with_nodeport"))
+	withMqtt, _ := strconv.ParseBool(request.QueryParameter("with_mqtt"))
 
 	// klog 打印query参数
 	klog.V(3).Infof("EdgeNodeJoin: nodeName: %s, version: %s, runtime: %s, nodeGroup: %s, imageRepository: %s, hasDefaultTaint: %v", nodeName, version, runtime, nodeGroup, imageRepository, hasDefaultTaint)
@@ -229,7 +230,10 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 		cmd = cmd + " --remote-runtime-endpoint=unix:///var/run/dockershim.sock --runtimetype=docker"
 	}
 	if imageRepository != "" {
-		cmd = fmt.Sprintf("%s --image-repository=%s ", cmd, imageRepository)
+		cmd = fmt.Sprintf("%s --image-repository=%s", cmd, imageRepository)
+	}
+	if withMqtt {
+		cmd = fmt.Sprintf("%s --with-mqtt=%t", cmd, withMqtt)
 	}
 	resp := EdgeJoinResponse{
 		Code:   http.StatusOK,
