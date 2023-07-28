@@ -94,6 +94,53 @@ rules:
       - 'GET'
 
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    kubesphere.io/creator: system
+    iam.kubesphere.io/aggregation-roles: '[]'
+  name: cluster-regular
+rules:
+  - apiGroups:
+      - infra.edgewize.io
+    resources:
+      - '*'
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - infra.kubesphere.io
+    resources:
+      - '*'
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    kubesphere.io/creator: system
+    iam.kubesphere.io/aggregation-roles: '[]'
+  name: cluster-self-provisioner
+rules:
+  - apiGroups:
+      - 'infra.edgewize.io'
+    resources:
+      - '*'
+    verbs:
+      - '*'
+  - apiGroups:
+      - infra.kubesphere.io
+    resources:
+      - '*'
+    verbs:
+      - '*'
+
+---
 apiVersion: iam.kubesphere.io/v1alpha2
 kind: GlobalRole
 metadata:
@@ -177,6 +224,12 @@ metadata:
         input.APIGroup == "tenant.kubesphere.io"
         input.KubernetesRequest == false
         allowedVerbs := ["get","list","watch"]
+        allowedVerbs[_] == input.Verb
+      }
+      allow = true {
+        input.APIGroup == "infra.edgewize.io"
+        input.KubernetesRequest == false
+        allowedVerbs := ["get", "list", "watch"]
         allowedVerbs[_] == input.Verb
       }
   name: authenticated
@@ -440,6 +493,12 @@ rules:
     verbs:
       - create
       - watch
+  - apiGroups:
+      - 'infra.edgewize.io'
+    resources:
+      - edgeclusters
+    verbs:
+      - '*'
 
 ---
 apiVersion: iam.kubesphere.io/v1alpha2
@@ -2222,6 +2281,207 @@ role:
 
 ---
 apiVersion: iam.kubesphere.io/v1alpha2
+kind: NodeGroupRole
+metadata:
+  annotations:
+    iam.kubesphere.io/module: Access Control
+    iam.kubesphere.io/role-template-rules: '{"nodegroups": "view"}'
+    kubesphere.io/alias-name: NodeGroups View
+  labels:
+    iam.kubesphere.io/role-template: 'true'
+  name: role-template-view-nodegroups
+rules:
+  - apiGroups:
+      - 'infra.kubesphere.io'
+    resources:
+      - 'nodegroups'
+      - 'nodes'
+      - 'namespaces'
+    verbs:
+      - 'get'
+      - 'list'
+      - 'watch'
+  - apiGroups:
+      - 'resources.kubesphere.io'
+    resources:
+      - 'namespaces'
+      - 'services'
+    verbs:
+      - 'get'
+      - 'list'
+      - 'watch'
+  - apiGroups:
+      - 'iam.kubesphere.io'
+    resources:
+      - 'roles'
+      - 'members'
+    verbs:
+      - 'get'
+      - 'list'
+      - 'watch'
+  - apiGroups:
+      - 'monitoring.kubesphere.io'
+    resources:
+      - 'namespaces'
+    verbs:
+      - 'get'
+      - 'list'
+      - 'watch'
+
+---
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: NodeGroupRole
+metadata:
+  annotations:
+    iam.kubesphere.io/dependencies: '["role-template-view-nodegroups"]'
+    iam.kubesphere.io/module: Access Control
+    iam.kubesphere.io/role-template-rules: '{"nodegroups": "manage"}'
+    kubesphere.io/alias-name: NodeGroups Management
+  labels:
+    iam.kubesphere.io/role-template: 'true'
+  name: role-template-manage-nodegroups
+rules:
+  - apiGroups:
+      - 'infra.kubesphere.io'
+    resources:
+      - 'nodegroups'
+      - 'nodes'
+      - 'namespaces'
+    verbs:
+      - '*'
+  - apiGroups:
+      - 'iam.kubesphere.io'
+    resources:
+      - 'roles'
+      - 'members'
+      - 'members/nodegrouproles'
+    verbs:
+      - '*'
+  - apiGroups:
+      - 'resources.kubesphere.io'
+    resources:
+      - 'namespaces'
+      - 'services'
+    verbs:
+      - '*'
+  - apiGroups:
+      - 'iam.kubesphere.io'
+    resources:
+      - 'roles'
+      - 'members'
+    verbs:
+      - '*'
+  - apiGroups:
+      - 'monitoring.kubesphere.io'
+    resources:
+      - 'namespaces'
+    verbs:
+      - '*'
+
+---
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: RoleBase
+metadata:
+  name: nodegroup-viewer
+role:
+  apiVersion: iam.kubesphere.io/v1alpha2
+  kind: NodeGroupRole
+  metadata:
+    annotations:
+      iam.kubesphere.io/aggregation-roles: '["role-template-view-nodegroups"]'
+      kubesphere.io/creator: system
+    name: viewer
+  rules:
+    - apiGroups:
+        - 'infra.kubesphere.io'
+      resources:
+        - 'nodegroups'
+        - 'nodes'
+        - 'namespaces'
+      verbs:
+        - 'get'
+        - 'list'
+        - 'watch'
+    - apiGroups:
+        - 'resources.kubesphere.io'
+      resources:
+        - 'namespaces'
+        - 'services'
+      verbs:
+        - 'get'
+        - 'list'
+        - 'watch'
+    - apiGroups:
+        - 'iam.kubesphere.io'
+      resources:
+        - 'roles'
+        - 'members'
+      verbs:
+        - 'get'
+        - 'list'
+        - 'watch'
+    - apiGroups:
+        - 'monitoring.kubesphere.io'
+      resources:
+        - 'namespaces'
+      verbs:
+        - 'get'
+        - 'list'
+        - 'watch'
+
+---
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: RoleBase
+metadata:
+  name: nodegroup-admin
+role:
+  apiVersion: iam.kubesphere.io/v1alpha2
+  kind: NodeGroupRole
+  metadata:
+    annotations:
+      iam.kubesphere.io/aggregation-roles: '["role-template-manage-nodegroups","role-template-view-nodegroups"]'
+      kubesphere.io/creator: system
+    name: admin
+  rules:
+    - apiGroups:
+        - 'infra.kubesphere.io'
+      resources:
+        - 'nodegroups'
+        - 'nodes'
+        - 'namespaces'
+      verbs:
+        - '*'
+    - apiGroups:
+        - 'iam.kubesphere.io'
+      resources:
+        - 'roles'
+        - 'members'
+        - 'members/nodegrouproles'
+      verbs:
+        - '*'
+    - apiGroups:
+        - 'resources.kubesphere.io'
+      resources:
+        - 'namespaces'
+        - 'services'
+      verbs:
+        - '*'
+    - apiGroups:
+        - 'iam.kubesphere.io'
+      resources:
+        - 'roles'
+        - 'members'
+      verbs:
+        - '*'
+    - apiGroups:
+        - 'monitoring.kubesphere.io'
+      resources:
+        - 'namespaces'
+      verbs:
+        - '*'
+
+---
+apiVersion: iam.kubesphere.io/v1alpha2
 kind: RoleBase
 metadata:
   name: workspace-regular
@@ -3694,5 +3954,107 @@ role:
       resources:
         - 'devops'
         - 'devopsprojects'
+      verbs:
+        - '*'
+
+---
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: RoleBase
+metadata:
+  name: nodegroup-viewer
+role:
+  apiVersion: iam.kubesphere.io/v1alpha2
+  kind: NodeGroupRole
+  metadata:
+    annotations:
+      iam.kubesphere.io/aggregation-roles: '["role-template-view-nodegroups"]'
+      kubesphere.io/creator: system
+    name: viewer
+  rules:
+    - apiGroups:
+        - 'infra.kubesphere.io'
+      resources:
+        - 'nodegroups'
+        - 'nodes'
+        - 'namespaces'
+      verbs:
+        - 'get'
+        - 'list'
+        - 'watch'
+    - apiGroups:
+        - 'resources.kubesphere.io'
+      resources:
+        - 'namespaces'
+        - 'services'
+      verbs:
+        - 'get'
+        - 'list'
+        - 'watch'
+    - apiGroups:
+        - 'iam.kubesphere.io'
+      resources:
+        - 'roles'
+        - 'members'
+      verbs:
+        - 'get'
+        - 'list'
+        - 'watch'
+    - apiGroups:
+        - 'monitoring.kubesphere.io'
+      resources:
+        - 'namespaces'
+      verbs:
+        - 'get'
+        - 'list'
+        - 'watch'
+
+---
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: RoleBase
+metadata:
+  name: nodegroup-admin
+role:
+  apiVersion: iam.kubesphere.io/v1alpha2
+  kind: NodeGroupRole
+  metadata:
+    annotations:
+      iam.kubesphere.io/aggregation-roles: '["role-template-manage-nodegroups","role-template-view-nodegroups"]'
+      kubesphere.io/creator: system
+    name: admin
+  rules:
+    - apiGroups:
+        - 'infra.kubesphere.io'
+      resources:
+        - 'nodegroups'
+        - 'nodes'
+        - 'namespaces'
+      verbs:
+        - '*'
+    - apiGroups:
+        - 'iam.kubesphere.io'
+      resources:
+        - 'roles'
+        - 'members'
+        - 'members/nodegrouproles'
+      verbs:
+        - '*'
+    - apiGroups:
+        - 'resources.kubesphere.io'
+      resources:
+        - 'namespaces'
+        - 'services'
+      verbs:
+        - '*'
+    - apiGroups:
+        - 'iam.kubesphere.io'
+      resources:
+        - 'roles'
+        - 'members'
+      verbs:
+        - '*'
+    - apiGroups:
+        - 'monitoring.kubesphere.io'
+      resources:
+        - 'namespaces'
       verbs:
         - '*'
