@@ -526,10 +526,7 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 		logger.Error(err, "get gateway svc ip error, need to configure manually", "instance", instance.Name)
 	}
 	klog.V(3).Infof("whizard-edge-agent values: %v, instance: %s", values, instance.Name)
-	err = r.CreateNameSpace(ctx, instance.Name, namespace)
-	if err != nil {
-		return err
-	}
+
 	upgrade := false
 	if instance.Status.Components == nil {
 		instance.Status.Components = make(map[string]infrav1alpha1.Component)
@@ -582,10 +579,6 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 	}
 	values := component.Values.ToValues()
 	klog.V(3).Infof("ReconcileEdgeOtaServer: %v", values)
-	err = r.CreateNameSpace(ctx, instance.Name, namespace)
-	if err != nil {
-		return err
-	}
 	upgrade := false
 	if instance.Status.Components == nil {
 		instance.Status.Components = make(map[string]infrav1alpha1.Component)
@@ -643,10 +636,6 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 		logger.Error(err, "set ks-core values error, skip", "instance", instance.Name)
 	}
 	klog.V(3).Infof("ks-core values: %v, instance: %s", values, instance.Name)
-	err = r.CreateNameSpace(ctx, instance.Name, namespace)
-	if err != nil {
-		return err
-	}
 	upgrade := false
 	if instance.Status.Components == nil {
 		instance.Status.Components = make(map[string]infrav1alpha1.Component)
@@ -732,10 +721,6 @@ func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alph
 	}
 	values := component.Values.ToValues()
 	klog.V(3).Infof("Kubefed values: %v, instance: %s", values, instance.Name)
-	err = r.CreateNameSpace(ctx, instance.Name, namespace)
-	if err != nil {
-		return err
-	}
 	upgrade := false
 	if instance.Status.Components == nil {
 		instance.Status.Components = make(map[string]infrav1alpha1.Component)
@@ -788,10 +773,6 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 	values["role"] = "member"
 	values["edgeClusterName"] = instance.Name
 	klog.V(3).Infof("edgewize values: %v, instance: %s", values, instance.Name)
-	err = r.CreateNameSpace(ctx, instance.Name, namespace)
-	if err != nil {
-		return err
-	}
 	upgrade := false
 	if instance.Status.Components == nil {
 		instance.Status.Components = make(map[string]infrav1alpha1.Component)
@@ -866,10 +847,6 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 		klog.Warningf("set cloudcore values error, err: %v", err)
 	}
 	klog.V(3).Infof("cloudcore values: %v, instance: %s", values, instance.Name)
-	err = r.CreateNameSpace(ctx, instance.Name, namespace)
-	if err != nil {
-		return err
-	}
 	upgrade := false
 	if instance.Status.Components == nil {
 		instance.Status.Components = make(map[string]infrav1alpha1.Component)
@@ -924,10 +901,6 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	if err != nil {
 		logger.Error(err, "configure ClusterOutput failed, skip install fluent-operator")
 		return nil
-	}
-	err = r.CreateNameSpace(ctx, instance.Name, namespace)
-	if err != nil {
-		return err
 	}
 	upgrade := false
 	if instance.Status.Components == nil {
@@ -1339,40 +1312,6 @@ func (r *Reconciler) IsNamespaceExisted(ctx context.Context, kubeconfig, namespa
 	return true
 }
 
-func (r *Reconciler) CreateNameSpace(ctx context.Context, kubeconfig, namespace string) error {
-	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
-	config, err := clientcmd.BuildConfigFromFlags("", file)
-	if err != nil {
-		klog.Error("create rest config from kubeconfig string error", err.Error())
-		return err
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		klog.Error("create k8s client from restconfig error", err.Error())
-		return err
-	}
-
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace,
-			Labels: map[string]string{
-				"kubesphere.io/workspace": "system-workspace",
-				"kubesphere.io/namespace": "kubesphere-system",
-			},
-		},
-	}
-	_, err = clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
-	if err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			return nil
-		}
-		klog.Error("get namespace error", err.Error())
-		return err
-	}
-	return nil
-}
-
 type ServiceMap map[string]corev1.ServiceSpec
 
 func (r *Reconciler) UpdateEdgeOtaService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha1.EdgeCluster) error {
@@ -1663,18 +1602,25 @@ func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1a
 	}
 
 	edgeDeploySecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, EdgeDeploySecret, metav1.GetOptions{})
-	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			klog.Error("get secret zpk-deploy-secret error", err.Error())
-			return err
-		}
-	} else {
+	// if found edge-deploy-secret, skip
+	if err == nil {
 		klog.V(3).Infof("secret edge-deploy-secret exists, skip. edge-deploy-secret: %v", edgeDeploySecret.String())
 		return nil
 	}
+	// if not found edge-deploy-secret, create namespace and secret
+	if client.IgnoreNotFound(err) != nil {
+		klog.Error("get secret zpk-deploy-secret error", err.Error())
+		return err
+	}
 
 	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{Name: namespace},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: namespace,
+			Labels: map[string]string{
+				"kubesphere.io/workspace": "system-workspace",
+				"kubesphere.io/namespace": namespace,
+			},
+		},
 	}
 	// try to create namespace
 	_, err = clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
