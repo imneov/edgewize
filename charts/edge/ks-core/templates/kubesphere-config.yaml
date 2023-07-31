@@ -23,7 +23,6 @@ data:
         accessTokenMaxAge: 0
 {{- end }}
     multicluster:
-      enable: true
       clusterRole: member
     monitoring:
       endpoint: {{ .Values.config.monitoring.endpoint | default "http://whizard-agent-proxy.kubesphere-monitoring-system.svc:9090" }}
