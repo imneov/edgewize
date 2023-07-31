@@ -153,7 +153,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 
 	if instance.Status.WorkloadCount < len(instance.Spec.NodeSelectors) {
 		for _, selector := range instance.Spec.NodeSelectors {
-			name := fmt.Sprintf("%s-%d", instance.Name, rand.String(5))
+			name := fmt.Sprintf("%s-%s", instance.Name, rand.String(5))
 			if _, ok := deployments[name]; ok {
 				continue
 			}
