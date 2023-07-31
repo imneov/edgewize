@@ -33,6 +33,8 @@ spec:
             operator: DoesNotExist
           - key: node-role.kubernetes.io/edge
             operator: Exists
+          - key: vcluster.loft.sh/fake-node
+            operator: DoesNotExist
   hostNetwork : true
   volumes:
     - name: host-proc

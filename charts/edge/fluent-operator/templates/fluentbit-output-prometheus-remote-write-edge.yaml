@@ -7,14 +7,14 @@ metadata:
     fluentbit.fluent.io/enabled: "true"
     node-role.kubernetes.io/edge: "true"
 spec:
-  matchRegex: (?:kubeedge|service)\.(.*)
+  match: kubeedge.metrics.*
   prometheusRemoteWrite:
     host: {{ .Values.fluentbit.kubeedge.prometheusRemoteWrite.host }}
     port: {{ .Values.fluentbit.kubeedge.prometheusRemoteWrite.port }}
     uri: /push/{{ .Values.fluentbit.kubeedge.prometheusRemoteWrite.routerKey }}
     {{- if .Values.fluentbit.kubeedge.prometheusRemoteWrite.tlsEnable }}
     tls:
-      verify: false
+      verify: true
       caFile: /etc/kubeedge/ca/rootCA.crt
       crtFile: /etc/kubeedge/certs/server.crt
       keyFile: /etc/kubeedge/certs/server.key
