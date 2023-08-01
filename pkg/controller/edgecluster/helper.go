@@ -26,6 +26,7 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"fmt"
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	"math"
 	"math/big"
 	"net"
@@ -39,18 +40,30 @@ import (
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog"
 
-	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	"github.com/edgewize-io/edgewize/pkg/helm"
 )
 
+func needInstall(status release.Status) bool {
+	if status == release.StatusUnknown || status == release.StatusUninstalled {
+		return true
+	}
+	return false
+}
+
+func needUpgrade(status release.Status) bool {
+	if status == release.StatusDeployed || status == release.StatusFailed {
+		return true
+	}
+	return false
+}
+
 func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool, values chartutil.Values) (infrav1alpha1.Status, error) {
-	chartStatus, err := helm.Status(file, name, namespace, kubeconfig)
+	oldStatus, err := helm.Status(file, name, namespace, kubeconfig)
 	if err != nil {
 		return "", err
 	}
-	klog.V(3).Infof("current chart info, chart: %s, status: %s, kubeconfig: %s, values: %v,", name, chartStatus, kubeconfig, values)
-	switch chartStatus {
-	case release.StatusUnknown, release.StatusUninstalled:
+	klog.V(3).Infof("current chart info, chart: %s, status: %s, kubeconfig: %s, values: %v,", name, oldStatus, kubeconfig, values)
+	if needInstall(oldStatus) {
 		klog.V(3).Infof("begin to install chart, chart: %s, kubeconfig: %s", name, kubeconfig)
 		err = helm.Install(file, name, namespace, kubeconfig, values)
 		if err != nil {
@@ -58,7 +71,14 @@ func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool
 			return "", err
 		}
 		klog.V(3).Infof("install chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
-		return infrav1alpha1.RunningStatus, nil
+	}
+	time.Sleep(time.Second)
+	newStatus, err := helm.Status(file, name, namespace, kubeconfig)
+	if err != nil {
+		return "", err
+	}
+	klog.V(3).Infof("current chart info, chart: %s, status: %s, kubeconfig: %s, values: %v,", name, newStatus, kubeconfig, values)
+	switch newStatus {
 	case release.StatusUninstalling:
 		return infrav1alpha1.UninstallingStatus, nil
 	case release.StatusDeployed:
@@ -67,18 +87,18 @@ func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool
 		return infrav1alpha1.ErrorStatus, nil
 	case release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback:
 		return infrav1alpha1.PendingStatus, nil
+	default:
+		return "", fmt.Errorf("invalid status: %s", newStatus)
 	}
-	return infrav1alpha1.ErrorStatus, nil
 }
 
 func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Values, upgrade bool) (infrav1alpha1.Status, error) {
-	chartStatus, err := helm.Status(file, name, namespace, kubeconfig)
+	oldStatus, err := helm.Status(file, name, namespace, kubeconfig)
 	if err != nil {
 		return "", err
 	}
-	klog.V(3).Infof("current chart info, chart: %s, status: %s, kubeconfig: %s, values: %v,", name, chartStatus, kubeconfig, values)
-	switch chartStatus {
-	case release.StatusUnknown, release.StatusUninstalled:
+	klog.V(3).Infof("current chart info, chart: %s, status: %s, kubeconfig: %s, values: %v,", name, oldStatus, kubeconfig, values)
+	if needInstall(oldStatus) {
 		klog.V(3).Infof("begin to install chart, chart: %s, kubeconfig: %s", name, kubeconfig)
 		err = helm.Install(file, name, namespace, kubeconfig, values)
 		if err != nil {
@@ -86,37 +106,33 @@ func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Val
 			return "", err
 		}
 		klog.V(3).Infof("install chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
-		return infrav1alpha1.RunningStatus, nil
+	} else if upgrade && needUpgrade(oldStatus) {
+		klog.V(3).Infof("begin to upgrade chart, chart: %s, kubeconfig: %s", name, kubeconfig)
+		err = helm.Upgrade(file, name, namespace, kubeconfig, values)
+		if err != nil {
+			klog.Errorf("upgrade chart error, err: %v", err)
+			return "", err
+		}
+		klog.V(3).Infof("upgrade chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
+	}
+	time.Sleep(time.Second)
+	newStatus, err := helm.Status(file, name, namespace, kubeconfig)
+	if err != nil {
+		return "", err
+	}
+	klog.V(3).Infof("current chart info, chart: %s, status: %s, kubeconfig: %s, values: %v,", name, newStatus, kubeconfig, values)
+	switch newStatus {
 	case release.StatusUninstalling:
 		return infrav1alpha1.UninstallingStatus, nil
 	case release.StatusDeployed:
-		if upgrade {
-			klog.V(3).Infof("begin to upgrade chart, chart: %s, kubeconfig: %s", name, kubeconfig)
-			err = helm.Upgrade(file, name, namespace, kubeconfig, values)
-			if err != nil {
-				klog.Errorf("upgrade chart error, err: %v", err)
-				return "", err
-			}
-			klog.V(3).Infof("upgrade chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
-			return infrav1alpha1.RunningStatus, nil
-		}
 		return infrav1alpha1.RunningStatus, nil
 	case release.StatusFailed:
-		if upgrade {
-			klog.V(3).Infof("begin to upgrade chart, chart: %s, kubeconfig: %s", name, kubeconfig)
-			err = helm.Upgrade(file, name, namespace, kubeconfig, values)
-			if err != nil {
-				klog.Errorf("upgrade chart error, err: %v", err)
-				return "", err
-			}
-			klog.V(3).Infof("upgrade chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
-			return infrav1alpha1.RunningStatus, nil
-		}
 		return infrav1alpha1.ErrorStatus, nil
 	case release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback:
 		return infrav1alpha1.PendingStatus, nil
+	default:
+		return "", fmt.Errorf("invalid status: %s", newStatus)
 	}
-	return infrav1alpha1.ErrorStatus, nil
 }
 
 func SaveToLocal(name string, config []byte) error {
