@@ -22,6 +22,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	rest "k8s.io/client-go/rest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1037,16 +1038,8 @@ func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.V
 }
 
 func (r *Reconciler) RegisterWhizardEdgeGatewayRouters(ctx context.Context, kubeconfig string, instance *infrav1alpha1.EdgeCluster) (err error) {
-	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
-	config, err := clientcmd.BuildConfigFromFlags("", file)
+	clientset, err := r.getClusterClientset(kubeconfig)
 	if err != nil {
-		klog.Error("create rest config from kubeconfig string error", err.Error())
-		return
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		klog.Error("create k8s client from restconfig error", err.Error())
 		return
 	}
 
@@ -1195,15 +1188,8 @@ func (r *Reconciler) LoadMemberKubeConfig(ctx context.Context, name string) (str
 }
 
 func (r *Reconciler) CleanEdgeClusterResources(name, namespace, kubeconfig string) error {
-	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
-	config, err := clientcmd.BuildConfigFromFlags("", file)
+	clientset, err := r.getClusterClientset(kubeconfig)
 	if err != nil {
-		klog.Error("create rest config from kubeconfig string error", err.Error())
-		return err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		klog.Error("create clientset from config error", err.Error())
 		return err
 	}
 
@@ -1289,17 +1275,9 @@ func (r *Reconciler) GetValuesMap(ctx context.Context) (map[string]string, error
 }
 
 func (r *Reconciler) IsNamespaceExisted(ctx context.Context, kubeconfig, namespace string) bool {
-	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
-	config, err := clientcmd.BuildConfigFromFlags("", file)
+	clientset, err := r.getClusterClientset(kubeconfig)
 	if err != nil {
-		klog.Error("create rest config from kubeconfig string error", err.Error())
-		return true
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		klog.Error("create k8s client from restconfig error", err.Error())
-		return true
+		return false
 	}
 	_, err = clientset.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 	if err != nil {
@@ -1315,15 +1293,8 @@ func (r *Reconciler) IsNamespaceExisted(ctx context.Context, kubeconfig, namespa
 type ServiceMap map[string]corev1.ServiceSpec
 
 func (r *Reconciler) UpdateEdgeOtaService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha1.EdgeCluster) error {
-	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
-	config, err := clientcmd.BuildConfigFromFlags("", file)
+	clientset, err := r.getClusterClientset(kubeconfig)
 	if err != nil {
-		klog.Error("create rest config from kubeconfig string error", err.Error())
-		return err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		klog.Error("create clientset from config error", err.Error())
 		return err
 	}
 
@@ -1371,15 +1342,8 @@ func (r *Reconciler) UpdateEdgeOtaService(ctx context.Context, kubeconfig, names
 }
 
 func (r *Reconciler) UpdateCloudCoreService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha1.EdgeCluster) error {
-	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
-	config, err := clientcmd.BuildConfigFromFlags("", file)
+	clientset, err := r.getClusterClientset(kubeconfig)
 	if err != nil {
-		klog.Error("create rest config from kubeconfig string error", err.Error())
-		return err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		klog.Error("create clientset from config error", err.Error())
 		return err
 	}
 
@@ -1464,15 +1428,8 @@ func (r *Reconciler) DeleteCloudCoreService(ctx context.Context, kubeconfig, nam
 }
 
 func (r *Reconciler) InitCert(ctx context.Context, kubeconfig string, name, namespace string, serverCertFunc func(crt, key []byte) ([]byte, []byte, error)) error {
-	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
-	config, err := clientcmd.BuildConfigFromFlags("", file)
+	clientset, err := r.getClusterClientset(kubeconfig)
 	if err != nil {
-		klog.Error("create rest config from kubeconfig string error", err.Error())
-		return err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		klog.Error("create clientset from config error", err.Error())
 		return err
 	}
 
@@ -1573,15 +1530,8 @@ func (r *Reconciler) InitCert(ctx context.Context, kubeconfig string, name, name
 }
 
 func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1alpha1.EdgeCluster, kubeconfig string, namespace string) error {
-	file := filepath.Join(homedir.HomeDir(), ".kube", kubeconfig)
-	config, err := clientcmd.BuildConfigFromFlags("", file)
+	clientset, err := r.getClusterClientset(kubeconfig)
 	if err != nil {
-		klog.Error("create rest config from kubeconfig string error", err.Error())
-		return err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		klog.Error("create clientset from config error", err.Error())
 		return err
 	}
 
@@ -1652,4 +1602,28 @@ func (r *Reconciler) applyYaml(kubeconfig, filepath string) {
 		klog.V(3).Infof("apply %s success", filepath)
 	}
 	klog.V(3).Infof("apply %s output: %s", filepath, string(output))
+}
+
+func (r *Reconciler) getClusterKubeConfig(clusterName string) (*rest.Config, error) {
+	file := filepath.Join(homedir.HomeDir(), ".kube", clusterName)
+	config, err := clientcmd.BuildConfigFromFlags("", file)
+	if err != nil {
+		return nil, fmt.Errorf("get cluster kubeconfig(%s) error: %w", file, err)
+	}
+	return config, nil
+}
+
+func (r *Reconciler) getClusterClientset(clusterName string) (*kubernetes.Clientset, error) {
+	config, err := r.getClusterKubeConfig(clusterName)
+	if err != nil {
+		klog.Errorf("create rest config (clusterName:%s, ) error: %w", clusterName, err)
+		return nil, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		klog.Errorf("create k8s client from restconfig (clusterName:%s) error: %w", clusterName, err)
+		return nil, err
+	}
+	return clientset, nil
 }
