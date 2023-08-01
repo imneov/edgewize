@@ -552,18 +552,16 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 		return err
 	}
 	klog.V(3).Infof("whizard-edge-agent status: %s, instance: %s", status, instance.Name)
-	if status == infrav1alpha1.InstallingStatus {
+	instance.Status.EdgewizeMonitor = status
+	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-	}
-	err = r.RegisterWhizardEdgeGatewayRouters(ctx, instance.Name, instance)
-	if err != nil {
-		logger.Error(err, "update whizard edge gateway config failed")
-		instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
-	} else {
-		instance.Status.EdgewizeMonitor = status
+		err = r.RegisterWhizardEdgeGatewayRouters(ctx, instance.Name, instance)
+		if err != nil {
+			logger.Error(err, "update whizard edge gateway config failed")
+			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
+		}
 	}
 	return nil
-
 }
 
 func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component) error {
@@ -605,9 +603,8 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 	}
 	klog.V(3).Infof("edge-ota-server status: %s, instance: %s", status, instance.Name)
 	instance.Status.EdgeOtaServer = status
-	if status == infrav1alpha1.InstallingStatus {
+	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-	} else if status == infrav1alpha1.RunningStatus {
 		err := r.UpdateEdgeOtaService(ctx, instance.Name, namespace, instance)
 		if err != nil {
 			logger.Info("update edgewize-edge-ota-service error", "error", err)
@@ -624,6 +621,11 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 		return nil
 	}
 
+	// TODO implement using component.dependencies
+	if instance.Status.EdgewizeMonitor != infrav1alpha1.RunningStatus {
+		klog.V(3).Infof("whizard-edge-agent is not running, skip install ks-core")
+		return nil
+	}
 	namespace := component.Namespace
 	r.applyYaml(instance.Name, "charts/edge/cluster-configuration.yaml")
 	err := r.InitImagePullSecret(ctx, instance, instance.Name, namespace)
@@ -662,9 +664,8 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 	}
 	klog.V(3).Infof("ks-core status: %s, instance: %s", status, instance.Name)
 	instance.Status.KSCore = status
-	if status == infrav1alpha1.InstallingStatus {
+	if instance.Status.KSCore == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-	} else if instance.Status.KSCore == infrav1alpha1.RunningStatus {
 		r.applyYaml(instance.Name, "charts/edge/role-templates.yaml")
 		member := &ksclusterv1alpha1.Cluster{}
 		err = r.Get(ctx, types.NamespacedName{Name: instance.Name}, member)
@@ -710,6 +711,8 @@ func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alph
 		logger.V(4).Info("kubeconfig is null, skip install kubefed")
 		return nil
 	}
+
+	// TODO implement using component.dependencies
 	if instance.Status.KSCore != infrav1alpha1.RunningStatus {
 		klog.V(3).Infof("ks-core is not running, skip install kubefed")
 		return nil
@@ -747,9 +750,8 @@ func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alph
 	}
 	klog.V(3).Infof("kubefed status: %s, instance: %s", status, instance.Name)
 	instance.Status.Kubefed = status
-	if status == infrav1alpha1.InstallingStatus {
+	if instance.Status.Kubefed == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-	} else if instance.Status.Kubefed == infrav1alpha1.RunningStatus {
 		r.applyYaml(instance.Name, "charts/edge/federatedcrds.yaml")
 	}
 	return nil
@@ -799,9 +801,8 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 	}
 	klog.V(3).Infof("edgewize status: %s, instance: %s", status, instance.Name)
 	instance.Status.EdgeWize = status
-	if status == infrav1alpha1.InstallingStatus {
+	if instance.Status.EdgeWize == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-	} else if instance.Status.EdgeWize == infrav1alpha1.RunningStatus {
 		// 等待 edgewize running 后再更新 kubeconfig，否则前端边缘集群显示 running，进入集群页面会报错
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			edge := &infrav1alpha1.Cluster{}
@@ -873,9 +874,8 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 	}
 	klog.V(3).Infof("cloudcore status: %s, instance: %s", status, instance.Name)
 	instance.Status.CloudCore = status
-	if status == infrav1alpha1.InstallingStatus {
+	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-	} else if status == infrav1alpha1.RunningStatus {
 		err := r.UpdateCloudCoreService(ctx, instance.Name, "kubeedge", instance)
 		if err != nil {
 			logger.Info("update edgewize-cloudcore-service error", "error", err)
@@ -928,7 +928,7 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	}
 	klog.V(3).Infof("fluent-operator status: %s, instance: %s", status, instance.Name)
 	instance.Status.FluentOperator = status
-	if status == infrav1alpha1.InstallingStatus {
+	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
 	}
 	return nil
@@ -1205,12 +1205,12 @@ func (r *Reconciler) CleanEdgeClusterResources(name, namespace, kubeconfig strin
 		return err
 	}
 	// delete local kubeconfig dile
-	path := filepath.Join(homedir.HomeDir(), ".kube", name)
-	err = os.Remove(path)
-	if err != nil {
-		klog.Error("delete kubeconfig file error", err.Error(), "instance:", name)
-		return err
-	}
+	//path := filepath.Join(homedir.HomeDir(), ".kube", name)
+	//err = os.Remove(path)
+	//if err != nil {
+	//	klog.Error("delete kubeconfig file error", err.Error(), "instance:", name)
+	//	return err
+	//}
 	return nil
 }
 
