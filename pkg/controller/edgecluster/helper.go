@@ -58,7 +58,7 @@ func InstallChart(file, name, namespace, kubeconfig string, createNamespace bool
 			return "", err
 		}
 		klog.V(3).Infof("install chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
-		return infrav1alpha1.InstallingStatus, nil
+		return infrav1alpha1.RunningStatus, nil
 	case release.StatusUninstalling:
 		return infrav1alpha1.UninstallingStatus, nil
 	case release.StatusDeployed:
@@ -86,7 +86,7 @@ func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Val
 			return "", err
 		}
 		klog.V(3).Infof("install chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
-		return infrav1alpha1.InstallingStatus, nil
+		return infrav1alpha1.RunningStatus, nil
 	case release.StatusUninstalling:
 		return infrav1alpha1.UninstallingStatus, nil
 	case release.StatusDeployed:
@@ -98,7 +98,7 @@ func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Val
 				return "", err
 			}
 			klog.V(3).Infof("upgrade chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
-			return infrav1alpha1.InstallingStatus, nil
+			return infrav1alpha1.RunningStatus, nil
 		}
 		return infrav1alpha1.RunningStatus, nil
 	case release.StatusFailed:
@@ -110,7 +110,7 @@ func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Val
 				return "", err
 			}
 			klog.V(3).Infof("upgrade chart success, chart: %s, kubeconfig: %s", name, kubeconfig)
-			return infrav1alpha1.InstallingStatus, nil
+			return infrav1alpha1.RunningStatus, nil
 		}
 		return infrav1alpha1.ErrorStatus, nil
 	case release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback:

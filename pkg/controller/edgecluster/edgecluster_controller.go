@@ -408,7 +408,7 @@ func (r *Reconciler) InstallEdgeClusterComponents(ctx context.Context, instance 
 		case "kubefed":
 			err = r.ReconcileKubefed(ctx, instance, component)
 			if err != nil {
-				logger.Error(err, "install kubefed error", "instance", instance.Name)
+				logger.Error(err, "install kubefed error")
 			}
 		case "edgewize":
 			err = r.ReconcileEdgeWize(ctx, instance, component)
@@ -428,12 +428,12 @@ func (r *Reconciler) InstallEdgeClusterComponents(ctx context.Context, instance 
 		case "fluent-operator":
 			err = r.ReconcileFluentOperator(ctx, instance, component)
 			if err != nil {
-				logger.Error(err, "install cloudcore error")
+				logger.Error(err, "install fluent-operator error")
 			}
 		case "edge-ota-server":
 			err = r.ReconcileEdgeOtaServer(ctx, instance, component)
 			if err != nil {
-				logger.Error(err, "edge-ota-server error")
+				logger.Error(err, "install edge-ota-server error")
 			}
 		default:
 			logger.Info(fmt.Sprintf("unknown component %s", component.Name))
@@ -1161,8 +1161,9 @@ func (r *Reconciler) LoadExternalKubeConfig(ctx context.Context, name string) (s
 	file := filepath.Join(homedir.HomeDir(), ".kube", path)
 	if _, err := os.Stat(file); err == nil {
 		return path, nil
+	} else {
+		return "", err
 	}
-	return "", nil
 }
 
 // LoadMemberKubeConfig 获取 member 集群的 kubeconfig 并保存到本地目录
@@ -1535,6 +1536,24 @@ func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1a
 		return err
 	}
 
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: namespace,
+			Labels: map[string]string{
+				"kubesphere.io/workspace": "system-workspace",
+				"kubesphere.io/namespace": namespace,
+			},
+		},
+	}
+	// try to create namespace
+	_, err = clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
+	if err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			klog.Errorf("create namespace %s error: %s", namespace, err.Error())
+			return err
+		}
+	}
+
 	imagePullSecret := &corev1.Secret{}
 	key := types.NamespacedName{
 		Namespace: CurrentNamespace,
@@ -1563,23 +1582,6 @@ func (r *Reconciler) InitImagePullSecret(ctx context.Context, instance *infrav1a
 		return err
 	}
 
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace,
-			Labels: map[string]string{
-				"kubesphere.io/workspace": "system-workspace",
-				"kubesphere.io/namespace": namespace,
-			},
-		},
-	}
-	// try to create namespace
-	_, err = clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
-	if err != nil {
-		if !apierrors.IsAlreadyExists(err) {
-			klog.Errorf("create namespace %s error: %s", namespace, err.Error())
-			return err
-		}
-	}
 	imagePullSecret.ObjectMeta.Namespace = namespace
 	imagePullSecret.ObjectMeta.UID = ""
 	imagePullSecret.ObjectMeta.ResourceVersion = ""
