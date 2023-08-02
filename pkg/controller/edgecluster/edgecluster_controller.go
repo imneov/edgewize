@@ -1429,7 +1429,7 @@ func (r *Reconciler) InitCert(ctx context.Context, name, namespace string, serve
 	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			klog.Error("get secret %s error", name, err.Error())
+			klog.Errorf("get secret %s error: %v", name, err)
 			return err
 		}
 	} else {
@@ -1622,13 +1622,13 @@ func (r *Reconciler) getClusterKubeConfig(clusterName string) (*rest.Config, err
 func (r *Reconciler) getClusterClientset(clusterName string) (*kubernetes.Clientset, error) {
 	config, err := r.getClusterKubeConfig(clusterName)
 	if err != nil {
-		klog.Errorf("create rest config (clusterName:%s, ) error: %w", clusterName, err)
+		klog.Errorf("create rest config (clusterName:%s, ) error: %s", clusterName, err.Error())
 		return nil, err
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		klog.Errorf("create k8s client from restconfig (clusterName:%s) error: %w", clusterName, err)
+		klog.Errorf("create k8s client from restconfig (clusterName:%s) error: %s", clusterName, err.Error())
 		return nil, err
 	}
 	return clientset, nil
