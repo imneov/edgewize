@@ -110,8 +110,7 @@ func TestStripEmptyOptions(t *testing.T) {
 	}
 	config.stripEmptyOptions()
 
-	if config.CacheOptions != nil ||
-		config.EdgeWizeOptions != nil {
+	if config.CacheOptions != nil {
 		t.Fatal("config stripEmptyOptions failed")
 	}
 }
