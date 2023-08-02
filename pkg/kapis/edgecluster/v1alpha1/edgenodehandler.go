@@ -232,9 +232,8 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 	if imageRepository != "" {
 		cmd = fmt.Sprintf("%s --image-repository=%s", cmd, imageRepository)
 	}
-	if withMqtt {
-		cmd = fmt.Sprintf("%s --with-mqtt=%t", cmd, withMqtt)
-	}
+	cmd = fmt.Sprintf("%s --with-mqtt=%t", cmd, withMqtt)
+
 	resp := EdgeJoinResponse{
 		Code:   http.StatusOK,
 		Status: StatusSucceeded,
