@@ -187,8 +187,8 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 			// 部署到指定节点
 			if selector.NodeName != "" {
 				deploy.Spec.Template.Spec.NodeName = selector.NodeName
-				deploy.Labels[appsv1alpha1.LabelNode] = selector.NodeGroup
-				deploy.Spec.Template.Labels[appsv1alpha1.LabelNode] = selector.NodeGroup
+				deploy.Labels[appsv1alpha1.LabelNode] = selector.NodeName
+				deploy.Spec.Template.Labels[appsv1alpha1.LabelNode] = selector.NodeName
 			}
 			klog.V(5).Infof("create deploy: %+v", deploy)
 			err := r.Create(ctx, deploy)
