@@ -180,12 +180,15 @@ func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, i
 				},
 			}
 			deploy.Spec.Template.Labels = map[string]string{
-				"app": deploy.Name,
+				"app":                        deploy.Name,
+				appsv1alpha1.LabelNodeGroup:  selector.NodeGroup,
+				appsv1alpha1.LabelEdgeAppSet: instance.Name,
 			}
 			// 部署到指定节点
 			if selector.NodeName != "" {
 				deploy.Spec.Template.Spec.NodeName = selector.NodeName
-				deploy.Labels[appsv1alpha1.LabelNode] = selector.NodeGroup
+				deploy.Labels[appsv1alpha1.LabelNode] = selector.NodeName
+				deploy.Spec.Template.Labels[appsv1alpha1.LabelNode] = selector.NodeName
 			}
 			klog.V(5).Infof("create deploy: %+v", deploy)
 			err := r.Create(ctx, deploy)
