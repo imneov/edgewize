@@ -58,8 +58,10 @@ type DeploymentStatus struct {
 	Status string `json:"status,omitempty"`
 }
 type EdgeAppSetStatus struct {
-	WorkloadCount int                         `json:"workloadCount,omitempty"`
-	Deployments   map[string]DeploymentStatus `json:"deployments,omitempty"`
+	WorkloadCount            int `json:"workloadCount,omitempty"`
+	UpdatedWorkloadCount     int `json:"updatedWorkloadCount,omitempty"`
+	ReadyWorkloadCount       int `json:"readyWorkloadCount,omitempty"`
+	UnavailableWorkloadCount int `json:"unavailableWorkloadCount,omitempty"`
 }
 
 //+kubebuilder:resource:scope=Namespaced

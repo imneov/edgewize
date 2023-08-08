@@ -7,7 +7,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 var (

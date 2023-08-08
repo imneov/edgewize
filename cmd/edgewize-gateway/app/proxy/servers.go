@@ -3,7 +3,7 @@ package proxy
 import (
 	"sync"
 
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/options"
 )

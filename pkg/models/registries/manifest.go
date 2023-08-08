@@ -23,7 +23,7 @@ import (
 
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/emicklei/go-restful"
-	log "k8s.io/klog"
+	log "k8s.io/klog/v2"
 )
 
 var statusUnauthorized = "Not found or unauthorized"

@@ -26,7 +26,7 @@ import (
 	promlabels "github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/rules"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/edgewize-io/edgewize/pkg/api/alerting/v2alpha1"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/alerting"

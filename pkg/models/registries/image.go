@@ -23,7 +23,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/go-digest"
-	log "k8s.io/klog"
+	log "k8s.io/klog/v2"
 )
 
 // Image holds information about an image.

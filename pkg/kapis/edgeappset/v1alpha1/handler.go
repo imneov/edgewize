@@ -21,7 +21,7 @@ import (
 
 	"github.com/emicklei/go-restful"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	kapi "github.com/edgewize-io/edgewize/pkg/api"
 	"github.com/edgewize-io/edgewize/pkg/apiserver/query"

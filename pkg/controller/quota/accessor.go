@@ -24,7 +24,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apiserver/pkg/storage"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	quotav1alpha2 "github.com/edgewize-io/edgewize/pkg/apis/quota/v1alpha2"

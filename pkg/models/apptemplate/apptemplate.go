@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/edgewize-io/edgewize/pkg/api"
 	appsv1alpha1 "github.com/edgewize-io/edgewize/pkg/api/apps/v1alpha1"
