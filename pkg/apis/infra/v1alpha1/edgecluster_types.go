@@ -21,6 +21,28 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type SystemStatus string
+
+const (
+	InitialStatus             SystemStatus = "initial"
+	VerifyingStatus           SystemStatus = "verifying"
+	VerifySuccessStatus       SystemStatus = "verify_success"
+	VerifyFailedStatus        SystemStatus = "verify_failed"
+	ClusterInstallingStatus   SystemStatus = "cluster_installing"
+	ClusterFailedStatus       SystemStatus = "cluster_failed"
+	ClusterSuccessStatus      SystemStatus = "cluster_success"
+	PreparingStatus           SystemStatus = "preparing"
+	PrepareFailedStatus       SystemStatus = "prepare_failed"
+	PrepareSuccessStatus      SystemStatus = "prepare_success"
+	ComponentInstallingStatus SystemStatus = "component_installing"
+	ComponentFailedStatus     SystemStatus = "component_failed"
+	ComponentSuccessStatus    SystemStatus = "component_success"
+	DeprecatedRunningStatus   SystemStatus = "running" //Deprecated
+	//ServiceUpdatingStatus      SystemStatus = "service_updating"
+	//ServiceUpdateFailedStatus  SystemStatus = "service_update_success"
+	//ServiceUpdateSuccessStatus SystemStatus = "service_update_success"
+)
+
 type Status string
 
 const (
@@ -59,39 +81,40 @@ type Component struct {
 
 // EdgeClusterSpec defines the desired state of EdgeCluster
 type EdgeClusterSpec struct {
-	// Namespace is the target namespace where the edge cluster will be installed
+	// Type is the edge cluster installation method, auto or manual
+	Type InstallType `json:"type,omitempty"`
+
+	// Namespace is the target namespace in the metacluster where the edge cluster will be installed , in auto mode
 	Namespace string `json:"namespace,omitempty"`
 
-	// HostCluster is the cluster in which the edge cluster will be created and hosted (default to "host")
-	// it depends on the multi-cluster component.
-	HostCluster string `json:"hostCluster,omitempty"`
-
-	// Distro is Kubernetes distro to use for the virtual cluster. Allowed distros: k3s, k0s, k8s, eks (default "k3s")
+	// Distro is Kubernetes distro to use for the virtual cluster. Allowed distros: k3s, k0s, k8s, eks (default "k3s"), in auto mode
 	Distro string `json:"distro,omitempty"`
 
-	// Version is the edge cluster distro version. TODO
+	// Version is the edge cluster distro version. TODO, in auto mode
 	Version string `json:"version,omitempty"`
+
+	// Components will install in the edgecluster , in auto mode
+	Components []Component `json:"components,omitempty"`
 
 	// Location is the location of the current cluster. TODO
 	Location string `json:"location,omitempty"`
 
-	// Components will install in the edgecluster
-	Components []Component `json:"components,omitempty"`
+	// KubeConfig is the edge cluster kubeconfig, encode by base64 , in manual,auto mode
+	KubeConfig []byte `json:"kubeConfig,omitempty"`
 
+	// AdvertiseAddress is the advertise address of the Cloudcore in edge cluster, in manual mode
 	AdvertiseAddress []string `json:"advertiseAddress,omitempty"`
 
-	// Type is the edge cluster installation method
-	Type InstallType `json:"type,omitempty"`
-
-	// KubeConfig is the edge cluster kubeconfig, encode by base64
-	KubeConfig []byte `json:"kubeConfig,omitempty"`
+	// HostCluster is the cluster in which the edge cluster will be created and hosted (default to "host")
+	// it depends on the multi-cluster component.
+	HostCluster string `json:"hostCluster,omitempty"`
 }
 
 // EdgeClusterStatus defines the observed state of EdgeCluster
 type EdgeClusterStatus struct {
 
 	// Status is the edge cluster release installation status
-	Status Status `json:"status,omitempty"`
+	Status SystemStatus `json:"status,omitempty"`
 
 	ConfigFile string `json:"configFile,omitempty"`
 
@@ -99,6 +122,8 @@ type EdgeClusterStatus struct {
 	KubeConfig string `json:"kubeConfig,omitempty"`
 
 	Components map[string]Component `json:"components,omitempty"`
+
+	ComponentStatus map[string]Status `json:"componentStatus,omitempty"`
 
 	EdgeWize Status `json:"edgewize,omitempty"`
 

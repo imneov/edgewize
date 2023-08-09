@@ -135,9 +135,10 @@ func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Val
 	}
 }
 
-func SaveToLocal(name string, config []byte) error {
+func SaveEdgeClusterKubeconfig(instance *infrav1alpha1.EdgeCluster) error {
+	name := instance.Name
 	path := filepath.Join(homedir.HomeDir(), ".kube", name)
-	return os.WriteFile(path, config, 0644)
+	return os.WriteFile(path, []byte(instance.Status.KubeConfig), 0644)
 }
 
 func SignCloudCoreCert(cacrt, cakey []byte) ([]byte, []byte, error) {
