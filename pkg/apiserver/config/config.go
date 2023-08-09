@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/edgewize-io/edgewize/pkg/simple/client/edgewize"
 

@@ -40,7 +40,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/edgewize-io/edgewize/pkg/api"
 	clusterv1alpha1 "github.com/edgewize-io/edgewize/pkg/api/cluster/v1alpha1"

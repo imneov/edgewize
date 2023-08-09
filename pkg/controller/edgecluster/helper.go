@@ -38,7 +38,7 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/homedir"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/edgewize-io/edgewize/pkg/helm"
 )
@@ -135,9 +135,10 @@ func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Val
 	}
 }
 
-func SaveToLocal(name string, config []byte) error {
+func SaveEdgeClusterKubeconfig(instance *infrav1alpha1.EdgeCluster) error {
+	name := instance.Name
 	path := filepath.Join(homedir.HomeDir(), ".kube", name)
-	return os.WriteFile(path, config, 0644)
+	return os.WriteFile(path, []byte(instance.Status.KubeConfig), 0644)
 }
 
 func SignCloudCoreCert(cacrt, cakey []byte) ([]byte, []byte, error) {

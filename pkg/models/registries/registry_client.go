@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	log "k8s.io/klog"
+	log "k8s.io/klog/v2"
 )
 
 const (

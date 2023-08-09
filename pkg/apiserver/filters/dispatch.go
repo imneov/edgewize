@@ -21,7 +21,7 @@ import (
 	"net/http"
 
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/edgewize-io/edgewize/pkg/apiserver/dispatch"
 	"github.com/edgewize-io/edgewize/pkg/apiserver/request"

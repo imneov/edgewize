@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	cliflag "k8s.io/component-base/cli/flag"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (

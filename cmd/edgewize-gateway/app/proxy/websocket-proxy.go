@@ -17,7 +17,7 @@ import (
 	"sync"
 
 	certutil "k8s.io/client-go/util/cert"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/edgewize-io/edgewize/cmd/edgewize-gateway/app/options"
 	apiserverconfig "github.com/edgewize-io/edgewize/pkg/apiserver/config"

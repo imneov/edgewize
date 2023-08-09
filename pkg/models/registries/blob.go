@@ -22,7 +22,7 @@ import (
 	"net/http"
 
 	"github.com/docker/distribution/manifest/schema2"
-	log "k8s.io/klog"
+	log "k8s.io/klog/v2"
 )
 
 // Digest returns the digest for an image.
