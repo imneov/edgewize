@@ -18,6 +18,7 @@ package helm
 
 import (
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
@@ -70,6 +71,8 @@ func (i *Installer) Install(values chartutil.Values) error {
 	installer.Namespace = i.namespace
 	installer.ReleaseName = i.name
 	installer.CreateNamespace = false
+	installer.Wait = true
+	installer.Timeout = 600 * time.Second
 	if _, err := installer.Run(i.chart, values); err != nil {
 		return errors.Wrap(err, "Installation failure")
 	}
@@ -95,6 +98,8 @@ func (i *Installer) Upgrade(values chartutil.Values) error {
 	upgrader.Namespace = i.namespace
 	upgrader.Install = true
 	upgrader.MaxHistory = 1
+	upgrader.Wait = true
+	upgrader.Timeout = 600 * time.Second
 	if _, err := upgrader.Run(i.name, i.chart, values); err != nil {
 		return errors.Wrap(err, "upgrade failure")
 	}
