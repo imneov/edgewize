@@ -5,6 +5,7 @@ import (
 
 	appsv1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/apps/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
@@ -43,6 +44,13 @@ func buildDeployment(instance *appsv1alpha1.EdgeAppSet, selector appsv1alpha1.No
 		appsv1alpha1.LabelNodeGroup:  selector.NodeGroup,
 		appsv1alpha1.LabelNode:       selector.NodeName,
 	}
+
+	// Fix https://github.com/kubeedge/kubeedge/issues/3736
+	deployment.Spec.Template.Spec.Tolerations = []corev1.Toleration{{
+		Key:      corev1.TaintNodeUnreachable,
+		Operator: corev1.TolerationOpExists,
+	}}
+
 	// 部署到指定节点
 	if selector.NodeName != "" {
 		deployment.Spec.Template.Spec.NodeName = selector.NodeName
