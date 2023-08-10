@@ -19,16 +19,14 @@ package edgeappset
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -100,7 +98,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	} else {
 		// The object is being deleted
 		if sliceutil.HasString(instance.ObjectMeta.Finalizers, Finalizer) {
-			if _, err := r.undoReconcile(ctx, req.NamespacedName, instance); err != nil {
+			if _, err := r.undoReconcile(ctx, instance); err != nil {
 				logger.Error(err, "undoReconcile failed", "instance", instance.Name)
 			}
 			if err := r.UpdateInstance(rootCtx, req.NamespacedName, func(_instance *appsv1alpha1.EdgeAppSet) error {
@@ -118,84 +116,62 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		// Our finalizer has finished, so the reconciler can do nothing.
 		return ctrl.Result{}, nil
 	}
-	return r.doReconcile(ctx, req.NamespacedName, instance)
+	r.verifyEdgeAppSet(ctx, instance)
+	return r.doReconcile(ctx, instance)
 }
 
-func (r *Reconciler) undoReconcile(ctx context.Context, nn types.NamespacedName, instance *appsv1alpha1.EdgeAppSet) (ctrl.Result, error) {
+func (r *Reconciler) undoReconcile(ctx context.Context, instance *appsv1alpha1.EdgeAppSet) (ctrl.Result, error) {
+	// do nothing in current version
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) doReconcile(ctx context.Context, nn types.NamespacedName, instance *appsv1alpha1.EdgeAppSet) (ctrl.Result, error) {
+// TODO delete
+func (r *Reconciler) verifyEdgeAppSet(ctx context.Context, instance *appsv1alpha1.EdgeAppSet) {
+	uniqueNodeSelector := make(map[string]appsv1alpha1.NodeSelector)
+	for _, nodeSelector := range instance.Spec.NodeSelectors {
+		uniqueName := fmt.Sprintf("%s-%s-%s", nodeSelector.Project, nodeSelector.NodeGroup, nodeSelector.NodeName)
+		uniqueNodeSelector[uniqueName] = nodeSelector
+	}
+	if len(uniqueNodeSelector) == len(instance.Spec.NodeSelectors) {
+		return
+	} else {
+		instance.Spec.NodeSelectors = make([]appsv1alpha1.NodeSelector, 0, len(uniqueNodeSelector))
+		for _, nodeSelector := range uniqueNodeSelector {
+			instance.Spec.NodeSelectors = append(instance.Spec.NodeSelectors, nodeSelector)
+		}
+	}
+}
+
+func (r *Reconciler) doReconcile(ctx context.Context, instance *appsv1alpha1.EdgeAppSet) (ctrl.Result, error) {
 	logger := r.Logger.WithName("doReconcile")
 	logger.V(3).Info("start reconcile", "instance", instance.Name)
 
-	// 获取Deployment的数量和状态
-	deployments, err := r.getDeployments(ctx, instance)
+	if instance.Status.WorkloadCount != len(instance.Spec.NodeSelectors) {
+		instance.Status.WorkloadCount = len(instance.Spec.NodeSelectors)
+	}
+
+	//if instance.Status.UpdatedWorkloadCount != instance.Status.WorkloadCount {
+	if instance.Status.UpdatedWorkloadCount != instance.Status.WorkloadCount {
+		count, err := r.updateDeployments(ctx, instance)
+		if err != nil {
+			logger.Error(err, "update deployments failed", "instance", instance.Name)
+			return ctrl.Result{RequeueAfter: 3 * time.Second}, err
+		}
+		instance.Status.UpdatedWorkloadCount = count
+	}
+
+	allDeployments, err := r.getAllDeployments(ctx, instance)
 	if err != nil {
-		// 处理错误
+		logger.Error(err, "get all deployments failed", "instance", instance.Name)
 		return ctrl.Result{}, err
 	}
-	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		if err := r.Get(ctx, nn, instance); err != nil {
-			return err
-		}
-		instance.Status.WorkloadCount = len(deployments)
-		instance.Status.Deployments = deployments
-		return r.Status().Update(ctx, instance)
-	})
+	instance.Status.ReadyWorkloadCount = readyWorkloadCounts(allDeployments)
+	instance.Status.UnavailableWorkloadCount = unavailableWorkloadCounts(allDeployments)
+
+	err = r.Status().Update(ctx, instance)
 	if err != nil {
 		logger.Error(err, "update status failed", "instance", instance.Name)
 		return ctrl.Result{}, err
-	}
-
-	// 如果状态中工作负载总数为0，则为每个 nodeselector 创建一个 deployment
-	klog.V(5).Infof("origin deploy: %+v", instance.Spec.DeploymentTemplate)
-
-	if instance.Status.WorkloadCount < len(instance.Spec.NodeSelectors) {
-		for _, selector := range instance.Spec.NodeSelectors {
-			name := fmt.Sprintf("%s-%s", instance.Name, rand.String(5))
-			if _, ok := deployments[name]; ok {
-				continue
-			}
-
-			deploy := &appsv1.Deployment{}
-			deploy.Name = name
-			deploy.Labels = map[string]string{
-				"app": deploy.Name,
-			}
-			deploy.Labels[appsv1alpha1.LabelEdgeAppSet] = instance.Name
-			deploy.Labels[appsv1alpha1.LabelNodeGroup] = selector.NodeGroup
-			//deploy.OwnerReferences = []metav1.OwnerReference{
-			//	*metav1.NewControllerRef(instance, instance.GetObjectKind().GroupVersionKind()),
-			//}
-			deploy.Namespace = selector.Project
-			deploy.Spec = appsv1.DeploymentSpec{
-				Replicas: instance.Spec.DeploymentTemplate.Spec.Replicas,
-				Template: instance.Spec.DeploymentTemplate.Spec.Template,
-				Strategy: instance.Spec.DeploymentTemplate.Spec.Strategy,
-				Selector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						"app": deploy.Name,
-					},
-				},
-			}
-			deploy.Spec.Template.Labels = map[string]string{
-				"app":                        deploy.Name,
-				appsv1alpha1.LabelNodeGroup:  selector.NodeGroup,
-				appsv1alpha1.LabelEdgeAppSet: instance.Name,
-			}
-			// 部署到指定节点
-			if selector.NodeName != "" {
-				deploy.Spec.Template.Spec.NodeName = selector.NodeName
-				deploy.Labels[appsv1alpha1.LabelNode] = selector.NodeName
-				deploy.Spec.Template.Labels[appsv1alpha1.LabelNode] = selector.NodeName
-			}
-			klog.V(5).Infof("create deploy: %+v", deploy)
-			err := r.Create(ctx, deploy)
-			if err != nil {
-				logger.Error(err, "create deployment error", "name", deploy.Name, "namespace", deploy.Namespace)
-			}
-		}
 	}
 
 	return ctrl.Result{}, nil
@@ -211,42 +187,66 @@ func (r *Reconciler) UpdateInstance(ctx context.Context, nn types.NamespacedName
 	})
 }
 
-func (r *Reconciler) getDeployments(ctx context.Context, edgeAppSet *appsv1alpha1.EdgeAppSet) (map[string]appsv1alpha1.DeploymentStatus, error) {
-	deployments := make(map[string]appsv1alpha1.DeploymentStatus)
-
-	// 使用Kubernetes客户端库获取Deployment列表
+func (r *Reconciler) getAllDeployments(ctx context.Context, edgeAppSet *appsv1alpha1.EdgeAppSet) ([]appsv1.Deployment, error) {
 	deploymentList := &appsv1.DeploymentList{}
 	err := r.List(ctx, deploymentList, &client.ListOptions{
-		Namespace:     edgeAppSet.Namespace,
 		LabelSelector: labels.SelectorFromSet(map[string]string{appsv1alpha1.LabelEdgeAppSet: edgeAppSet.Name}),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// 遍历Deployment列表，获取每个Deployment的状态
-	for _, deployment := range deploymentList.Items {
-		status := getDeploymentStatus(&deployment)
-		deployments[deployment.Name] = appsv1alpha1.DeploymentStatus{
-			Status: status,
-		}
-	}
-
-	return deployments, nil
+	return deploymentList.Items, nil
 }
 
-// 获取deployment的状态
-func getDeploymentStatus(deployment *appsv1.Deployment) string {
-	// 判断是否失败
-	for _, condition := range deployment.Status.Conditions {
-		if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-			return appsv1alpha1.Failed
-		} else if condition.Type == appsv1.DeploymentAvailable && condition.Status == corev1.ConditionTrue {
-			return appsv1alpha1.Succeeded
+func (r *Reconciler) updateDeployments(ctx context.Context, instance *appsv1alpha1.EdgeAppSet) (int, error) {
+	logger := r.Logger.WithName("updateDeployments")
+	allDeployments, err := r.getAllDeployments(ctx, instance)
+	if err != nil {
+		logger.Error(err, "get all deployments failed", "instance", instance.Name)
+		return 0, err
+	}
+
+	oldDeployments := make(map[string]appsv1.Deployment, 0)
+	for _, deployment := range allDeployments {
+		uniqueName := fmt.Sprintf("%s-%s-%s", deployment.Namespace, deployment.Labels[appsv1alpha1.LabelNodeGroup], deployment.Labels[appsv1alpha1.LabelNode])
+		oldDeployments[uniqueName] = deployment
+	}
+
+	// createDeployments is which will be created
+	createDeployments := make(map[string]*appsv1.Deployment)
+	// deleteDeployments is which will be deleted
+	deleteDeployments := make(map[string]*appsv1.Deployment)
+	for _, selector := range instance.Spec.NodeSelectors {
+		uniqueName := fmt.Sprintf("%s-%s-%s", selector.Project, selector.NodeGroup, selector.NodeName)
+		if _, ok := oldDeployments[uniqueName]; ok {
+			delete(oldDeployments, uniqueName)
+		} else {
+			target := buildDeployment(instance, selector)
+			createDeployments[uniqueName] = target
 		}
 	}
-	if deployment.Status.Replicas == deployment.Status.ReadyReplicas {
-		return appsv1alpha1.Succeeded
+	for _, deployment := range oldDeployments {
+		uniqueName := fmt.Sprintf("%s-%s-%s", deployment.Namespace, deployment.Labels[appsv1alpha1.LabelNodeGroup], deployment.Labels[appsv1alpha1.LabelNode])
+		deleteDeployments[uniqueName] = &deployment
 	}
-	return appsv1alpha1.Progressing
+
+	count := len(oldDeployments)
+	for _, deployment := range createDeployments {
+		err = r.Create(ctx, deployment)
+		if err != nil {
+			logger.Error(err, "create deployment failed", "deployment", deployment.Name)
+			continue
+		}
+		count += 1
+	}
+	for _, deployment := range deleteDeployments {
+		err = r.Delete(ctx, deployment)
+		if err != nil {
+			logger.Error(err, "delete deployment failed", "deployment", deployment.Name)
+			continue
+		}
+		count -= 1
+	}
+	return count, nil
 }
