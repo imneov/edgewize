@@ -32,7 +32,7 @@ data:
       thanosRulerEndpoint: {{ .Values.config.alerting.thanosRulerEndpoint | default "http://whizard-agent-proxy.kubesphere-monitoring-system.svc:9090" }}
       thanosRuleResourceLabels:  {{ .Values.config.alerting.thanosRuleResourceLabels | default "" }}
     notification:
-      endpoint: {{ .Values.config.notification.endpoint | default "http://notification-manager-svc.kubesphere-monitoring-system.svc:19093" }}
+      endpoint: ""
     edgewizeota:
       endpoint: {{ .Values.config.edgewizeota.endpoint | default "http://edge-ota-server.edgewize-system.svc/api/" }}
 

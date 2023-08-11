@@ -11,10 +11,10 @@ spec:
   prometheusRemoteWrite:
     host: {{ .Values.fluentbit.kubeedge.prometheusRemoteWrite.host }}
     port: {{ .Values.fluentbit.kubeedge.prometheusRemoteWrite.port }}
-    uri: /push/{{ .Values.fluentbit.kubeedge.prometheusRemoteWrite.routerKey }}
+    uri: /push
     {{- if .Values.fluentbit.kubeedge.prometheusRemoteWrite.tlsEnable }}
     tls:
-      verify: true
+      verify: false
       caFile: /etc/kubeedge/ca/rootCA.crt
       crtFile: /etc/kubeedge/certs/server.crt
       keyFile: /etc/kubeedge/certs/server.key

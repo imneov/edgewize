@@ -2,7 +2,7 @@
 ## @param global.tag Global Docker image tag
 global:
   imageRegistry: ""
-  tag: v0.6.1
+  tag: v0.7.0
   imagePullSecrets: [ ]
   # - secretName
 
@@ -197,13 +197,14 @@ certificateAuthority: # CA certificate for the gateway, optional, if not set, it
 whizardEdgeGateway:
   advertiseAddress:
     - "192.168.1.1"
+  dnsNames:
+    - gateway.edgewize.io
   replicas: 3
-  tlsEnable: true
   nodePort: 30991
   image:
     registry: ""
     repository: kubesphere/whizard-edge-gateway
-    tag: "v0.3.2"
+    tag: "v0.3.3"
     digest: ""
     pullPolicy: IfNotPresent
     pullSecrets: [ ]
@@ -300,6 +301,8 @@ values:
           - edge-deploy-secret
         storageClass: ""
   whizardEdgeAgent:
+    whizard_edge_proxy:
+      edge_gateway_address: ""
     prometheus:
       storage:
         className: ""
@@ -315,12 +318,6 @@ values:
     fluentbit:
       imagePullSecrets:
         - name: edge-deploy-secret
-      kubeedge:
-        enable: true
-        prometheusRemoteWrite:
-          host: "" # Whizard edge gateway host
-          port: "" # Whizard edge gateway port
-          tlsEnable: true
     fluentd:
       imagePullSecrets:
         - name: edge-deploy-secret
@@ -356,7 +353,7 @@ values:
   edgewize:
     global:
       imageRegistry: ""
-      tag: v0.5.1
+      tag: v0.7.0
       imagePullSecrets:
         - edge-deploy-secret
     apiserver:

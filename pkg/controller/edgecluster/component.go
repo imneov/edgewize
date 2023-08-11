@@ -6,10 +6,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"k8s.io/client-go/util/retry"
 	"os/exec"
 	"reflect"
 	"strings"
+
+	"k8s.io/client-go/util/retry"
 
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	"gopkg.in/yaml.v3"
@@ -431,11 +432,6 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	}
 	values := component.Values.ToValues()
 	klog.V(3).Infof("fluent-operator values: %v, instance: %s", values, instance.Name)
-	err := r.SetClusterOutput(values, instance)
-	if err != nil {
-		logger.Error(err, "configure ClusterOutput failed, skip install fluent-operator")
-		return nil
-	}
 	upgrade := false
 	if instance.Status.Components == nil {
 		instance.Status.Components = make(map[string]infrav1alpha1.Component)
@@ -503,46 +499,6 @@ func SetCloudCoreValues(values chartutil.Values, instance *infrav1alpha1.EdgeClu
 	return nil
 }
 
-// edge node send data to whizard edge gateway
-func (r *Reconciler) SetClusterOutput(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
-	port, err := values.PathValue("fluentbit.kubeedge.prometheusRemoteWrite.port")
-	if err != nil {
-		return err
-	}
-
-	host, err := values.PathValue("fluentbit.kubeedge.prometheusRemoteWrite.host")
-	if err != nil {
-		return err
-	}
-
-	tlsEnable, err := values.PathValue("fluentbit.kubeedge.prometheusRemoteWrite.tlsEnable")
-	if err != nil {
-		return err
-	}
-
-	enabled, err := values.PathValue("fluentbit.kubeedge.enable")
-	if err != nil {
-		return err
-	}
-
-	fluentbitConf, err := values.Table("fluentbit")
-	if err != nil {
-		return err
-	}
-
-	fluentbitConfMap := fluentbitConf.AsMap()
-	fluentbitConfMap["kubeedge"] = map[string]interface{}{
-		"enable": enabled,
-		"prometheusRemoteWrite": map[string]interface{}{
-			"host":      host,
-			"port":      port,
-			"tlsEnable": tlsEnable,
-			"routerKey": instance.Name,
-		},
-	}
-	return nil
-}
-
 func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
 	gatewayService := &corev1.Service{}
 	key := types.NamespacedName{
@@ -561,6 +517,10 @@ func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.V
 		whizardAgentConf["gateway_address"] = fmt.Sprintf("http://%s:%d", gatewayIP, gatewayPort)
 	}
 	values["whizard_agent_proxy"] = whizardAgentConf
+
+	whizardEdgeProxyConf := values["whizard_edge_proxy"].(map[string]interface{})
+	whizardEdgeProxyConf["tenant"] = instance.Name
+	values["whizard_edge_proxy"] = whizardEdgeProxyConf
 	return
 }
 

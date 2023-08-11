@@ -1,0 +1,65 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: whizard-edge-proxy
+  name: whizard-edge-proxy
+  namespace: kubesphere-monitoring-system
+spec:
+  selector:
+    matchLabels:
+      app: whizard-edge-proxy
+  template:
+    metadata:
+      name: whizard-edge-proxy
+      namespace: kubesphere-monitoring-system
+      labels:
+        app: whizard-edge-proxy
+    spec:
+      volumes:
+        - name: host-kubeedge
+          hostPath:
+            path: /etc/kubeedge/
+            type: ''
+        - configMap:
+            name: whizard-edge-metrics-configmap
+          name: whizard-edge-metrics-config
+      containers:
+        - name: whizard-edge-proxy
+          image: {{ .Values.defaultImageRegistry }}{{ .Values.whizard_edge_proxy.image.repository }}:{{ .Values.whizard_edge_proxy.image.tag }}
+          args:
+            - --gateway-address={{ .Values.whizard_edge_proxy.edge_gateway_address }}
+            - --tenant={{ .Values.whizard_edge_proxy.tenant }}
+          securityContext:
+            runAsUser: 0
+          ports:
+            - name: proxy
+              hostPort: 30992
+              containerPort: 30992
+              protocol: TCP
+          {{- if .Values.whizard_edge_proxy.resources }}
+          resources:
+            {{- toYaml .Values.whizard_edge_proxy.resources | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: host-kubeedge
+              readOnly: true
+              mountPath: /etc/kubeedge
+              mountPropagation: HostToContainer
+            - mountPath: /etc/whizard-edge-metrics
+              name: whizard-edge-metrics-config
+          imagePullPolicy: Always
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      hostNetwork: true
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/edge
+                    operator: Exists
+      tolerations:
+        - operator: Exists
