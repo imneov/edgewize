@@ -2,10 +2,6 @@
 Return the proper image name
 */}}
 
-{{- define "edgewize-whizard-agent-proxy.image" -}}
-{{ include "common.images.image" (dict "imageRoot" .Values.whizard_agent_proxy.image "global" .Values.global) }}
-{{- end -}}
-
 
 {{- define "common.images.image" -}}
 {{- $registryName := .global.imageRegistry -}}

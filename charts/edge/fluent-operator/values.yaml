@@ -258,12 +258,8 @@ fluentbit:
   kubeedge:
     enable: true
     prometheusRemoteWrite:
-      # whizard edge gateway IP
-      host: ""
-      # whizard edge gateway Port
-      port: ""
-      # Use the routeKey to find PrometheusAgent service address in WhizardEdgeGateway configuration
-      routerKey: ""
+      host: "127.0.0.1"
+      port: "30992"
       tlsEnable: true
 
 fluentd:

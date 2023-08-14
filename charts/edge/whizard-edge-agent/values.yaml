@@ -9,11 +9,27 @@
 whizard_agent_proxy:
   image:
     repository: kubesphere/whizard-monitoring-agent-proxy
-    tag: "v0.6.2"
+    tag: "v0.8.0"
     digest: ""
     pullPolicy: IfNotPresent
   tenant: ""
   gateway_address: ""
+
+whizard_edge_proxy:
+  image:
+    repository: kubesphere/whizard-edge-proxy
+    tag: "v0.3.3"
+    digest: ""
+    pullPolicy: IfNotPresent
+  tenant: ""
+  edge_gateway_address: ""
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 200m
+      memory: 128Mi
 
 prometheus:
   storage:
@@ -22,13 +38,13 @@ prometheus:
 
 npu_exporter:
   image:
-    repository: npu-exporter
+    repository: kubesphere/npu-exporter
     pullPolicy: IfNotPresent
     tag: v3.0.0
 
 dcgm_exporter:
   image:
-    repository: nvcr.io/nvidia/k8s/dcgm-exporter
+    repository: kubesphere/dcgm-exporter
     pullPolicy: IfNotPresent
     tag: 3.1.7-3.1.4-ubuntu20.04
 
@@ -67,4 +83,4 @@ dcgm_exporter:
   arguments: [ "-f", "/etc/dcgm-exporter/dcp-metrics-included.csv" ]
 
 defaultImageRegistry: ""
-#imagePullSecrets:
+imagePullSecrets: []

@@ -20,12 +20,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/go-logr/logr"
-	rest "k8s.io/client-go/rest"
 	"os"
 	"path/filepath"
 	"reflect"
 	"time"
+
+	"github.com/go-logr/logr"
+	rest "k8s.io/client-go/rest"
 
 	"k8s.io/client-go/util/retry"
 

@@ -57,6 +57,10 @@ spec:
       - configMap:
           name: exporter-metrics-config-map
         name: exporter-metrics-volume
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
       containers:
       - name: exporter
         securityContext:

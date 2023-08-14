@@ -28,24 +28,19 @@ spec:
           volumeMounts:
             - mountPath: /etc/whizard-edge-gateway
               name: whizard-edge-gateway-config
-            - mountPath: /etc/whizard-edge-metrics
-              name: whizard-edge-metrics-config
             - mountPath: /etc/ssl/whizard
               name: edge-certificates-secret
           resources:
             limits:
-              cpu: '1'
-              memory: 1Gi
+              cpu: '3'
+              memory: 6Gi
             requests:
-              cpu: 200m
-              memory: 500Mi
+              cpu: 600m
+              memory: 800Mi
       volumes:
         - configMap:
             name: whizard-edge-gateway-configmap
           name: whizard-edge-gateway-config
-        - configMap:
-            name: whizard-edge-metrics-configmap
-          name: whizard-edge-metrics-config
         - secret:
             secretName: whizard-edge-gateway-certs
             defaultMode: 420
@@ -60,46 +55,6 @@ metadata:
   namespace: kubesphere-monitoring-system
 data:
   config.yaml: |
-    # Where to listen for incoming write requests from Prometheus
-    listen: 0.0.0.0:8080
-    # Profiling API, remove to disable
-    listen_pprof: 0.0.0.0:7008
-
-    # Log level
-    log_level: info
-    # HTTP request timeout
-    timeout: 10s
-    # Timeout to wait on shutdown to allow load balancers detect that we're going away.
-    # During this period after the shutdown command the /alive endpoint will reply with HTTP 503.
-    # Set to 0s to disable.
-    timeout_shutdown: 10s
-    # Max number of parallel incoming HTTP requests to handle
-    concurrency: 4000
-    {{- if .Values.whizardEdgeGateway.tlsEnable }}
-    # path of edge certificates
-    cert_dir: "/etc/ssl/whizard"
-    {{- end }}
----
-
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: whizard-edge-metrics-configmap
-  namespace: kubesphere-monitoring-system
-data:
-  metrics_to_keep.yaml: |-
-    global:
-      - action: "keep"
-        regex: "node_(uname|network)_info|node_cpu_.+|node_memory_Mem.+_bytes|node_memory_SReclaimable_bytes|node_memory_Cached_bytes|node_memory_Buffers_bytes|node_network_(.+_bytes_total|up)|node_network_.+_errs_total|node_nf_conntrack_entries.*|node_disk_.+_completed_total|node_disk_.+_bytes_total|node_filesystem_files|node_filesystem_files_free|node_filesystem_avail_bytes|node_filesystem_size_bytes|node_filesystem_free_bytes|node_filesystem_readonly|node_load.+|node_timex_offset_seconds"
-
-      - action: "keep"
-        regex: "container_cpu_usage_seconds_total|container_memory_usage_bytes|container_memory_cache|container_network_.+_bytes_total|container_memory_working_set_bytes|container_cpu_cfs_.*periods_total|container_processes.*|container_threads.*"
-
-      - action: "keep"
-        regex: "DCGM_FI_PROF_GR_ENGINE_ACTIVE|DCGM_FI_DEV_.+"
-
-      - action: "keep"
-        regex: "machine_npu_nums|machine_npu_name|npu_chip_info_.+|container_npu_.+"
 
 ---
 
