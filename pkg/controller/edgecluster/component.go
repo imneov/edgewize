@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	ksclusterv1alpha1 "kubesphere.io/api/cluster/v1alpha1"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -23,7 +24,6 @@ import (
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog/v2"
-	ksclusterv1alpha1 "kubesphere.io/api/cluster/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -37,16 +37,7 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 	namespace := component.Namespace
 	// if instance.Status.EdgewizeMonitor == "" means edge cluster is first install
 	if instance.Status.EdgewizeMonitor == "" {
-		if r.NeedCreatNameSpace(ctx, namespace, clientset) {
-			err := r.CreateNameSpace(ctx, namespace, clientset)
-			if err != nil {
-				return err
-			}
-		}
-		err := r.CreateImagePullSecretIfNeeded(ctx, namespace, clientset)
-		if err != nil {
-			return err
-		}
+
 	}
 
 	values := component.Values.ToValues()
@@ -95,16 +86,7 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 
 	namespace := component.Namespace
 	if instance.Status.EdgeOtaServer == "" {
-		if r.NeedCreatNameSpace(ctx, namespace, clientset) {
-			err := r.CreateNameSpace(ctx, namespace, clientset)
-			if err != nil {
-				return err
-			}
-		}
-		err := r.CreateImagePullSecretIfNeeded(ctx, namespace, clientset)
-		if err != nil {
-			return err
-		}
+
 	}
 	values := component.Values.ToValues()
 	klog.V(3).Infof("ReconcileEdgeOtaServer: %v", values)
@@ -153,17 +135,11 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 
 	namespace := component.Namespace
 	if instance.Status.KSCore == "" {
-		if r.NeedCreatNameSpace(ctx, namespace, clientset) {
-			err := r.CreateNameSpace(ctx, namespace, clientset)
-			if err != nil {
-				return err
-			}
-		}
-		err := r.CreateImagePullSecretIfNeeded(ctx, namespace, clientset)
+		err := r.applyYaml(instance.Name, "charts/edge/cluster-configuration.yaml")
 		if err != nil {
+			klog.Error("apply cluster-configuration.yaml error", err)
 			return err
 		}
-		r.applyYaml(instance.Name, "charts/edge/cluster-configuration.yaml")
 	}
 	values := component.Values.ToValues()
 	err := r.SetKSCoreValues(ctx, values)
@@ -192,41 +168,26 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 	instance.Status.KSCore = status
 	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-		r.applyYaml(instance.Name, "charts/edge/role-templates.yaml")
-		member := &ksclusterv1alpha1.Cluster{}
-		err = r.Get(ctx, types.NamespacedName{Name: instance.Name}, member)
+		err := r.applyYaml(instance.Name, "charts/edge/role-templates.yaml")
 		if err != nil {
-			if apierrors.IsNotFound(err) {
-				member = &ksclusterv1alpha1.Cluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: instance.Name,
-						Annotations: map[string]string{
-							"kubesphere.io/creator": "admin",
-						},
-						Labels: map[string]string{
-							"cluster-role.kubesphere.io/edge": "",
-						},
-					},
-					Spec: ksclusterv1alpha1.ClusterSpec{
-						JoinFederation: true,
-						Connection: ksclusterv1alpha1.Connection{
-							Type:       ksclusterv1alpha1.ConnectionTypeDirect,
-							KubeConfig: []byte(instance.Status.KubeConfig),
-						},
-						Provider: "EdgeWize",
-					},
-				}
-				err := r.Create(ctx, member)
-				if err != nil {
-					logger.Error(err, "create kubesphere member cluster error")
-					return err
-				}
-				klog.V(4).Infof("crete kubesphere member cluster success, name: %s", instance.Name)
-			} else {
+			klog.Error("apply role-templates.yaml error", err)
+			return err
+		}
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			member := &ksclusterv1alpha1.Cluster{}
+			err = r.Get(ctx, types.NamespacedName{Name: instance.Name}, member)
+			if err != nil {
 				logger.Error(err, "get kubesphere member cluster error")
 				return err
 			}
+			member.Spec.Connection.KubeConfig = []byte(instance.Status.KubeConfig)
+			err = r.Update(ctx, member)
+			return err
+		})
+		if err != nil {
+			return err
 		}
+
 	}
 	return nil
 }
@@ -240,17 +201,7 @@ func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alph
 
 	namespace := component.Namespace
 	if instance.Status.Kubefed == "" {
-		if r.NeedCreatNameSpace(ctx, namespace, clientset) {
-			err := r.CreateNameSpace(ctx, namespace, clientset)
-			if err != nil {
-				return err
-			}
-		}
-		err := r.CreateImagePullSecretIfNeeded(ctx, namespace, clientset)
-		if err != nil {
-			logger.Error(err, "init image pull secret error, use default")
-			return err
-		}
+
 	}
 	values := component.Values.ToValues()
 	klog.V(3).Infof("Kubefed values: %v, instance: %s", values, instance.Name)
@@ -275,7 +226,11 @@ func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alph
 	instance.Status.Kubefed = status
 	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-		r.applyYaml(instance.Name, "charts/edge/federatedcrds.yaml")
+		err := r.applyYaml(instance.Name, "charts/edge/federatedcrds.yaml")
+		if err != nil {
+			klog.Error("apply federatedcrds.yaml error", err)
+			return err
+		}
 	}
 	return nil
 }
@@ -288,17 +243,7 @@ func (r *Reconciler) ReconcileEdgeWize(ctx context.Context, instance *infrav1alp
 	}
 	namespace := component.Namespace
 	if instance.Status.EdgeWize == "" {
-		if r.NeedCreatNameSpace(ctx, namespace, clientset) {
-			err := r.CreateNameSpace(ctx, namespace, clientset)
-			if err != nil {
-				return err
-			}
-		}
-		err := r.CreateImagePullSecretIfNeeded(ctx, namespace, clientset)
-		if err != nil {
-			return err
-		}
-		err = r.InitCert(ctx, "edgewize-root-ca", namespace, nil, clientset)
+		err := r.InitCert(ctx, "edgewize-root-ca", namespace, nil, clientset)
 		if err != nil {
 			klog.Warning("init edgewize certs error, use default", err)
 		}
@@ -361,17 +306,7 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 	}
 	namespace := component.Namespace
 	if instance.Status.CloudCore == "" {
-		if r.NeedCreatNameSpace(ctx, namespace, clientset) {
-			err := r.CreateNameSpace(ctx, namespace, clientset)
-			if err != nil {
-				return err
-			}
-		}
-		err := r.CreateImagePullSecretIfNeeded(ctx, namespace, clientset)
-		if err != nil {
-			return err
-		}
-		err = r.InitCert(ctx, "cloudhub", namespace, SignCloudCoreCert, clientset)
+		err := r.InitCert(ctx, "cloudhub", namespace, SignCloudCoreCert, clientset)
 		if err != nil {
 			klog.Warning("init cloudhub certs error, use default", err)
 		}
@@ -419,16 +354,7 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	}
 	namespace := component.Namespace
 	if instance.Status.FluentOperator == "" {
-		if r.NeedCreatNameSpace(ctx, namespace, clientset) {
-			err := r.CreateNameSpace(ctx, namespace, clientset)
-			if err != nil {
-				return err
-			}
-		}
-		err := r.CreateImagePullSecretIfNeeded(ctx, namespace, clientset)
-		if err != nil {
-			return err
-		}
+
 	}
 	values := component.Values.ToValues()
 	klog.V(3).Infof("fluent-operator values: %v, instance: %s", values, instance.Name)
@@ -760,83 +686,6 @@ func (r *Reconciler) DeleteCloudCoreService(ctx context.Context, kubeconfig, nam
 	return nil
 }
 
-func (r *Reconciler) NeedCreatNameSpace(ctx context.Context, namespace string, clientset *kubernetes.Clientset) bool {
-	_, err := clientset.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
-	if err != nil {
-		return true
-	}
-	return false
-}
-
-func (r *Reconciler) CreateNameSpace(ctx context.Context, namespace string, clientset *kubernetes.Clientset) error {
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace,
-			Labels: map[string]string{
-				"kubesphere.io/workspace": "system-workspace",
-				"kubesphere.io/namespace": namespace,
-			},
-		},
-	}
-	_, err := clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
-	if err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			klog.Warningf("namespace %s already exists", namespace)
-			return nil
-		} else {
-			klog.Errorf("create namespace %s error: %s", namespace, err.Error())
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *Reconciler) CreateImagePullSecretIfNeeded(ctx context.Context, namespace string, clientset *kubernetes.Clientset) error {
-	hostSecret := &corev1.Secret{}
-	key := types.NamespacedName{Namespace: CurrentNamespace, Name: EdgeDeploySecret}
-	err := r.Get(ctx, key, hostSecret)
-	if err != nil {
-		// if not found image-pull-secret, skip
-		if client.IgnoreNotFound(err) == nil {
-			klog.Warning("image-pull-secret nou found ,skip")
-			return nil
-		} else {
-			klog.Error("get image-pull-secret error ", err.Error())
-			return err
-		}
-	}
-	// check if exists edge-deploy-secret
-	edgeDeploySecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, EdgeDeploySecret, metav1.GetOptions{})
-	// if found edge-deploy-secret, skip
-	if err == nil {
-		klog.V(3).Infof("secret edge-deploy-secret exists, skip. edge-deploy-secret: %v", edgeDeploySecret.String())
-		return nil
-	}
-	// if not found edge-deploy-secret, create namespace and secret
-	if client.IgnoreNotFound(err) != nil {
-		klog.Error("get secret zpk-deploy-secret error", err.Error())
-		return err
-	}
-
-	edgeSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      EdgeDeploySecret,
-			Namespace: namespace,
-		},
-		Immutable:  hostSecret.Immutable,
-		Data:       hostSecret.Data,
-		StringData: hostSecret.StringData,
-		Type:       hostSecret.Type,
-	}
-	klog.V(3).Infof("secret edge-deploy-secret content: %s", edgeSecret.String())
-	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, edgeSecret, metav1.CreateOptions{})
-	if err != nil {
-		klog.Error("create secret edge-deploy-secret error", err)
-		return err
-	}
-	return nil
-}
-
 func (r *Reconciler) InitCert(ctx context.Context, name, namespace string, serverCertFunc func(crt, key []byte) ([]byte, []byte, error), clientset *kubernetes.Clientset) error {
 	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
@@ -934,13 +783,14 @@ func (r *Reconciler) InitCert(ctx context.Context, name, namespace string, serve
 	return nil
 }
 
-func (r *Reconciler) applyYaml(kubeconfig, filepath string) {
+func (r *Reconciler) applyYaml(kubeconfig, filepath string) error {
 	cmd := fmt.Sprintf("apply -f %s --kubeconfig %s/.kube/%s", filepath, homedir.HomeDir(), kubeconfig)
 	output, err := exec.Command("/usr/local/bin/kubectl", strings.Split(cmd, " ")...).Output()
 	if err != nil {
 		klog.Errorf("apply %s error: %s", filepath, err)
-	} else {
-		klog.V(3).Infof("apply %s success", filepath)
+		klog.V(3).Infof("apply %s output: %s", filepath, string(output))
+		return err
 	}
-	klog.V(3).Infof("apply %s output: %s", filepath, string(output))
+	klog.V(3).Infof("apply %s success", filepath)
+	return nil
 }

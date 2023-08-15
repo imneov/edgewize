@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	rest "k8s.io/client-go/rest"
+	"k8s.io/client-go/rest"
 
 	"k8s.io/client-go/util/retry"
 
@@ -67,6 +67,7 @@ type EdgeClusterOperator interface {
 	installComponents(ctx context.Context, name types.NamespacedName, instance *infrav1alpha1.EdgeCluster) error
 	updateServices(ctx context.Context, name types.NamespacedName, instance *infrav1alpha1.EdgeCluster) error
 	needUpgrade(instance *infrav1alpha1.EdgeCluster) bool
+	prepareNamespace(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error
 }
 
 var ClusterComponentName = "vcluster"
@@ -75,6 +76,8 @@ type NameNamespace struct {
 	name      string
 	namespace string
 }
+
+var SystemNamespaces = []string{metav1.NamespaceSystem, metav1.NamespacePublic, corev1.NamespaceNodeLease}
 
 var ComponentsNamespaces = []NameNamespace{
 	{"edgewize", "edgewize-system"},
@@ -260,15 +263,14 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 	}
 
 	// delete infra cluster when all de resources are deleted
-	member := &infrav1alpha1.Cluster{
+	edge := &infrav1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: instance.Name,
 		},
 	}
-	if err := r.Delete(ctx, member); err != nil && !apierrors.IsNotFound(err) {
+	if err := r.Delete(ctx, edge); err != nil && !apierrors.IsNotFound(err) {
 		logger.Error(err, "delete edge cluster error")
 	}
-
 	return ctrl.Result{}, nil
 }
 
@@ -310,37 +312,70 @@ func (r *Reconciler) verifyEdgeCluster(ctx context.Context, nn types.NamespacedN
 
 func (r *Reconciler) createKSClusterCR(ctx context.Context, nn types.NamespacedName, instance *infrav1alpha1.EdgeCluster) error {
 	logger := log.FromContext(ctx, "cluster", instance.Name)
-	member := &infrav1alpha1.Cluster{}
+	member := &ksclusterv1alpha1.Cluster{}
 	err := r.Get(ctx, types.NamespacedName{Name: instance.Name}, member)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.V(4).Info("cluster not found, create new cluster", "name", instance.Name)
-			member = &infrav1alpha1.Cluster{
+			member = &ksclusterv1alpha1.Cluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: instance.Name,
+					Annotations: map[string]string{
+						"kubesphere.io/creator": "admin",
+					},
 					Labels: map[string]string{
-						infrav1alpha1.MemberClusterRole: "",
+						infrav1alpha1.EdgeClusterRole: "",
+						infrav1alpha1.HostedCLuster:   instance.Spec.HostCluster,
 					},
 				},
-				Spec: infrav1alpha1.ClusterSpec{
-					HostCluster: instance.Spec.HostCluster,
-					Provider:    "edgewize",
-					Connection: infrav1alpha1.Connection{
-						Type:       infrav1alpha1.ConnectionTypeDirect,
+				Spec: ksclusterv1alpha1.ClusterSpec{
+					JoinFederation: true,
+					Provider:       "EdgeWize",
+					Connection: ksclusterv1alpha1.Connection{
+						Type:       ksclusterv1alpha1.ConnectionTypeDirect,
 						KubeConfig: []byte(instance.Status.KubeConfig),
 					},
 				},
-			}
-			if instance.Spec.Location != "" {
-				member.Labels[infrav1alpha1.ClusterLocation] = instance.Spec.Location
 			}
 			err := r.Create(ctx, member)
 			if err != nil {
 				logger.Error(err, "create cluster error", "name", instance.Name)
 				return err
 			}
+		} else {
+			logger.Error(err, "get kubesphere member cluster error", "name", instance.Name)
 		}
 	}
+
+	edge := &infrav1alpha1.Cluster{}
+	err = r.Get(ctx, types.NamespacedName{Name: instance.Name}, edge)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.V(4).Info("cluster not found, create new cluster", "name", instance.Name)
+			edge = &infrav1alpha1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: instance.Name,
+					Labels: map[string]string{
+						infrav1alpha1.EdgeClusterRole: "",
+					},
+				},
+				Spec: infrav1alpha1.ClusterSpec{
+					HostCluster: instance.Spec.HostCluster,
+					Provider:    "EdgeWize",
+					Connection: infrav1alpha1.Connection{
+						Type:       infrav1alpha1.ConnectionTypeDirect,
+						KubeConfig: []byte(instance.Status.KubeConfig),
+					},
+				},
+			}
+			err := r.Create(ctx, edge)
+			if err != nil {
+				logger.Error(err, "create cluster error", "name", instance.Name)
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -466,7 +501,7 @@ func (r *Reconciler) prepareEdgeCluster(ctx context.Context, nn types.Namespaced
 	// 2. 创建 Namespace 和 Pull Image Secret
 
 	logger := log.FromContext(ctx, "InstallEdgeCluster", instance.Name)
-	logger.V(3).Info("install edge cluster", "cluster", instance.Name)
+	logger.V(3).Info("prepare edge cluster", "cluster", instance.Name)
 
 	extKubeConfig, err := r.LoadExternalKubeConfig(ctx, instance)
 	if err != nil {
@@ -478,10 +513,156 @@ func (r *Reconciler) prepareEdgeCluster(ctx context.Context, nn types.Namespaced
 		return nil, err
 	}
 
+	err = SaveEdgeClusterKubeconfig(instance.Name, config)
+	if err != nil {
+		logger.Error(err, "save edge cluster kubeconfig error")
+		return nil, err
+	}
 	// TODO 此处的内容需要从组件安装中移出来，优化逻辑
 	// 2. 创建 Namespace 和 Pull Image Secret
+	err = r.prepareNamespace(ctx, instance)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.prepareImagePullSecret(ctx, instance)
+	if err != nil {
+		return nil, err
+	}
 
 	return config, nil
+}
+
+func (r *Reconciler) prepareNamespace(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	clientset, err := r.getClusterClientset(instance.Name)
+	if err != nil {
+		return err
+	}
+	for _, name := range SystemNamespaces {
+		namespace, err := clientset.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			if client.IgnoreNotFound(err) == nil {
+				klog.V(3).Infof("namespace %s not found, skip", name)
+				continue
+			}
+			klog.Errorf("get namespace %s error: %v", name, err)
+			return err
+		}
+		namespace.Labels["kubesphere.io/workspace"] = "system-workspace"
+		namespace.Labels["kubesphere.io/namespace"] = name
+
+		_, err = clientset.CoreV1().Namespaces().Update(ctx, namespace, metav1.UpdateOptions{})
+		if err != nil {
+			klog.Errorf("update namespace %s error: %v", name, err)
+			return err
+		}
+	}
+
+	// create namespace if not exist,which namespace  in ComponentsNamespaces
+	for _, component := range ComponentsNamespaces {
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: component.namespace,
+				Labels: map[string]string{
+					"kubesphere.io/workspace": "system-workspace",
+					"kubesphere.io/namespace": component.namespace,
+				},
+			},
+		}
+		_, err = clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
+		if err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				klog.Warningf("namespace %s already exists", component.namespace)
+			} else {
+				klog.Errorf("create namespace %s error: %s", component.namespace, err.Error())
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+	clientset, err := r.getClusterClientset(instance.Name)
+	if err != nil {
+		return err
+	}
+
+	hostSecret := &corev1.Secret{}
+	key := types.NamespacedName{Namespace: CurrentNamespace, Name: EdgeDeploySecret}
+	err = r.Get(ctx, key, hostSecret)
+	if err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			klog.Warning("image-pull-secret nou found ,skip")
+			return nil
+		} else {
+			klog.Error("get image-pull-secret error ", err.Error())
+			return err
+		}
+	}
+	for _, namespace := range SystemNamespaces {
+		edgeDeploySecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, EdgeDeploySecret, metav1.GetOptions{})
+		// if found edge-deploy-secret, skip
+		if err == nil {
+			klog.V(3).Infof("secret edge-deploy-secret exists, skip. edge-deploy-secret: %v", edgeDeploySecret.String())
+			return nil
+		}
+		// if not found edge-deploy-secret, create
+		if client.IgnoreNotFound(err) != nil {
+			klog.Error("get secret zpk-deploy-secret error", err.Error())
+			return err
+		}
+
+		edgeSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      EdgeDeploySecret,
+				Namespace: namespace,
+			},
+			Immutable:  hostSecret.Immutable,
+			Data:       hostSecret.Data,
+			StringData: hostSecret.StringData,
+			Type:       hostSecret.Type,
+		}
+		klog.V(3).Infof("secret edge-deploy-secret content: %s", edgeSecret.String())
+		_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, edgeSecret, metav1.CreateOptions{})
+		if err != nil {
+			klog.Error("create secret edge-deploy-secret error", err)
+			return err
+		}
+	}
+
+	for _, component := range ComponentsNamespaces {
+		edgeDeploySecret, err := clientset.CoreV1().Secrets(component.namespace).Get(ctx, EdgeDeploySecret, metav1.GetOptions{})
+		// if found edge-deploy-secret, skip
+		if err == nil {
+			klog.V(3).Infof("secret edge-deploy-secret exists, skip. edge-deploy-secret: %v", edgeDeploySecret.String())
+			return nil
+		}
+		// if not found edge-deploy-secret, create
+		if client.IgnoreNotFound(err) != nil {
+			klog.Error("get secret zpk-deploy-secret error", err.Error())
+			return err
+		}
+
+		edgeSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      EdgeDeploySecret,
+				Namespace: component.namespace,
+			},
+			Immutable:  hostSecret.Immutable,
+			Data:       hostSecret.Data,
+			StringData: hostSecret.StringData,
+			Type:       hostSecret.Type,
+		}
+		klog.V(3).Infof("secret edge-deploy-secret content: %s", edgeSecret.String())
+		_, err = clientset.CoreV1().Secrets(component.namespace).Create(ctx, edgeSecret, metav1.CreateOptions{})
+		if err != nil {
+			klog.Error("create secret edge-deploy-secret error", err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *Reconciler) installComponents(ctx context.Context, nn types.NamespacedName, instance *infrav1alpha1.EdgeCluster) error {
@@ -495,7 +676,7 @@ func (r *Reconciler) installComponents(ctx context.Context, nn types.NamespacedN
 		return err
 	}
 
-	err := SaveEdgeClusterKubeconfig(instance)
+	err := SaveEdgeClusterKubeconfig(instance.Name, []byte(instance.Status.KubeConfig)) // 保存 kubeconfig
 	if err != nil {
 		logger.Error(err, "Save edge cluster kubeconfig error")
 		return err
@@ -555,6 +736,7 @@ func doReconcile(ctx context.Context, r EdgeClusterOperator, log logr.Logger, in
 		logger.V(3).WithCallDepth(1).Info("set status", "status", instance.Status.Status)
 		err := r.UpdateEdgeClusterStatus(ctx, instanceName, instance)
 		if err != nil {
+			logger.Error(err, "update edge cluster status error")
 			return ctrl.Result{Requeue: true}, err
 		}
 		return ctrl.Result{Requeue: true}, err

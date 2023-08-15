@@ -17,6 +17,8 @@ limitations under the License.
 package app
 
 import (
+	"github.com/edgewize-io/edgewize/pkg/controller/cluster"
+	"github.com/edgewize-io/edgewize/pkg/controller/edgeappset"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -25,8 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/edgewize-io/edgewize/cmd/controller-manager/app/options"
-	"github.com/edgewize-io/edgewize/pkg/controller/cluster"
-	"github.com/edgewize-io/edgewize/pkg/controller/edgeappset"
 	"github.com/edgewize-io/edgewize/pkg/controller/edgecluster"
 	"github.com/edgewize-io/edgewize/pkg/informers"
 	"github.com/edgewize-io/edgewize/pkg/simple/client/k8s"
@@ -63,10 +63,11 @@ func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory i
 		// "edgecluster" controller
 		edgeclusterReconciler := &edgecluster.Reconciler{}
 		addControllerWithSetup(mgr, "edgecluster", edgeclusterReconciler)
+	} else {
+		// "edgeappset" controller
+		edgeAppSetReconciler := &edgeappset.Reconciler{}
+		addControllerWithSetup(mgr, "edgeappset", edgeAppSetReconciler)
 	}
-	// "edgeappset" controller
-	edgeAppSetReconciler := &edgeappset.Reconciler{}
-	addControllerWithSetup(mgr, "edgeappset", edgeAppSetReconciler)
 
 	// log all controllers process result
 	for _, name := range allControllers {

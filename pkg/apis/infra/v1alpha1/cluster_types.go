@@ -27,14 +27,18 @@ const (
 	ResourcesSingularCluster = "cluster"
 	ResourcesPluralCluster   = "clusters"
 
-	HostClusterRole   = "cluster-role.edgewize.io/host"
-	MemberClusterRole = "cluster-role.edgewize.io/member"
+	// HostClusterRole TODO deprecated, remove in future
+	HostClusterRole = "cluster-role.kubesphere.io/host"
+
+	EdgeClusterRole = "cluster-role.kubesphere.io/edge"
 	// Description of which region the cluster been placed
 	ClusterRegion   = "infra.edgewize.io/region"
 	ClusterLocation = "infra.edgewize.io/location"
 	// Name of the cluster group
 	ClusterGroup = "infra.edgewize.io/group"
 	ClusterAlias = "infra.edgewize.io/alias"
+
+	HostedCLuster = "infra.edgewize.io/hosted"
 
 	Finalizer = "finalizer.infra.edgewize.io"
 )

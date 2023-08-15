@@ -26,7 +26,6 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"fmt"
-	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	"math"
 	"math/big"
 	"net"
@@ -34,6 +33,7 @@ import (
 	"path/filepath"
 	"time"
 
+	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 	certutil "k8s.io/client-go/util/cert"
@@ -135,10 +135,9 @@ func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Val
 	}
 }
 
-func SaveEdgeClusterKubeconfig(instance *infrav1alpha1.EdgeCluster) error {
-	name := instance.Name
+func SaveEdgeClusterKubeconfig(name string, kubeconfig []byte) error {
 	path := filepath.Join(homedir.HomeDir(), ".kube", name)
-	return os.WriteFile(path, []byte(instance.Status.KubeConfig), 0644)
+	return os.WriteFile(path, kubeconfig, 0644)
 }
 
 func SignCloudCoreCert(cacrt, cakey []byte) ([]byte, []byte, error) {

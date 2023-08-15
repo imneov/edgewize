@@ -56,7 +56,6 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/code-generator v0.26.1
 	k8s.io/component-base v0.26.1
-	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.90.0
 	k8s.io/kube-openapi v0.0.0-20230202010329-39b3636cbaa3
 	k8s.io/kubectl v0.26.1
