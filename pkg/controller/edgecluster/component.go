@@ -917,7 +917,7 @@ func (r *Reconciler) InitCert(ctx context.Context, name, namespace string, serve
 		},
 	}
 	if serverCertFunc != nil {
-		serverCrt, serverKey, err := SignCloudCoreCert(caCrt, caKey)
+		serverCrt, serverKey, err := serverCertFunc(caCrt, caKey)
 		if err != nil {
 			klog.Errorf("root CA content, crt: %s, key: %s", base64.StdEncoding.EncodeToString(caCrt), base64.StdEncoding.EncodeToString(caKey))
 		} else {

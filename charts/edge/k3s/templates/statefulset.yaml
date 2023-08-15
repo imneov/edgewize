@@ -128,6 +128,10 @@ spec:
       serviceAccountName: vc-{{ .Release.Name }}
       {{- end }}
       volumes:
+        - name: edgewize-root-ca
+          secret:
+            defaultMode: 420
+            secretName: edgewize-root-ca
       {{- if or .Values.securityContext.runAsUser .Values.securityContext.runAsNonRoot }}
         - name: helm-cache
           emptyDir: {}
@@ -176,6 +180,7 @@ spec:
             --kube-controller-manager-arg=node-monitor-grace-period=1h
             --kube-controller-manager-arg=node-monitor-period=1h
             --kube-apiserver-arg=endpoint-reconciler-type=none
+            --kube-apiserver-arg=kubelet-certificate-authority=/etc/certs/edgewize-root-ca.crt
             --kube-apiserver-arg=kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP
             --datastore-endpoint=http://{{ .Release.Name }}-etcd.{{ .Release.Namespace }}.svc:2379
           {{- if .Values.serviceCIDR }}
@@ -210,6 +215,10 @@ spec:
         volumeMounts:
           - name: config
             mountPath: /etc/rancher
+          - name: edgewize-root-ca
+            mountPath: /etc/certs/edgewize-root-ca.crt
+            readOnly: true
+            subPath: rootCA.crt
 {{ toYaml .Values.vcluster.volumeMounts | indent 10 }}
         resources:
 {{ toYaml .Values.vcluster.resources | indent 10 }}

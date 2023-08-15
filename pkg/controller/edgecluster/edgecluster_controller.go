@@ -430,6 +430,19 @@ func (r *Reconciler) installEdgeCluster(ctx context.Context, nn types.Namespaced
 	}
 
 	createNamespace := true // 默认创建 namespace
+	nsExisted := r.IsNamespaceExisted(ctx, extKubeConfig, instance.Spec.Namespace)
+	createNamespace = createNamespace && !nsExisted
+	if instance.Annotations == nil {
+		instance.Annotations = make(map[string]string)
+	}
+	clientset, err := r.getClusterClientset(filepath.Join("external", instance.Name))
+	if err != nil {
+		return err
+	}
+	err = r.InitCert(ctx, "edgewize-root-ca", instance.Spec.Namespace, nil, clientset)
+	if err != nil {
+		klog.Warning("init edgewize certs error, use default", err)
+	}
 	status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, extKubeConfig, createNamespace, values)
 	if err != nil {
 		logger.Error(err, "install edge cluster error", "status", status,
