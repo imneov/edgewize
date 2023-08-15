@@ -191,6 +191,7 @@ func (r *Reconciler) getAllDeployments(ctx context.Context, edgeAppSet *appsv1al
 	deploymentList := &appsv1.DeploymentList{}
 	err := r.List(ctx, deploymentList, &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{appsv1alpha1.LabelEdgeAppSet: edgeAppSet.Name}),
+		Namespace:     edgeAppSet.Namespace,
 	})
 	if err != nil {
 		return nil, err
@@ -199,39 +200,65 @@ func (r *Reconciler) getAllDeployments(ctx context.Context, edgeAppSet *appsv1al
 	return deploymentList.Items, nil
 }
 
+func (r *Reconciler) getExpectedUniqNames(instance *appsv1alpha1.EdgeAppSet) map[string]struct {
+	Status   bool
+	Selector *appsv1alpha1.NodeSelector
+} {
+	res := make(map[string]struct {
+		Status   bool
+		Selector *appsv1alpha1.NodeSelector
+	})
+
+	for _, nodeSelector := range instance.Spec.NodeSelectors {
+		uniqueName := fmt.Sprintf("%s-%s-%s", nodeSelector.Project, nodeSelector.NodeGroup, nodeSelector.NodeName)
+		tempNodeSelector := nodeSelector
+		res[uniqueName] = struct {
+			Status   bool
+			Selector *appsv1alpha1.NodeSelector
+		}{false, &tempNodeSelector}
+	}
+
+	return res
+}
+
+func (r *Reconciler) getKindsOfDeployments(ctx context.Context, allDeployments []appsv1.Deployment, instance *appsv1alpha1.EdgeAppSet) (oldDeploymentsCnt int, createDeployments, deleteDeployments []*appsv1.Deployment, err error) {
+	exceptedUniqNames := r.getExpectedUniqNames(instance)
+
+	for _, deployment := range allDeployments {
+		uniqueName := fmt.Sprintf("%s-%s-%s", deployment.Namespace, deployment.Labels[appsv1alpha1.LabelNodeGroup], deployment.Labels[appsv1alpha1.LabelNode])
+		if item, ok := exceptedUniqNames[uniqueName]; ok {
+			oldDeploymentsCnt += 1
+			item.Status = true
+			exceptedUniqNames[uniqueName] = item
+		} else {
+			deleteDeployments = append(deleteDeployments, &deployment)
+		}
+	}
+
+	for _, v := range exceptedUniqNames {
+		if !v.Status {
+			createDeployments = append(createDeployments, buildDeployment(instance, *v.Selector))
+		}
+	}
+	return
+}
+
 func (r *Reconciler) updateDeployments(ctx context.Context, instance *appsv1alpha1.EdgeAppSet) (int, error) {
 	logger := r.Logger.WithName("updateDeployments")
+
 	allDeployments, err := r.getAllDeployments(ctx, instance)
 	if err != nil {
 		logger.Error(err, "get all deployments failed", "instance", instance.Name)
 		return 0, err
 	}
 
-	oldDeployments := make(map[string]appsv1.Deployment, 0)
-	for _, deployment := range allDeployments {
-		uniqueName := fmt.Sprintf("%s-%s-%s", deployment.Namespace, deployment.Labels[appsv1alpha1.LabelNodeGroup], deployment.Labels[appsv1alpha1.LabelNode])
-		oldDeployments[uniqueName] = deployment
+	count, createDeployments, deleteDeployments, err := r.getKindsOfDeployments(ctx, allDeployments, instance)
+
+	if err != nil {
+		logger.Error(err, "get all kind of deployment failed", "instance", instance.Name)
+		return 0, err
 	}
 
-	// createDeployments is which will be created
-	createDeployments := make(map[string]*appsv1.Deployment)
-	// deleteDeployments is which will be deleted
-	deleteDeployments := make(map[string]*appsv1.Deployment)
-	for _, selector := range instance.Spec.NodeSelectors {
-		uniqueName := fmt.Sprintf("%s-%s-%s", selector.Project, selector.NodeGroup, selector.NodeName)
-		if _, ok := oldDeployments[uniqueName]; ok {
-			delete(oldDeployments, uniqueName)
-		} else {
-			target := buildDeployment(instance, selector)
-			createDeployments[uniqueName] = target
-		}
-	}
-	for _, deployment := range oldDeployments {
-		uniqueName := fmt.Sprintf("%s-%s-%s", deployment.Namespace, deployment.Labels[appsv1alpha1.LabelNodeGroup], deployment.Labels[appsv1alpha1.LabelNode])
-		deleteDeployments[uniqueName] = &deployment
-	}
-
-	count := len(oldDeployments)
 	for _, deployment := range createDeployments {
 		err = r.Create(ctx, deployment)
 		if err != nil {
@@ -246,7 +273,6 @@ func (r *Reconciler) updateDeployments(ctx context.Context, instance *appsv1alph
 			logger.Error(err, "delete deployment failed", "deployment", deployment.Name)
 			continue
 		}
-		count -= 1
 	}
 	return count, nil
 }
