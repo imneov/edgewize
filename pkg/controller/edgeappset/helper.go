@@ -18,10 +18,12 @@ func buildDeployment(instance *appsv1alpha1.EdgeAppSet, selector appsv1alpha1.No
 			Name:      name,
 			Namespace: selector.Project,
 			Labels: map[string]string{
-				"app":                        name,
-				appsv1alpha1.LabelEdgeAppSet: instance.Name,
-				appsv1alpha1.LabelNodeGroup:  selector.NodeGroup,
-				appsv1alpha1.LabelNode:       selector.NodeName,
+				"app":                                name,
+				appsv1alpha1.LabelEdgeAppSet:         instance.Name,
+				appsv1alpha1.LabelNodeGroup:          selector.NodeGroup,
+				appsv1alpha1.LabelNode:               selector.NodeName,
+				appsv1alpha1.LabelAppTemplate:        instance.Spec.AppTemplateName,
+				appsv1alpha1.LabelAppTemplateVersion: instance.Spec.Version,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -32,17 +34,17 @@ func buildDeployment(instance *appsv1alpha1.EdgeAppSet, selector appsv1alpha1.No
 				MatchLabels: map[string]string{
 					"app":                        name,
 					appsv1alpha1.LabelEdgeAppSet: instance.Name,
-					appsv1alpha1.LabelNodeGroup:  selector.NodeGroup,
-					appsv1alpha1.LabelNode:       selector.NodeName,
 				},
 			},
 		},
 	}
 	deployment.Spec.Template.Labels = map[string]string{
-		"app":                        name,
-		appsv1alpha1.LabelEdgeAppSet: instance.Name,
-		appsv1alpha1.LabelNodeGroup:  selector.NodeGroup,
-		appsv1alpha1.LabelNode:       selector.NodeName,
+		"app":                                name,
+		appsv1alpha1.LabelEdgeAppSet:         instance.Name,
+		appsv1alpha1.LabelNodeGroup:          selector.NodeGroup,
+		appsv1alpha1.LabelNode:               selector.NodeName,
+		appsv1alpha1.LabelAppTemplate:        instance.Spec.AppTemplateName,
+		appsv1alpha1.LabelAppTemplateVersion: instance.Spec.Version,
 	}
 
 	// Fix https://github.com/kubeedge/kubeedge/issues/3736
