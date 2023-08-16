@@ -8317,13 +8317,12 @@ spec:
             type: object
           status:
             properties:
-              deployments:
-                additionalProperties:
-                  properties:
-                    status:
-                      type: string
-                  type: object
-                type: object
+              readyWorkloadCount:
+                type: integer
+              unavailableWorkloadCount:
+                type: integer
+              updatedWorkloadCount:
+                type: integer
               workloadCount:
                 type: integer
             type: object

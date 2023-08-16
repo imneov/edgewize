@@ -335,8 +335,8 @@ values:
         cloudstreamNodePort: "30003"
         tunnelNodePort: "30004"
       image:
-        repository: "kubesphere/cloudcore"
-        tag: "v1.13.0-edgewize"
+        repository: "edgewize/cloudcore"
+        tag: "v1.13.1"
         pullSecrets:
           - name: edge-deploy-secret
   edgeOtaServer:
@@ -349,7 +349,7 @@ values:
     image:
       repository: kubesphere/edge-ota-server
       pullPolicy: IfNotPresent
-      tag: "v0.1.0"
+      tag: "v0.2.0"
   edgewize:
     global:
       imageRegistry: ""
@@ -391,7 +391,7 @@ values:
       type: ClusterIP
   kubefed:
     controllermanager:
-      defaultImageRegistry: "harbor.wuxs.vip/"
+      defaultImageRegistry: ""
       imagePullSecrets:
         - name: edge-deploy-secret
       commonAffinity: { }

@@ -141,7 +141,7 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 	}
 
 	if version == "" {
-		version = "v1.13.0"
+		version = "v1.13.1"
 	} else if version[0] != 'v' {
 		version = fmt.Sprintf("v%s", version)
 	}
