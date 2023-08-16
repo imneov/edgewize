@@ -17,7 +17,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/chartutil"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -710,16 +709,6 @@ func (r *Reconciler) InitCert(ctx context.Context, name, namespace string, serve
 	}
 	klog.V(3).Infof("rootca: %v", rootca)
 
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{Name: namespace},
-	}
-	_, err = clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
-	if err != nil {
-		if !apierrors.IsAlreadyExists(err) {
-			klog.Errorf("create namespace %s error: %v", namespace, err)
-			return err
-		}
-	}
 	var caCrt []byte
 	var caKey []byte
 
@@ -768,7 +757,7 @@ func (r *Reconciler) InitCert(ctx context.Context, name, namespace string, serve
 	if serverCertFunc != nil {
 		serverCrt, serverKey, err := serverCertFunc(caCrt, caKey)
 		if err != nil {
-			klog.Errorf("root CA content, crt: %s, key: %s", base64.StdEncoding.EncodeToString(caCrt), base64.StdEncoding.EncodeToString(caKey))
+			klog.Errorf("generate server cert error: %v", err)
 		} else {
 			secret.Data["server.crt"] = pem.EncodeToMemory(&pem.Block{Type: certutil.CertificateBlockType, Bytes: serverCrt})
 			secret.Data["server.key"] = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: serverKey})

@@ -476,7 +476,8 @@ func (r *Reconciler) installEdgeCluster(ctx context.Context, nn types.Namespaced
 	}
 	err = r.InitCert(ctx, "edgewize-root-ca", instance.Spec.Namespace, nil, clientset)
 	if err != nil {
-		klog.Warning("init edgewize certs error, use default", err)
+		klog.Error("init edgewize certs error, use default", err)
+		return err
 	}
 	status, err := InstallChart(instance.Spec.Distro, instance.Name, instance.Spec.Namespace, extKubeConfig, createNamespace, values)
 	if err != nil {

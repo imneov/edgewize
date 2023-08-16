@@ -146,7 +146,8 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 		version = fmt.Sprintf("v%s", version)
 	}
 
-	uri := fmt.Sprintf("https://kubeedge.pek3b.qingstor.com/bin/%s/$arch/keadm-%s-linux-$arch.tar.gz", version, version)
+	//uri := fmt.Sprintf("https://kubeedge.pek3b.qingstor.com/bin/%s/$arch/keadm-%s-linux-$arch.tar.gz", version, version)
+	uri := fmt.Sprintf("https://github.com/edgewize-io/kubeedge/releases/download/%s/keadm-%s-linux-$arch.tar.gz", version, version)
 
 	// Get configmap for cloudcore
 	configMap, err := h.k8sclient.CoreV1().ConfigMaps(KubeEdgeNamespace).Get(ctx, KubeEdgeCloudCoreConfigName, metav1.GetOptions{})
@@ -222,7 +223,7 @@ func (h *handler) joinNode(request *restful.Request, response *restful.Response)
 	if hasDefaultTaint {
 		withEdgeTaint = " --with-edge-taint"
 	}
-	cmd = fmt.Sprintf("arch=$(uname -m); curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && chmod +x keadm && ./keadm join --kubeedge-version=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s", uri, version, strings.ReplaceAll(version, "v", ""), advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, secret, withEdgeTaint)
+	cmd = fmt.Sprintf("arch=$(uname -m); [ \"$arch\" == \"x86_64\" ] && arch=\"amd64\" || arch=\"arm64\" ; curl -LO %s  && tar xvf keadm-%s-linux-$arch.tar.gz && mv keadm-%s-linux-$arch/keadm/keadm . && chmod +x keadm && ./keadm join --kubeedge-version=%s --cloudcore-ipport=%s:%d --quicport %d --certport %d --tunnelport %d --edgenode-name %s --token %s%s", uri, version, version, strings.ReplaceAll(version, "v", ""), advertiseAddress, webSocketPort, quicPort, certPort, tunnelPort, nodeName, secret, withEdgeTaint)
 	if nodeGroup != "" {
 		cmd = cmd + " --labels=apps.edgewize.io/nodegroup=" + nodeGroup
 	}
