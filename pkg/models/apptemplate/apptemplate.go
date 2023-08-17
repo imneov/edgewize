@@ -63,7 +63,7 @@ func (o *appSetOperator) listAppTemplates(ctx context.Context, workspace string,
 		if err != nil {
 			return nil, err
 		}
-		selector.Add(*requirement)
+		selector = selector.Add(*requirement)
 	}
 	appTemplates, err := o.appTemplateLister.List(selector)
 	if err != nil {
