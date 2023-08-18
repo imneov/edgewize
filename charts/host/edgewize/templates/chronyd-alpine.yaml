@@ -1,0 +1,138 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chrony-configmap
+  namespace: kubesphere-monitoring-system
+data:
+  chrony.conf: |
+    server 127.0.0.1 iburst
+    makestep 1.0 4
+    local stratum 10
+    allow all
+    dumpdir /run/chrony
+    maxdistance 1800
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chrony-alpine
+  namespace: kubesphere-monitoring-system
+spec:
+  selector:
+    matchLabels:
+      app: chrony-alpine
+  # kubectl scale --replicas=x deployment/chrony-alpine
+  replicas: {{ .Values.chrony.replicas }}
+  template:
+    metadata:
+      labels:
+        app: chrony-alpine
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      {{- include "chrony.imagePullSecrets" . | nindent 6 }}
+      # scaled up deployment will go to different nodes
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/edge
+                    operator: DoesNotExist
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - chrony-alpine
+            topologyKey: "kubernetes.io/hostname"
+
+      volumes:
+        - name: config-volume
+          configMap:
+            name: chrony-configmap
+          #items:
+          #- key: chrony.conf
+          #  path: keys
+
+      containers:
+      - name: chrony-alpine
+        image: {{ template "chrony.image" . }}
+        imagePullPolicy: {{ .Values.chrony.image.pullPolicy }}
+        # resource limits
+        resources:
+          requests:
+            memory: "50Mi"
+            cpu: "500m" # half vcpu
+          limits:
+            memory: "250Mi"
+            cpu: "2000m" # one vcpu
+
+        env:
+        # currently no env vars used for this container
+        - name: TZ
+          value: {{ .Values.chrony.timezone }}
+
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/chrony
+
+        # linux capabilities needed for setting time
+        securityContext:
+          capabilities:
+            add:
+            - SYS_TIME
+            - SYS_NICE
+
+        # check for lifetime liveness, restarts if dead
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - /usr/bin/chronyc dump | grep 200
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+        # check for initial readiness
+        readinessProbe:
+          exec:
+            command:
+            - cat
+            - /etc/chrony/chrony.conf
+            #- /bin/sh
+            #- -c
+            #- /usr/bin/chronyc dumpc | grep 200
+          initialDelaySeconds: 3
+          periodSeconds: 3
+
+      restartPolicy: Always
+      dnsPolicy: ClusterFirst
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chrony-alpine-service
+  namespace: kubesphere-monitoring-system
+  labels:
+    app: chrony-alpine
+spec:
+  ports:
+  # port=available to other containers
+  - port: 123
+    name: ntp
+    # targetPort=exposed from inside container
+    targetPort: 123
+    protocol: UDP
+    {{- if .Values.chrony.nodePort }}
+    nodePort: {{ .Values.chrony.nodePort }}
+    {{ end }}
+  {{- if .Values.chrony.nodePort }}
+  type: NodePort
+  {{- else }}
+  type: ClusterIP
+  {{- end }}
+  selector:
+    app: chrony-alpine

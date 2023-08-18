@@ -8,7 +8,7 @@ metadata:
     node-role.kubernetes.io/gpu: "true"
 spec:
   prometheusScrapeMetrics:
-    tag: kubeedge.*
+    tag: kubeedge.metrics.*
     host: 127.0.0.1
     port: 9400
     scrapeInterval: 30s

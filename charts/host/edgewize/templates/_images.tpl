@@ -17,6 +17,10 @@ Return the proper image name
 {{ include "common.images.image" (dict "imageRoot" .Values.whizardEdgeGateway.image "global" .Values.global) }}
 {{- end -}}
 
+{{- define "chrony.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.chrony.image "global" .Values.global) }}
+{{- end -}}
+
 {{- define "common.images.image" -}}
 {{- $registryName := .global.imageRegistry -}}
 {{- $repositoryName := .imageRoot.repository -}}
@@ -52,6 +56,10 @@ Return the proper Docker Image Registry Secret Names
 
 {{- define "whizardEdgeGateway.imagePullSecrets" -}}
 {{- include "common.images.pullSecrets" (dict "images" (list .Values.whizardEdgeGateway.image) "global" .Values.global) -}}
+{{- end -}}
+
+{{- define "chrony.imagePullSecrets" -}}
+{{- include "common.images.pullSecrets" (dict "images" (list .Values.chrony.image) "global" .Values.global) -}}
 {{- end -}}
 
 {{- define "common.images.pullSecrets" -}}
