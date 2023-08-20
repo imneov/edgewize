@@ -140,7 +140,7 @@ func (o *appSetOperator) updateEdgeAppSet(edgeAppSet *apisappsv1alpha1.EdgeAppSe
 		return nil, err
 	}
 	for _, deployment := range list {
-		status := apisappsv1alpha1.Progressing
+		status := apisappsv1alpha1.Processing
 		for _, condition := range deployment.Status.Conditions {
 			switch condition.Type {
 			case v1.DeploymentAvailable:
@@ -157,8 +157,8 @@ func (o *appSetOperator) updateEdgeAppSet(edgeAppSet *apisappsv1alpha1.EdgeAppSe
 			ret.Status.WorkloadStats.Failed++
 		} else if status == apisappsv1alpha1.Succeeded {
 			ret.Status.WorkloadStats.Succeeded++
-		} else if status == apisappsv1alpha1.Progressing {
-			ret.Status.WorkloadStats.Progressing++
+		} else if status == apisappsv1alpha1.Processing {
+			ret.Status.WorkloadStats.Processing++
 		}
 		ret.Status.Workloads = append(ret.Status.Workloads, deployment.DeepCopy())
 	}

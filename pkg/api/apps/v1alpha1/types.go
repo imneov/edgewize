@@ -7,7 +7,7 @@ import (
 )
 
 type WorkloadStats struct {
-	Progressing int `json:"progressing,omitempty"`
+	Processing int `json:"processing,omitempty"`
 	Succeeded   int `json:"succeeded,omitempty"`
 	Failed      int `json:"failed,omitempty"`
 }
