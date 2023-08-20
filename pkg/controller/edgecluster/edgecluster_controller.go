@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -321,11 +322,14 @@ func (r *Reconciler) createKSClusterCR(ctx context.Context, nn types.NamespacedN
 				ObjectMeta: metav1.ObjectMeta{
 					Name: instance.Name,
 					Annotations: map[string]string{
-						"kubesphere.io/creator": "admin",
+						"kubesphere.io/creator":     "admin",
+						"kubesphere.io/alias-name":  instance.Annotations["kubesphere.io/alias-name"],
+						"kubesphere.io/description": instance.Annotations["kubesphere.io/description"],
 					},
 					Labels: map[string]string{
-						infrav1alpha1.EdgeClusterRole: "",
-						infrav1alpha1.HostedCLuster:   instance.Spec.HostCluster,
+						infrav1alpha1.EdgeClusterRole:         "",
+						infrav1alpha1.HostedCLuster:           instance.Spec.HostCluster,
+						"infra.edgewize.io/advertise-address": strings.Join(instance.Spec.AdvertiseAddress, ","),
 					},
 				},
 				Spec: ksclusterv1alpha1.ClusterSpec{

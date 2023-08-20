@@ -179,7 +179,7 @@ controller:
   ##
   command:
     - controller-manager
-    - '-v=10'
+    - '-v=5'
   ## @param extraEnvVars Array with extra environment variables to add to haproxy nodes
   ##
   extraEnvVars: [ ]
