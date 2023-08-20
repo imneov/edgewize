@@ -133,6 +133,12 @@ container-cross: ; $(info $(M)...Begin to build container images for multiple pl
 container-cross-push: ; $(info $(M)...Begin to build and push.)  @ ## Build and Push.
 	hack/docker_build_multiarch.sh
 
+fileserver: ;$(info $(M)...Begin to build the docker image.)  @ ## Build the docker image.
+	DRY_RUN=true hack/fileserver_build.sh
+
+fileserver-push: ;$(info $(M)...Begin to build and push.)  @ ## Build and Push.
+	hack/fileserver_build.sh
+
 helm-package: ; $(info $(M)...Begin to helm-package.)  @ ## Helm-package.
 	ls config/crds/*.edgewize.io* | xargs -i cp -r {} charts/host/edgewize/crds/
 	ls config/crds/*.edgewize.io* | xargs -i cp -r {} charts/edge/edgewize/crds/

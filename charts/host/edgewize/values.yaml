@@ -275,6 +275,19 @@ gateway:
   ##
   extraVolumes: [ ]
 
+fileserver:
+  replicaCount: 1
+  image:
+    registry: ""
+    repository: kubesphere/edgewize-fileserver
+    tag: "v0.1.0"
+    digest: ""
+    pullPolicy: IfNotPresent
+    pullSecrets: [ ]
+
+  nodePort: 30081
+
+
 agent:
   replicaCount: 1
 

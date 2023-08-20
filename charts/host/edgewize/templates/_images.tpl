@@ -21,6 +21,10 @@ Return the proper image name
 {{ include "common.images.image" (dict "imageRoot" .Values.chrony.image "global" .Values.global) }}
 {{- end -}}
 
+{{- define "edgewize-fileserver.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.fileserver.image "global" .Values.global) }}
+{{- end -}}
+
 {{- define "common.images.image" -}}
 {{- $registryName := .global.imageRegistry -}}
 {{- $repositoryName := .imageRoot.repository -}}
@@ -60,6 +64,10 @@ Return the proper Docker Image Registry Secret Names
 
 {{- define "chrony.imagePullSecrets" -}}
 {{- include "common.images.pullSecrets" (dict "images" (list .Values.chrony.image) "global" .Values.global) -}}
+{{- end -}}
+
+{{- define "fileserver.imagePullSecrets" -}}
+{{- include "common.images.pullSecrets" (dict "images" (list .Values.fileserver.image) "global" .Values.global) -}}
 {{- end -}}
 
 {{- define "common.images.pullSecrets" -}}

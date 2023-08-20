@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: edgewize-fileserver
+    tier: backend
+  name: edgewize-fileserver
+spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+    type: RollingUpdate
+  progressDeadlineSeconds: 600
+  replicas: {{ .Values.agent.replicaCount }}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: edgewize-fileserver
+      tier: backend
+  template:
+    metadata:
+      labels:
+        IndexByEdgeWize: "true"
+        app: edgewize-fileserver
+        tier: backend
+    spec:
+      serviceAccountName: {{ template "edgewize.serviceAccountName" . }}
+      {{- include "controller.imagePullSecrets" . | nindent 6 }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" ( dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.tolerations "context" .) | nindent 8 }}
+      {{- end }}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: edgewize-fileserver
+          image: {{ template "edgewize-fileserver.image" . }}
+          imagePullPolicy: {{ .Values.fileserver.image.pullPolicy }}
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: host-time
+              readOnly: true
+      volumes:
+        - name: host-time
+          hostPath:
+            path: /etc/localtime
+            type: ""
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edgewize-fileserver
+  namespace: kubesphere-monitoring-system
+  labels:
+    app: edgewize-fileserver
+spec:
+  ports:
+    # port=available to other containers
+    - port: 80
+      name: fileserver
+      # targetPort=exposed from inside container
+      targetPort: 80
+      protocol: TCP
+      {{- if .Values.fileserver.nodePort }}
+      nodePort: {{ .Values.fileserver.nodePort }}
+      {{ end }}
+  {{- if .Values.fileserver.nodePort }}
+  type: NodePort
+  {{- else }}
+  type: ClusterIP
+  {{- end }}
+  selector:
+    app: edgewize-fileserver
