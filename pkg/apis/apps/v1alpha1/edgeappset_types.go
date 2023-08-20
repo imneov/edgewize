@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	Progressing = "progressing"
-	Succeeded   = "succeeded"
-	Failed      = "failed"
+	Processing = "processing"
+	Succeeded  = "succeeded"
+	Failed     = "failed"
 )
 const (
 	LabelEdgeAppSet         = "apps.edgewize.io/appset"
