@@ -26,6 +26,15 @@ spec:
         image: {{ .Values.defaultImageRegistry }}{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: edge-ota-server
+        env:
+          - name: OTA_PORT
+            value: {{ .Values.gateway.nodePort.otaPort | quote }}
+          - name: CHRONY_PORT
+            value: {{ .Values.gateway.nodePort.chronyPort | quote }}
+          {{- if .Values.gateway.advertiseAddress }}
+          - name: ADVERTISE_ADDRESS
+            value: {{ index .Values.gateway.advertiseAddress 0 | quote }}
+          {{- end }}
         resources:
           limits:
             cpu: 300m
