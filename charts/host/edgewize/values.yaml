@@ -309,6 +309,8 @@ values:
       hoststorageclasses:
         enabled: false
     defaultImageRegistry: ""
+    syncer:
+      image: edgewize/vcluster:v0.13
     storage:
       persistence: true
       provisioning: "dynamic" # static or dynamic, default is dynamic

@@ -111,7 +111,7 @@ hostpathMapper:
 # Syncer configuration
 syncer:
   # Image to use for the syncer
-  image: kubesphere/vcluster:v0.13
+  image: edgewize/vcluster:v0.13
   extraArgs: [ ]
   env: [ ]
   livenessProbe:
