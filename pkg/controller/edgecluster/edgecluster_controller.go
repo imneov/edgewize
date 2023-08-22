@@ -329,7 +329,7 @@ func (r *Reconciler) createKSClusterCR(ctx context.Context, nn types.NamespacedN
 					Labels: map[string]string{
 						infrav1alpha1.EdgeClusterRole:         "",
 						infrav1alpha1.HostedCLuster:           instance.Spec.HostCluster,
-						"infra.edgewize.io/advertise-address": strings.Join(instance.Spec.AdvertiseAddress, ","),
+						"infra.edgewize.io/advertise-address": strings.Join(instance.Spec.AdvertiseAddress, "_"),
 					},
 				},
 				Spec: ksclusterv1alpha1.ClusterSpec{
