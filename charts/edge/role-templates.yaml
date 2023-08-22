@@ -416,7 +416,7 @@ apiVersion: iam.kubesphere.io/v1alpha2
 kind: GlobalRole
 metadata:
   annotations:
-    iam.kubesphere.io/aggregation-roles: '["role-template-manage-clusters","role-template-view-clusters","role-template-view-roles","role-template-manage-roles","role-template-view-roles","role-template-view-workspaces","role-template-manage-workspaces","role-template-manage-users","role-template-view-roles","role-template-view-users","role-template-manage-app-templates","role-template-view-app-templates","role-template-manage-platform-settings"]'
+    iam.kubesphere.io/aggregation-roles: '["role-template-manage-clusters","role-template-view-clusters","role-template-view-roles","role-template-manage-roles","role-template-view-roles","role-template-view-workspaces","role-template-manage-workspaces","role-template-manage-users","role-template-view-roles","role-template-view-users","role-template-manage-app-templates","role-template-view-app-templates","role-template-manage-platform-settings", "role-template-view-nodegroups", "role-template-manage-nodegroups"]'
     kubesphere.io/creator: admin
   name: platform-admin
 rules:
@@ -1091,6 +1091,105 @@ rules:
       - notification.kubesphere.io
     resources:
       - '*'
+    verbs:
+      - '*'
+
+---
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: GlobalRole
+metadata:
+  annotations:
+    iam.kubesphere.io/module: Access Control
+    iam.kubesphere.io/role-template-rules: '{"nodegroups": "view"}'
+    kubesphere.io/alias-name: NodeGroups View
+  labels:
+    iam.kubesphere.io/role-template: 'true'
+  name: role-template-view-nodegroups
+rules:
+  - apiGroups:
+      - infra.kubesphere.io
+    resources:
+      - nodegroups
+      - nodes
+      - namespaces
+    verbs:
+      - 'get'
+      - 'list'
+      - 'watch'
+  - apiGroups:
+      - resources.kubesphere.io
+    resources:
+      - namespaces
+      - services
+    verbs:
+      - 'get'
+      - 'list'
+      - 'watch'
+  - apiGroups:
+      - iam.kubesphere.io
+    resources:
+      - roles
+      - members
+    verbs:
+      - 'get'
+      - 'list'
+      - 'watch'
+  - apiGroups:
+      - monitoring.kubesphere.io
+    resources:
+      - namespaces
+    verbs:
+      - 'get'
+      - 'list'
+      - 'watch'
+
+---
+apiVersion: iam.kubesphere.io/v1alpha2
+kind: GlobalRole
+metadata:
+  annotations:
+    iam.kubesphere.io/dependencies: '["role-template-view-nodegroups"]'
+    iam.kubesphere.io/module: Access Control
+    iam.kubesphere.io/role-template-rules: '{"nodegroups": "manage"}'
+    kubesphere.io/alias-name: NodeGroups Management
+  labels:
+    iam.kubesphere.io/role-template: 'true'
+  name: role-template-manage-nodegroups
+rules:
+  - apiGroups:
+      - infra.kubesphere.io
+    resources:
+      - nodegroups
+      - nodes
+      - namespaces
+    verbs:
+      - '*'
+  - apiGroups:
+      - iam.kubesphere.io
+    resources:
+      - roles
+      - members
+      - members/nodegrouproles
+    verbs:
+      - '*'
+  - apiGroups:
+      - resources.kubesphere.io
+    resources:
+      - namespaces
+      - services
+    verbs:
+      - '*'
+  - apiGroups:
+      - iam.kubesphere.io
+    resources:
+      - roles
+      - members
+    verbs:
+      - '*'
+  - apiGroups:
+      - monitoring.kubesphere.io
+    resources:
+      - namespaces
     verbs:
       - '*'
 
