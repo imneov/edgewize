@@ -25,7 +25,7 @@ spec:
         tier: backend
     spec:
       serviceAccountName: {{ template "edgewize.serviceAccountName" . }}
-      {{- include "controller.imagePullSecrets" . | nindent 6 }}
+      {{- include "fileserver.imagePullSecrets" . | nindent 6 }}
       {{- if .Values.nodeSelector }}
       nodeSelector: {{- include "common.tplvalues.render" ( dict "value" .Values.nodeSelector "context" $) | nindent 8 }}
       {{- end }}
