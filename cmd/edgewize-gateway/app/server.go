@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/google/gops/agent"
 	"github.com/spf13/cobra"
@@ -132,7 +134,8 @@ func run(s *options.ServerRunOptions, ctx context.Context, backendServers *proxy
 	errCh := make(chan error)
 	defer close(errCh)
 	go func() {
-		hubhttpserver := proxy.NewHTTPSProxyServer(s, 30002, backendServers) // ws
+		port := parseDefaultPort("CLOUDHUBHTTPS_PORT", 30002)
+		hubhttpserver := proxy.NewHTTPSProxyServer(s, port, 30002, backendServers) // ws
 		err := hubhttpserver.Run(ctx)
 		if err == http.ErrServerClosed {
 			klog.Errorf("error in hubhttpserver: %v", err)
@@ -141,7 +144,8 @@ func run(s *options.ServerRunOptions, ctx context.Context, backendServers *proxy
 		errCh <- err
 	}()
 	go func() {
-		hubserver := proxy.NewWebsocketProxyServer(s, 30000, backendServers) // ws
+		port := parseDefaultPort("CLOUDHUB_PORT", 30000)
+		hubserver := proxy.NewWebsocketProxyServer(s, port, 30000, backendServers) // ws
 		err := hubserver.Run(ctx)
 		if err == http.ErrServerClosed {
 			klog.Errorf("error in hubserver: %v", err)
@@ -150,7 +154,8 @@ func run(s *options.ServerRunOptions, ctx context.Context, backendServers *proxy
 		errCh <- err
 	}()
 	go func() {
-		tunnelserver := proxy.NewWebsocketProxyServer(s, 30004, backendServers) // ws
+		port := parseDefaultPort("TUNNEL_PORT", 30004)
+		tunnelserver := proxy.NewWebsocketProxyServer(s, port, 30004, backendServers) // ws
 		err := tunnelserver.Run(ctx)
 		if err == http.ErrServerClosed {
 			klog.Errorf("error in tunnelserver: %v", err)
@@ -169,4 +174,17 @@ func run(s *options.ServerRunOptions, ctx context.Context, backendServers *proxy
 	}()
 
 	return <-errCh
+}
+
+func parseDefaultPort(env string, defaultPort int) int {
+	portStr := os.Getenv(env)
+	if portStr != "" {
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			klog.Errorf("error in strconv.Atoi, env %v, err: %v", portStr, err)
+			return defaultPort
+		}
+		return port
+	}
+	return defaultPort
 }

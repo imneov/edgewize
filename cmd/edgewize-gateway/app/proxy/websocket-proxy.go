@@ -39,14 +39,16 @@ type WebsocketProxyServer struct {
 	sync.RWMutex
 	backendServers                              *ServerEndpoints
 	proxyPort                                   int
+	listenPort                                  int
 	serverCAFile, serverCertFile, serverKeyFile string
 	clientCertFile, clientKeyFile               string
 }
 
-func NewWebsocketProxyServer(opt *options.ServerRunOptions, proxyPort int, backendServers *ServerEndpoints) *WebsocketProxyServer {
+func NewWebsocketProxyServer(opt *options.ServerRunOptions, proxyPort int, listenPort int, backendServers *ServerEndpoints) *WebsocketProxyServer {
 	return &WebsocketProxyServer{
 		backendServers: backendServers,
 		proxyPort:      proxyPort,
+		listenPort:     listenPort,
 		serverCAFile:   opt.CertDir + options.ServerCAFile,
 		serverCertFile: opt.CertDir + options.ServerCertFile,
 		serverKeyFile:  opt.CertDir + options.ServerKeyFile,
@@ -93,7 +95,7 @@ func (s *WebsocketProxyServer) Run(ctx context.Context) error {
 
 	// Create HTTPS server
 	server := &http.Server{
-		Addr:      fmt.Sprintf(":%d", s.proxyPort),
+		Addr:      fmt.Sprintf(":%d", s.listenPort),
 		TLSConfig: tlsConfig,
 		Handler:   s,
 	}

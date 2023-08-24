@@ -52,6 +52,12 @@ spec:
           command: {{- include "common.tplvalues.render" (dict "value" .Values.gateway.command "context" $) | nindent 12 }}
           {{- end }}
           env:
+            - name: CLOUDHUB_PORT
+              value: .Values.gateway.nodePort.cloudhub
+            - name: CLOUDHUBHTTPS_PORT
+              value: .Values.gateway.nodePort.cloudhubHttps
+            - name: TUNNEL_PORT
+              value: .Values.gateway.nodePort.tunnelport
             {{- if .Values.gateway.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.gateway.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}

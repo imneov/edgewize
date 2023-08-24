@@ -28,15 +28,17 @@ type HTTPSProxyServer struct {
 	sync.RWMutex
 	backendServers                              *ServerEndpoints
 	proxyPort                                   int
+	listenPort                                  int
 	serverCAFile, serverCertFile, serverKeyFile string
 	clientCertFile, clientKeyFile               string
 	caKey                                       []byte
 }
 
-func NewHTTPSProxyServer(opt *options.ServerRunOptions, proxyPort int, backendServers *ServerEndpoints) *HTTPSProxyServer {
+func NewHTTPSProxyServer(opt *options.ServerRunOptions, proxyPort int, listenPort int, backendServers *ServerEndpoints) *HTTPSProxyServer {
 	return &HTTPSProxyServer{
 		backendServers: backendServers,
 		proxyPort:      proxyPort,
+		listenPort:     listenPort,
 		serverCAFile:   opt.CertDir + options.ServerCAFile,
 		serverCertFile: opt.CertDir + options.ServerCertFile,
 		serverKeyFile:  opt.CertDir + options.ServerKeyFile,
@@ -72,7 +74,7 @@ func (s *HTTPSProxyServer) Run(ctx context.Context) error {
 
 	// Create HTTPS server
 	server := &http.Server{
-		Addr:      fmt.Sprintf(":%d", s.proxyPort),
+		Addr:      fmt.Sprintf(":%d", s.listenPort),
 		TLSConfig: tlsConfig,
 		Handler:   s,
 	}
