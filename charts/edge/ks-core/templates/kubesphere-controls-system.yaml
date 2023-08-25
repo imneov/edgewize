@@ -1,10 +1,10 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: kubesphere-controls-system
-  labels:
-    "kubesphere.io/workspace": "system-workspace"
-    "kubesphere.io/namespace": "kubesphere-controls-system"
+#apiVersion: v1
+#kind: Namespace
+#metadata:
+#  name: kubesphere-controls-system
+#  labels:
+#    "kubesphere.io/workspace": "system-workspace"
+#    "kubesphere.io/namespace": "kubesphere-controls-system"
 
 ---
 

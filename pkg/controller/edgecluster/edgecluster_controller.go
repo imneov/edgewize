@@ -79,6 +79,7 @@ type NameNamespace struct {
 }
 
 var SystemNamespaces = []string{metav1.NamespaceSystem, metav1.NamespacePublic, corev1.NamespaceNodeLease}
+var ExtendedNamespaces = []string{"kubesphere-controls-system"}
 
 var ComponentsNamespaces = []NameNamespace{
 	{"edgewize", "edgewize-system"},
@@ -584,6 +585,35 @@ func (r *Reconciler) prepareNamespace(ctx context.Context, instance *infrav1alph
 			}
 		}
 	}
+
+	for _, namespace := range ExtendedNamespaces {
+		err := createSystemNamespace(ctx, clientset, namespace)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func createSystemNamespace(ctx context.Context, clientset *kubernetes.Clientset, namespace string) error {
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: namespace,
+			Labels: map[string]string{
+				"kubesphere.io/workspace": "system-workspace",
+				"kubesphere.io/namespace": namespace,
+			},
+		},
+	}
+	_, err := clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
+	if err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			klog.Warningf("namespace %s already exists", namespace)
+		} else {
+			klog.Errorf("create namespace %s error: %s", namespace, err.Error())
+			return err
+		}
+	}
 	return nil
 }
 
@@ -594,7 +624,7 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 	}
 
 	hostSecret := &corev1.Secret{}
-	key := types.NamespacedName{Namespace: CurrentNamespace, Name: EdgeDeploySecret}
+	key := types.NamespacedName{Namespace: CurrentNamespace, Name: "zpk-deploy-secret"}
 	err = r.Get(ctx, key, hostSecret)
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
@@ -614,7 +644,7 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 		}
 		// if not found edge-deploy-secret, create
 		if client.IgnoreNotFound(err) != nil {
-			klog.Error("get secret zpk-deploy-secret error", err.Error())
+			klog.Error("get secret edge-deploy-secret error", err.Error())
 			return err
 		}
 
@@ -645,7 +675,7 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 		}
 		// if not found edge-deploy-secret, create
 		if client.IgnoreNotFound(err) != nil {
-			klog.Error("get secret zpk-deploy-secret error", err.Error())
+			klog.Error("get secret edge-deploy-secret error", err.Error())
 			return err
 		}
 
@@ -667,6 +697,44 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 		}
 	}
 
+	for _, namespace := range ExtendedNamespaces {
+		err := createImagePullSecret(ctx, clientset, namespace, hostSecret)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func createImagePullSecret(ctx context.Context, clientset *kubernetes.Clientset, namespace string, hostSecret *corev1.Secret) error {
+	edgeDeploySecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, EdgeDeploySecret, metav1.GetOptions{})
+	// if found edge-deploy-secret, skip
+	if err == nil {
+		klog.V(3).Infof("secret edge-deploy-secret exists, skip. edge-deploy-secret: %v", edgeDeploySecret.String())
+		return nil
+	}
+	// if not found edge-deploy-secret, create
+	if client.IgnoreNotFound(err) != nil {
+		klog.Error("get secret edge-deploy-secret error", err.Error())
+		return err
+	}
+
+	edgeSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      EdgeDeploySecret,
+			Namespace: namespace,
+		},
+		Immutable:  hostSecret.Immutable,
+		Data:       hostSecret.Data,
+		StringData: hostSecret.StringData,
+		Type:       hostSecret.Type,
+	}
+	klog.V(3).Infof("secret edge-deploy-secret content: %s", edgeSecret.String())
+	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, edgeSecret, metav1.CreateOptions{})
+	if err != nil {
+		klog.Error("create secret edge-deploy-secret error", err)
+		return err
+	}
 	return nil
 }
 
