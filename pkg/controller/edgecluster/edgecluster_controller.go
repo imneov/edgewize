@@ -640,7 +640,7 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 		// if found edge-deploy-secret, skip
 		if err == nil {
 			klog.V(3).Infof("secret edge-deploy-secret exists, skip. edge-deploy-secret: %v", edgeDeploySecret.String())
-			return nil
+			continue
 		}
 		// if not found edge-deploy-secret, create
 		if client.IgnoreNotFound(err) != nil {
@@ -671,7 +671,7 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 		// if found edge-deploy-secret, skip
 		if err == nil {
 			klog.V(3).Infof("secret edge-deploy-secret exists, skip. edge-deploy-secret: %v", edgeDeploySecret.String())
-			return nil
+			continue
 		}
 		// if not found edge-deploy-secret, create
 		if client.IgnoreNotFound(err) != nil {
@@ -707,18 +707,6 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 }
 
 func createImagePullSecret(ctx context.Context, clientset *kubernetes.Clientset, namespace string, hostSecret *corev1.Secret) error {
-	edgeDeploySecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, EdgeDeploySecret, metav1.GetOptions{})
-	// if found edge-deploy-secret, skip
-	if err == nil {
-		klog.V(3).Infof("secret edge-deploy-secret exists, skip. edge-deploy-secret: %v", edgeDeploySecret.String())
-		return nil
-	}
-	// if not found edge-deploy-secret, create
-	if client.IgnoreNotFound(err) != nil {
-		klog.Error("get secret edge-deploy-secret error", err.Error())
-		return err
-	}
-
 	edgeSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      EdgeDeploySecret,
@@ -730,10 +718,14 @@ func createImagePullSecret(ctx context.Context, clientset *kubernetes.Clientset,
 		Type:       hostSecret.Type,
 	}
 	klog.V(3).Infof("secret edge-deploy-secret content: %s", edgeSecret.String())
-	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, edgeSecret, metav1.CreateOptions{})
+	secret, err := clientset.CoreV1().Secrets(namespace).Create(ctx, edgeSecret, metav1.CreateOptions{})
 	if err != nil {
-		klog.Error("create secret edge-deploy-secret error", err)
-		return err
+		if apierrors.IsAlreadyExists(err) {
+			klog.Warningf("secret edge-deploy-secret already exists in namespace %, secret content: %s", namespace, secret.String())
+		} else {
+			klog.Errorf("create secret edge-deploy-secret failed in namespace: %s, error: %s", namespace, err.Error())
+			return err
+		}
 	}
 	return nil
 }
