@@ -65,6 +65,7 @@ type EdgeClusterOperator interface {
 	createKSClusterCR(ctx context.Context, name types.NamespacedName, instance *infrav1alpha1.EdgeCluster) error
 	installEdgeCluster(ctx context.Context, name types.NamespacedName, instance *infrav1alpha1.EdgeCluster) error
 	prepareEdgeCluster(ctx context.Context, name types.NamespacedName, instance *infrav1alpha1.EdgeCluster) (kubeconfig []byte, err error)
+	initEdgeCluster(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (err error)
 	installComponents(ctx context.Context, name types.NamespacedName, instance *infrav1alpha1.EdgeCluster) error
 	updateServices(ctx context.Context, name types.NamespacedName, instance *infrav1alpha1.EdgeCluster) error
 	needUpgrade(instance *infrav1alpha1.EdgeCluster) bool
@@ -519,24 +520,31 @@ func (r *Reconciler) prepareEdgeCluster(ctx context.Context, nn types.Namespaced
 		return nil, err
 	}
 
-	err = SaveEdgeClusterKubeconfig(instance.Name, config)
+	return config, nil
+}
+
+func (r *Reconciler) initEdgeCluster(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (err error) {
+	logger := log.FromContext(ctx, "initEdgeCluster", instance.Name)
+	logger.V(3).Info("init edge cluster", "cluster", instance.Name)
+
+	err = SaveEdgeClusterKubeconfig(instance.Name, []byte(instance.Status.KubeConfig))
 	if err != nil {
 		logger.Error(err, "save edge cluster kubeconfig error")
-		return nil, err
+		return err
 	}
-	// TODO 此处的内容需要从组件安装中移出来，优化逻辑
+
 	// 2. 创建 Namespace 和 Pull Image Secret
 	err = r.prepareNamespace(ctx, instance)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = r.prepareImagePullSecret(ctx, instance)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return config, nil
+	return nil
 }
 
 func (r *Reconciler) prepareNamespace(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
@@ -884,6 +892,11 @@ func doReconcile(ctx context.Context, r EdgeClusterOperator, log logr.Logger, in
 			//if err != nil {
 			//	return ctrl.Result{}, err
 			//}
+			err := r.initEdgeCluster(ctx, instance)
+			if err != nil {
+				logger.Error(err, "init EdgeCluster error")
+				return updateStatus(instance, infrav1alpha1.PrepareFailedStatus)
+			}
 			return updateStatus(instance, infrav1alpha1.PrepareSuccessStatus)
 		case infrav1alpha1.PrepareSuccessStatus, infrav1alpha1.ComponentFailedStatus:
 			setStatus(instance, infrav1alpha1.ComponentInstallingStatus)
