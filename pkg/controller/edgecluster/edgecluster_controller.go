@@ -533,12 +533,12 @@ func (r *Reconciler) initEdgeCluster(ctx context.Context, instance *infrav1alpha
 		return err
 	}
 
-	// 2. 创建 Namespace 和 Pull Image Secret
+	// 创建 Namespace
 	err = r.prepareNamespace(ctx, instance)
 	if err != nil {
 		return err
 	}
-
+	// 创建 Pull Image Secret
 	err = r.prepareImagePullSecret(ctx, instance)
 	if err != nil {
 		return err
