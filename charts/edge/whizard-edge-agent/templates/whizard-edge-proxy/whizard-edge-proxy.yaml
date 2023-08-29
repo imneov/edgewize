@@ -32,6 +32,9 @@ spec:
             - --tenant={{ .Values.whizard_edge_proxy.tenant }}
           securityContext:
             runAsUser: 0
+          env:
+            - name: CHRONY_PORT
+              value: {{ .Values.whizard_edge_proxy.chrony_port | quote }}
           ports:
             - name: proxy
               hostPort: 30992

@@ -18,18 +18,19 @@ whizard_agent_proxy:
 whizard_edge_proxy:
   image:
     repository: kubesphere/whizard-edge-proxy
-    tag: "v0.3.3"
+    tag: "v0.3.4"
     digest: ""
     pullPolicy: IfNotPresent
   tenant: ""
   edge_gateway_address: ""
+  chrony_port: ""
   resources:
     limits:
       cpu: 500m
       memory: 256Mi
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 50m
+      memory: 64Mi
 
 prometheus:
   storage:

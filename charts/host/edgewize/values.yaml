@@ -330,6 +330,7 @@ values:
   whizardEdgeAgent:
     whizard_edge_proxy:
       edge_gateway_address: ""
+      chrony_port: ""
     prometheus:
       storage:
         className: ""
