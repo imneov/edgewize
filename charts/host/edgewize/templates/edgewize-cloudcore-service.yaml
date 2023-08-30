@@ -6,4 +6,6 @@ metadata:
   name: edgewize-cloudcore-service
 data:
   edgewize-servers.yaml: ""
-{{- end -}}
+{{- else }}
+{{- toYaml $existing | nindent 0 }}
+{{- end }}
