@@ -1,5 +1,10 @@
+{{- $existing := (lookup "v1" "ConfigMap" "edgewize-system" "edgewize-namespaces-config") -}}
+{{- if not $existing }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: edgewize-namespaces-config
 data: {}
+{{- else }}
+{{- toYaml $existing | nindent 0 }}
+{{- end }}

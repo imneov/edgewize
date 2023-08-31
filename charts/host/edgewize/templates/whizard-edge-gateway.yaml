@@ -48,13 +48,18 @@ spec:
 
 ---
 
+{{- $existing := (lookup "v1" "ConfigMap" "kubesphere-monitoring-system" "whizard-edge-gateway-configmap") -}}
+{{- if not $existing }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: whizard-edge-gateway-configmap
   namespace: kubesphere-monitoring-system
 data:
-  config.yaml: |
+  config.yaml: ""
+{{- else }}
+{{- toYaml $existing | nindent 0 }}
+{{- end }}
 
 ---
 
