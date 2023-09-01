@@ -779,11 +779,11 @@ func (r *Reconciler) InitCert(ctx context.Context, name, namespace string, serve
 }
 
 func (r *Reconciler) applyYaml(kubeconfig, filepath string) error {
-	cmd := fmt.Sprintf("apply -f %s --kubeconfig %s/.kube/%s", filepath, homedir.HomeDir(), kubeconfig)
+	cmd := fmt.Sprintf("apply -f %s --kubeconfig %s/.kube/%s --server-side=true --force-conflicts", filepath, homedir.HomeDir(), kubeconfig)
 	output, err := exec.Command("/usr/local/bin/kubectl", strings.Split(cmd, " ")...).Output()
 	if err != nil {
 		klog.Errorf("apply %s error: %s", filepath, err)
-		klog.V(3).Infof("apply %s output: %s", filepath, string(output))
+		klog.V(3).Infof("apply %s command: %s, output: %s", filepath, cmd, string(output))
 		return err
 	}
 	klog.V(3).Infof("apply %s success", filepath)
