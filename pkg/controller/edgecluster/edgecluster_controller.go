@@ -274,6 +274,8 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 	if err := r.Delete(ctx, edge); err != nil && !apierrors.IsNotFound(err) {
 		logger.Error(err, "delete edge cluster error")
 	}
+
+	StopWatchEdgeClusterResource(instance.Name, instance.Status.KubeConfig, r.Client)
 	return ctrl.Result{}, nil
 }
 
@@ -790,8 +792,9 @@ func (r *Reconciler) needUpgrade(instance *infrav1alpha1.EdgeCluster) bool {
 		if !ok {
 			oldComponent = infrav1alpha1.Component{}
 		}
-		if !reflect.DeepEqual(oldComponent.Values.ToValues(), newComponent.Values.ToValues()) {
+		if !reflect.DeepEqual(oldComponent.Values, newComponent.Values) {
 			upgrade = true
+			break
 		}
 	}
 	return upgrade
@@ -908,9 +911,10 @@ func doReconcile(ctx context.Context, r EdgeClusterOperator, log logr.Logger, in
 
 			return updateStatus(instance, infrav1alpha1.ComponentSuccessStatus)
 		case infrav1alpha1.ComponentSuccessStatus:
-			logger.V(7).Info("EdgeCluster is ready", "name", instanceName,
+			logger.V(5).Info("EdgeCluster is ready", "name", instanceName,
 				"status", instance.Status.Status, "type", instance.Spec.Type, "kubeconfig", instance.Status.KubeConfig,
 				"version", instance.Spec.Version, "components", instance.Spec.Components, "status.components", instance.Status.Components)
+			StartWatchEdgeClusterResource(instance.Name, instance.Status.KubeConfig, r.(*Reconciler).Client)
 			return ctrl.Result{}, nil
 			// ServiceUpdating 应该是后台的服务，不应该放在 Reconcile 的行为中
 			//case infrav1alpha1.ComponentSuccessStatus:
@@ -1171,6 +1175,19 @@ func (r *Reconciler) getClusterClientset(clusterName string) (*kubernetes.Client
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		klog.Errorf("create k8s client from restconfig (clusterName:%s) error: %s", clusterName, err.Error())
+		return nil, err
+	}
+	return clientset, nil
+}
+
+func getClientSetByKubeConfig(kubeconfig string) (*kubernetes.Clientset, error) {
+	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
 		return nil, err
 	}
 	return clientset, nil
