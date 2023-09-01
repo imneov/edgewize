@@ -134,7 +134,9 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 
 	namespace := component.Namespace
 	if instance.Status.KSCore == "" {
-		err := r.applyYaml(instance.Name, "charts/edge/cluster-configuration.yaml")
+		err := r.retryOnError(func() error {
+			return r.applyYaml(instance.Name, "charts/edge/cluster-configuration.yaml")
+		}, 3)
 		if err != nil {
 			klog.Error("apply cluster-configuration.yaml error", err)
 			return err
@@ -167,7 +169,9 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 	instance.Status.KSCore = status
 	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-		err := r.applyYaml(instance.Name, "charts/edge/role-templates.yaml")
+		err = r.retryOnError(func() error {
+			return r.applyYaml(instance.Name, "charts/edge/role-templates.yaml")
+		}, 3)
 		if err != nil {
 			klog.Error("apply role-templates.yaml error", err)
 			return err
@@ -225,7 +229,9 @@ func (r *Reconciler) ReconcileKubefed(ctx context.Context, instance *infrav1alph
 	instance.Status.Kubefed = status
 	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-		err := r.applyYaml(instance.Name, "charts/edge/federatedcrds.yaml")
+		err = r.retryOnError(func() error {
+			return r.applyYaml(instance.Name, "charts/edge/federatedcrds.yaml")
+		}, 3)
 		if err != nil {
 			klog.Error("apply federatedcrds.yaml error", err)
 			return err
@@ -782,4 +788,17 @@ func (r *Reconciler) applyYaml(kubeconfig, filepath string) error {
 	}
 	klog.V(3).Infof("apply %s success", filepath)
 	return nil
+}
+
+func (r *Reconciler) retryOnError(run func() error, maxTimes int) error {
+	var err error
+	for i := 0; i < maxTimes; i++ {
+		if err = run(); err != nil {
+			klog.Errorf("run error, retry..., times: %d/%d", i, maxTimes)
+			continue
+		} else {
+			break
+		}
+	}
+	return err
 }
