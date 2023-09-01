@@ -129,6 +129,12 @@ func UpgradeChart(file, name, namespace, kubeconfig string, values chartutil.Val
 	case release.StatusFailed:
 		return infrav1alpha1.ErrorStatus, nil
 	case release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback:
+		klog.Infof("%s is pending, uninstall and reinstall", name)
+		err := helm.Uninstall(name, namespace, kubeconfig)
+		if err != nil {
+			klog.Errorf("uninstall chart error, err: %v", err)
+			return "", err
+		}
 		return infrav1alpha1.PendingStatus, nil
 	default:
 		return "", fmt.Errorf("invalid status: %s", newStatus)
