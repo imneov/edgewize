@@ -116,10 +116,6 @@ func (r *Reconciler) ReconcileEdgeOtaServer(ctx context.Context, instance *infra
 	instance.Status.EdgeOtaServer = status
 	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-		//err := r.UpdateEdgeOtaService(ctx, namespace, instance, clientset)
-		//if err != nil {
-		//	logger.Info("update edgewize-edge-ota-service error", "error", err)
-		//}
 	}
 	return nil
 
@@ -337,10 +333,6 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 	instance.Status.CloudCore = status
 	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-		//err := r.UpdateCloudCoreService(ctx, "kubeedge", instance, clientset)
-		//if err != nil {
-		//	logger.Info("update edgewize-cloudcore-service error", "error", err)
-		//}
 	}
 	return nil
 }
@@ -561,129 +553,6 @@ func (r *Reconciler) UnregisterWhizardEdgeGatewayRouters(ctx context.Context, in
 	})
 	return
 }
-
-//func (r *Reconciler) UpdateEdgeOtaService(ctx context.Context, namespace string, instance *infrav1alpha1.EdgeCluster, clientset *kubernetes.Clientset) error {
-//	svc, err := clientset.CoreV1().Services(namespace).Get(ctx, "edge-ota-server", metav1.GetOptions{})
-//	if err != nil {
-//		klog.Error("get service edge-ota-server error ", err.Error())
-//		return err
-//	}
-//	cm := &corev1.ConfigMap{}
-//	key := types.NamespacedName{
-//		Namespace: CurrentNamespace,
-//		Name:      "edgewize-cloudcore-service",
-//	}
-//	err = r.Get(ctx, key, cm)
-//	if err != nil {
-//		klog.Error("get configmap edgewize-cloudcore-service error ", err.Error())
-//		return err
-//	}
-//	svcMap := ServiceMap{}
-//	if data, ok := cm.Data[EdgeWizeServers]; ok {
-//		err = yaml.Unmarshal([]byte(data), &svcMap)
-//		if err != nil {
-//			klog.Errorf("invalid %s, err:%v", EdgeWizeServers, err)
-//			//	cm.Data = make(map[string]string) // TODO
-//		}
-//	}
-//	otaServerName := fmt.Sprintf("otaserver-%s", instance.Name)
-//	svcMap[otaServerName] = svc.Spec
-//	data, err := yaml.Marshal(svcMap)
-//	if err != nil {
-//		klog.Error("Marshal svc.Spec error", err.Error())
-//		return err
-//	}
-//	if cm.Data == nil {
-//		cm.Data = make(map[string]string)
-//	}
-//	cm.Data[EdgeWizeServers] = string(data)
-//	err = r.Update(ctx, cm)
-//	if err != nil {
-//		klog.Error("update edgewize-cloudcore-service configmap error ", err.Error())
-//		return err
-//	}
-//	return nil
-//}
-//
-//func (r *Reconciler) UpdateCloudCoreService(ctx context.Context, namespace string, instance *infrav1alpha1.EdgeCluster, clientset *kubernetes.Clientset) error {
-//	svc, err := clientset.CoreV1().Services(namespace).Get(ctx, "cloudcore", metav1.GetOptions{})
-//	if err != nil {
-//		klog.Error("get service cloudcore error ", err.Error())
-//		return err
-//	}
-//	cm := &corev1.ConfigMap{}
-//	key := types.NamespacedName{
-//		Namespace: CurrentNamespace,
-//		Name:      "edgewize-cloudcore-service",
-//	}
-//	err = r.Get(ctx, key, cm)
-//	if err != nil {
-//		klog.Error("get configmap edgewize-cloudcore-service error ", err.Error())
-//		return err
-//	}
-//	svcMap := ServiceMap{}
-//	if data, ok := cm.Data[EdgeWizeServers]; ok {
-//		err = yaml.Unmarshal([]byte(data), &svcMap)
-//		if err != nil {
-//			klog.Errorf("invalid %s, err:%v", EdgeWizeServers, err)
-//			//	cm.Data = make(map[string]string) // TODO
-//		}
-//	}
-//	svcMap[instance.Name] = svc.Spec
-//	data, err := yaml.Marshal(svcMap)
-//	if err != nil {
-//		klog.Error("Marshal svc.Spec error", err.Error())
-//		return err
-//	}
-//	if cm.Data == nil {
-//		cm.Data = make(map[string]string)
-//	}
-//	cm.Data[EdgeWizeServers] = string(data)
-//	err = r.Update(ctx, cm)
-//	if err != nil {
-//		klog.Error("update edgewize-cloudcore-service configmap error ", err.Error())
-//		return err
-//	}
-//	return nil
-//}
-//
-//func (r *Reconciler) DeleteCloudCoreService(ctx context.Context, kubeconfig, namespace string, instance *infrav1alpha1.EdgeCluster) error {
-//	cm := &corev1.ConfigMap{}
-//	key := types.NamespacedName{
-//		Namespace: CurrentNamespace,
-//		Name:      "edgewize-cloudcore-service",
-//	}
-//	err := r.Get(ctx, key, cm)
-//	if err != nil {
-//		klog.Error("get configmap edgewize-cloudcore-service error ", err.Error())
-//		return err
-//	}
-//	svcMap := ServiceMap{}
-//	if data, ok := cm.Data[EdgeWizeServers]; ok {
-//		err = yaml.Unmarshal([]byte(data), &svcMap)
-//		if err != nil {
-//			klog.Errorf("invalid %s, err:%v", EdgeWizeServers, err)
-//			cm.Data = make(map[string]string) // TODO
-//		}
-//	}
-//	klog.V(3).Infof("delete cloudcore service: %s", instance.Name)
-//	delete(svcMap, instance.Name)
-//	data, err := yaml.Marshal(svcMap)
-//	if err != nil {
-//		klog.Error("Marshal svc.Spec error", err.Error())
-//		return err
-//	}
-//	if cm.Data == nil {
-//		cm.Data = make(map[string]string)
-//	}
-//	cm.Data[EdgeWizeServers] = string(data)
-//	err = r.Update(ctx, cm)
-//	if err != nil {
-//		klog.Error("update edgewize-cloudcore-service configmap error ", err.Error())
-//		return err
-//	}
-//	return nil
-//}
 
 func (r *Reconciler) InitCert(ctx context.Context, name, namespace string, serverCertFunc func(crt, key []byte) ([]byte, []byte, error), clientset *kubernetes.Clientset) error {
 	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
