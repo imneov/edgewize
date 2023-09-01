@@ -53,7 +53,7 @@ func StartWatchEdgeClusterResource(clusterName, kubeconfig string, cli client.Cl
 func StopWatchEdgeClusterResource(clusterName, kubeconfig string, cli client.Client) {
 	if value, ok := watchedEdgeCluster.Load(clusterName); ok {
 		stopChan := value.(chan struct{})
-		stopChan <- struct{}{}
+		close(stopChan)
 		watchedEdgeCluster.Delete(clusterName)
 	}
 }
@@ -134,6 +134,7 @@ func run(clientset *kubernetes.Clientset, cli client.Client, stopCh chan struct{
 	// 启动 Informer
 	informer.Run(stopCh)
 	for _, target := range targets {
+		klog.V(3).Infof("clean service, target: %v", target)
 		err := target.Delete(context.Background(), nil, cli)
 		if err != nil {
 			klog.Errorf("update service error, %v", target)
