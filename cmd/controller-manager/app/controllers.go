@@ -17,7 +17,6 @@ limitations under the License.
 package app
 
 import (
-	"github.com/edgewize-io/edgewize/pkg/controller/cluster"
 	"github.com/edgewize-io/edgewize/pkg/controller/edgeappset"
 	"time"
 
@@ -47,19 +46,9 @@ const (
 func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory informers.InformerFactory,
 	cmOptions *options.KubeSphereControllerManagerOptions, stopCh <-chan struct{}) error {
 
-	kubesphereInformer := informerFactory.KubeSphereSharedInformerFactory()
+	//kubesphereInformer := informerFactory.KubeSphereSharedInformerFactory()
 
 	if cmOptions.InHostCluster() {
-		clusterController := cluster.NewClusterController(
-			client.Kubernetes(),
-			client.KubeSphere(),
-			client.Config(),
-			kubesphereInformer.Infra().V1alpha1().Clusters(),
-			DefaultResyncPeriod,
-			DefaultHostClusterName,
-		)
-		addController(mgr, "cluster", clusterController)
-
 		// "edgecluster" controller
 		edgeclusterReconciler := &edgecluster.Reconciler{}
 		addControllerWithSetup(mgr, "edgecluster", edgeclusterReconciler)
