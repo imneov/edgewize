@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	ksclusterv1alpha1 "kubesphere.io/api/cluster/v1alpha1"
 	"os/exec"
@@ -14,7 +13,6 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
-	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/chartutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,11 +65,6 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 	instance.Status.EdgewizeMonitor = status
 	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
-		err = r.RegisterWhizardEdgeGatewayRouters(ctx, instance, clientset)
-		if err != nil {
-			logger.Error(err, "update whizard edge gateway config failed")
-			instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
-		}
 	}
 	return nil
 }
@@ -438,119 +431,6 @@ func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.V
 	whizardEdgeProxyConf := values["whizard_edge_proxy"].(map[string]interface{})
 	whizardEdgeProxyConf["tenant"] = instance.Name
 	values["whizard_edge_proxy"] = whizardEdgeProxyConf
-	return
-}
-
-func (r *Reconciler) RegisterWhizardEdgeGatewayRouters(ctx context.Context, instance *infrav1alpha1.EdgeCluster, clientset *kubernetes.Clientset) (err error) {
-	promService, err := clientset.CoreV1().
-		Services(MonitorNamespace).
-		Get(ctx, MonitorPromServiceName, metav1.GetOptions{})
-	if err != nil {
-		return
-	}
-
-	var routePath string
-	if promService.Spec.ClusterIP != "" {
-		for _, item := range promService.Spec.Ports {
-			if item.Name == "web" {
-				routePath = fmt.Sprintf("http://%s:%d/api/v1/write", promService.Spec.ClusterIP, item.Port)
-				break
-			}
-		}
-	}
-
-	if routePath == "" {
-		err = errors.New("create routePath for whizard edge gateway failed")
-		return
-	}
-
-	err = retry.RetryOnConflict(retry.DefaultBackoff, func() (err error) {
-		edgeGatewayConfigMap := &corev1.ConfigMap{}
-		key := types.NamespacedName{
-			Namespace: MonitorNamespace,
-			Name:      WhizardEdgeGatewayConfigName,
-		}
-		err = r.Get(ctx, key, edgeGatewayConfigMap)
-		if err != nil {
-			return
-		}
-
-		cmFile, ok := edgeGatewayConfigMap.Data["config.yaml"]
-		if !ok {
-			err = errors.New("whizard edge configmap is empty")
-			return
-		}
-
-		cmData := make(map[string]interface{})
-		err = yaml.Unmarshal([]byte(cmFile), cmData)
-		if err != nil {
-			return err
-		}
-
-		routersMap := make(map[string]interface{})
-		value, ok := cmData["routers"]
-		if ok {
-			routersMap = value.(map[string]interface{})
-		}
-
-		routersMap[instance.Name] = routePath
-		cmData["routers"] = routersMap
-
-		newCfgFile, err := yaml.Marshal(cmData)
-		if err != nil {
-			return
-		}
-
-		edgeGatewayConfigMap.Data["config.yaml"] = string(newCfgFile)
-		err = r.Update(ctx, edgeGatewayConfigMap)
-		return
-	})
-	return
-}
-
-func (r *Reconciler) UnregisterWhizardEdgeGatewayRouters(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (err error) {
-	err = retry.RetryOnConflict(retry.DefaultBackoff, func() (err error) {
-		edgeGatewayConfigMap := &corev1.ConfigMap{}
-		key := types.NamespacedName{
-			Namespace: MonitorNamespace,
-			Name:      WhizardEdgeGatewayConfigName,
-		}
-		err = r.Get(ctx, key, edgeGatewayConfigMap)
-		if err != nil {
-			return
-		}
-
-		EdgeGatewayCM := "config.yaml"
-		cmFile, ok := edgeGatewayConfigMap.Data[EdgeGatewayCM]
-		if !ok {
-			err = errors.New("whizard edge configmap is empty")
-			return
-		}
-
-		cmData := make(map[string]interface{})
-		err = yaml.Unmarshal([]byte(cmFile), cmData)
-		if err != nil {
-			return err
-		}
-
-		routersMap := make(map[string]interface{})
-		value, ok := cmData["routers"]
-		if ok {
-			routersMap = value.(map[string]interface{})
-		}
-
-		delete(routersMap, instance.Name)
-		cmData["routers"] = routersMap
-
-		newCfgFile, err := yaml.Marshal(cmData)
-		if err != nil {
-			return
-		}
-
-		edgeGatewayConfigMap.Data[EdgeGatewayCM] = string(newCfgFile)
-		err = r.Update(ctx, edgeGatewayConfigMap)
-		return
-	})
 	return
 }
 

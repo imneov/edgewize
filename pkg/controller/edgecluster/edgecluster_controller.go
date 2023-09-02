@@ -260,11 +260,6 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 	//	return ctrl.Result{}, err
 	//}
 
-	err := r.UnregisterWhizardEdgeGatewayRouters(ctx, instance)
-	if err != nil {
-		logger.Error(err, "remove edge cluster edge gateway route cfg failed", "name", instance.Name)
-	}
-
 	// delete infra cluster when all de resources are deleted
 	edge := &infrav1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -275,7 +270,7 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 		logger.Error(err, "delete edge cluster error")
 	}
 
-	StopWatchEdgeClusterResource(instance.Name, instance.Status.KubeConfig, r.Client)
+	StopWatchEdgeClusterResource(instance.Name)
 	return ctrl.Result{}, nil
 }
 
