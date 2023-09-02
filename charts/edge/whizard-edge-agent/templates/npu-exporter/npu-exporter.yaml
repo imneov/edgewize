@@ -32,8 +32,7 @@ spec:
                     operator: In
                     values:
                       - huawei-Ascend310
-                  - key: node-role.kubernetes.io/edge
-                    operator: Exists
+                  {{- include "whizard-edge-agent.edgeNodeAffinity" . | nindent 18 }}
       containers:
       - name: npu-exporter
         image: "{{ .Values.defaultImageRegistry }}{{ .Values.npu_exporter.image.repository }}:{{ .Values.npu_exporter.image.tag }}"

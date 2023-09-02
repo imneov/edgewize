@@ -25,6 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const AuditEdgeMode = "edge"
+
 func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component, clientset *kubernetes.Clientset) error {
 	logger := log.FromContext(ctx, "ReconcileWhizardEdgeAgent", instance.Name)
 	if instance.Status.KubeConfig == "" {
@@ -40,7 +42,7 @@ func (r *Reconciler) ReconcileWhizardEdgeAgent(ctx context.Context, instance *in
 	values := component.Values.ToValues()
 	err := r.SetMonitorComponent(ctx, values, instance)
 	if err != nil {
-		logger.Error(err, "get gateway svc ip error, need to configure manually", "instance", instance.Name)
+		logger.Error(err, "set monitor component error, need to configure manually", "instance", instance.Name)
 	}
 	klog.V(3).Infof("whizard-edge-agent values: %v, instance: %s", values, instance.Name)
 
@@ -132,7 +134,7 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 		}
 	}
 	values := component.Values.ToValues()
-	err := r.SetKSCoreValues(ctx, values)
+	err := r.SetKSCoreValues(ctx, values, instance)
 	if err != nil {
 		logger.Error(err, "set ks-core values error, skip", "instance", instance.Name)
 	}
@@ -362,6 +364,8 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	} else {
 		upgrade = true
 	}
+
+	r.ManageEdgeNodeAffinity(values, instance)
 	klog.V(3).Infof("fluent-operator upgrade: %v, instance: %s", upgrade, instance.Name)
 	status, err := UpgradeChart("fluent-operator", "fluent-operator", namespace, instance.Name, values, upgrade)
 	if err != nil {
@@ -377,7 +381,15 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	return nil
 }
 
-func (r *Reconciler) SetKSCoreValues(ctx context.Context, values chartutil.Values) error {
+// ManageEdgeNodeAffinity
+// if instance.Spec.Type == "manual", "node-role.kubernetes.io/edge" will be removed from NodeAffinity
+func (r *Reconciler) ManageEdgeNodeAffinity(foConf chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
+	kubeEdgeConf := make(map[string]interface{})
+	kubeEdgeConf["clusterType"] = string(instance.Spec.Type)
+	foConf["kubeedge"] = kubeEdgeConf
+}
+
+func (r *Reconciler) SetKSCoreValues(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) error {
 	ksConfig := &corev1.ConfigMap{}
 	key := types.NamespacedName{
 		Name:      "kubesphere-config",
@@ -387,6 +399,7 @@ func (r *Reconciler) SetKSCoreValues(ctx context.Context, values chartutil.Value
 	if err != nil {
 		return err
 	}
+
 	if data, ok := ksConfig.Data["kubesphere.yaml"]; ok {
 		value, err := chartutil.ReadValues([]byte(data))
 		if err != nil {
@@ -404,8 +417,104 @@ func (r *Reconciler) SetKSCoreValues(ctx context.Context, values chartutil.Value
 			config = configInterface.(map[string]interface{})
 		}
 		config["jwtSecret"] = jwt
+
+		auditingCfg, err := r.GetKSCoreAuditingCfg(ctx, value, instance.Name)
+		if err != nil {
+			klog.Errorf("set auditing config error, err: %v", err)
+			return err
+		}
+
+		if len(auditingCfg) > 0 {
+			err = r.ManageExternalKSCoreAuditing(auditingCfg, instance, values)
+			if err != nil {
+				klog.Errorf("set manual auditing config error, err: %v", err)
+				return err
+			}
+			config["auditing"] = auditingCfg
+		}
 	}
 	return nil
+}
+
+func (r *Reconciler) ManageExternalKSCoreAuditing(auditingCfg map[string]interface{}, instance *infrav1alpha1.EdgeCluster, values chartutil.Values) (err error) {
+	switch instance.Spec.Type {
+	case infrav1alpha1.InstallTypeAuto:
+		return
+	case infrav1alpha1.InstallTypeManual:
+		auditingCfg["webhookUrl"], err = values.PathValue("config.auditing.webhookUrl")
+		if err != nil {
+			klog.Errorf("get manual webhookUrl error, err: %v", err)
+			return
+		}
+
+		auditingCfg["host"], err = values.PathValue("config.auditing.host")
+		if err != nil {
+			klog.Errorf("parse manual opensearch host error, err: %v", err)
+			return
+		}
+	}
+
+	return
+}
+
+func (r *Reconciler) GetKSCoreAuditingCfg(ctx context.Context, ksCfgValue chartutil.Values, clusterName string) (auditingCfg map[string]interface{}, err error) {
+	auditingCfg = make(map[string]interface{})
+	hostAuditing, err := ksCfgValue.Table("auditing")
+	if err != nil {
+		klog.Errorf("parse host auditing cfg error, err: %v", err)
+		return
+	}
+
+	auditingCfg = hostAuditing.AsMap()
+	if len(auditingCfg) == 0 {
+		return
+	}
+
+	auditingCfg["webhookUrl"], err = r.ParseDefaultAuditingWebhookPath(ctx)
+	if err != nil {
+		klog.Errorf("get host auditing webhook svc failed, err: %v", err)
+		return
+	}
+
+	auditingCfg["host"], err = r.ParseOpensearchPath(ctx)
+	if err != nil {
+		klog.Errorf("get host opensearch svc failed, err: %v", err)
+		return
+	}
+
+	auditingCfg["indexPrefix"] = clusterName
+	auditingCfg["mode"] = AuditEdgeMode
+	return
+}
+
+func (r *Reconciler) ParseOpensearchPath(ctx context.Context) (string, error) {
+	osService := &corev1.Service{}
+	key := types.NamespacedName{
+		Name:      "opensearch-cluster-data",
+		Namespace: "kubesphere-logging-system",
+	}
+
+	err := r.Get(ctx, key, osService)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("https://%s:9200", osService.Spec.ClusterIP), nil
+}
+
+func (r *Reconciler) ParseDefaultAuditingWebhookPath(ctx context.Context) (string, error) {
+	webhookService := &corev1.Service{}
+	key := types.NamespacedName{
+		Name:      "kube-auditing-webhook-svc",
+		Namespace: "kubesphere-logging-system",
+	}
+
+	err := r.Get(ctx, key, webhookService)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("https://%s:6443/audit/webhook/event", webhookService.Spec.ClusterIP), nil
 }
 
 func SetCloudCoreValues(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) error {
@@ -420,6 +529,32 @@ func SetCloudCoreValues(values chartutil.Values, instance *infrav1alpha1.EdgeClu
 }
 
 func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
+	whizardAgentConf := map[string]interface{}{"tenant": instance.Name}
+	whizardEdgeProxyConf := values["whizard_edge_proxy"].(map[string]interface{})
+	whizardEdgeProxyConf["tenant"] = instance.Name
+	values["clusterType"] = string(instance.Spec.Type)
+
+	switch instance.Spec.Type {
+	case infrav1alpha1.InstallTypeAuto:
+		whizardAgentConf["gateway_address"], err = r.GetWhizardGatewayInternalAddr(ctx)
+		if err != nil {
+			return
+		}
+	case infrav1alpha1.InstallTypeManual:
+		// push data to Prometheus directly
+		whizardEdgeProxyConf["edge_gateway_address"] = fmt.Sprintf("http://prometheus-k8s.kubesphere-monitoring-system.svc:9090")
+		whizardAgentConf["gateway_address"], err = values.PathValue("whizard_agent_proxy.gateway_address")
+		if err != nil {
+			return
+		}
+	}
+
+	values["whizard_agent_proxy"] = whizardAgentConf
+	values["whizard_edge_proxy"] = whizardEdgeProxyConf
+	return
+}
+
+func (r *Reconciler) GetWhizardGatewayInternalAddr(ctx context.Context) (addr string, err error) {
 	gatewayService := &corev1.Service{}
 	key := types.NamespacedName{
 		Namespace: MonitorNamespace,
@@ -430,17 +565,12 @@ func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.V
 		return
 	}
 
-	whizardAgentConf := map[string]interface{}{"tenant": instance.Name}
 	if gatewayService.Spec.Ports != nil && len(gatewayService.Spec.Ports) > 0 {
 		gatewayIP := gatewayService.Spec.ClusterIP
 		gatewayPort := gatewayService.Spec.Ports[0].Port
-		whizardAgentConf["gateway_address"] = fmt.Sprintf("http://%s:%d", gatewayIP, gatewayPort)
+		addr = fmt.Sprintf("http://%s:%d", gatewayIP, gatewayPort)
 	}
-	values["whizard_agent_proxy"] = whizardAgentConf
 
-	whizardEdgeProxyConf := values["whizard_edge_proxy"].(map[string]interface{})
-	whizardEdgeProxyConf["tenant"] = instance.Name
-	values["whizard_edge_proxy"] = whizardEdgeProxyConf
 	return
 }
 

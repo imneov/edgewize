@@ -12,11 +12,13 @@ metadata:
 spec:
   affinity:
     nodeAffinity:
+      {{- if eq .Values.clusterType "auto" }}
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
           - matchExpressions:
               - key: node-role.kubernetes.io/edge
                 operator: DoesNotExist
+      {{- end }}
       preferredDuringSchedulingIgnoredDuringExecution:
       - preference:
           matchExpressions:

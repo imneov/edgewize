@@ -125,6 +125,7 @@ spec:
       securityContext:
         {{ toYaml .Values.operator.podSecurityContext | nindent 8 }}
       {{- end }}
+      {{- if eq .Values.fluentbit.kubeedge.clusterType "auto" }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -132,3 +133,4 @@ spec:
               - matchExpressions:
                   - key: node-role.kubernetes.io/edge
                     operator: DoesNotExist
+      {{- end }}

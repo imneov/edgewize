@@ -42,10 +42,14 @@ spec:
       securityContext:
         {{- toYaml .Values.dcgm_exporter.podSecurityContext | nindent 8 }}
       {{- end }}
-      {{- if .Values.dcgm_exporter.affinity }}
       affinity:
-        {{- toYaml .Values.dcgm_exporter.affinity | nindent 8 }}
-      {{- end }}
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.present
+                    operator: Exists
+                  {{- include "whizard-edge-agent.edgeNodeAffinity" . | nindent 18 }}
       {{- with .Values.dcgm_exporter.tolerations }}
       tolerations:
         {{- toYaml . | nindent 6 }}
