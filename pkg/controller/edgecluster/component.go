@@ -183,9 +183,13 @@ func (r *Reconciler) ReconcileKSCore(ctx context.Context, instance *infrav1alpha
 				logger.Error(err, "get kubesphere member cluster error")
 				return err
 			}
-			member.Spec.Connection.KubeConfig = []byte(instance.Status.KubeConfig)
-			err = r.Update(ctx, member)
-			return err
+			if string(member.Spec.Connection.KubeConfig) != instance.Status.KubeConfig {
+				member.Spec.Connection.KubeConfig = []byte(instance.Status.KubeConfig)
+				err = r.Update(ctx, member)
+				return err
+			}
+			logger.V(3).Info("no need to update kubesphere member cluster")
+			return nil
 		})
 		if err != nil {
 			return err
