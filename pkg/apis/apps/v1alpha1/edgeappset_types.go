@@ -26,11 +26,12 @@ const (
 	Failed     = "failed"
 )
 const (
-	LabelEdgeAppSet         = "apps.edgewize.io/appset"
-	LabelNodeGroup          = "apps.edgewize.io/nodegroup"
-	LabelNode               = "apps.edgewize.io/node"
-	LabelAppTemplate        = "apps.edgewize.io/apptemplate"
-	LabelAppTemplateVersion = "apps.edgewize.io/apptemplateversion"
+	LabelEdgeAppSet           = "apps.edgewize.io/appset"
+	LabelNodeGroup            = "apps.edgewize.io/nodegroup"
+	LabelNode                 = "apps.edgewize.io/node"
+	LabelAppTemplate          = "apps.edgewize.io/apptemplate"
+	LabelAppTemplateVersion   = "apps.edgewize.io/apptemplateversion"
+	ImagePullSecretAnnotation = "apps.edgewize.io/image-pull-secret-synced"
 )
 
 type NodeSelector struct {

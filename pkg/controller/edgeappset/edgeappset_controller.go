@@ -19,10 +19,14 @@ package edgeappset
 import (
 	"context"
 	"fmt"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/klog/v2"
 	"time"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -148,6 +152,11 @@ func (r *Reconciler) doReconcile(ctx context.Context, instance *appsv1alpha1.Edg
 
 	if instance.Status.WorkloadCount != len(instance.Spec.NodeSelectors) {
 		instance.Status.WorkloadCount = len(instance.Spec.NodeSelectors)
+	}
+	err := r.syncImagePullSecret(instance)
+	if err != nil {
+		klog.Errorf("sync image pull secret failed: %v", err)
+		return ctrl.Result{}, err
 	}
 
 	//if instance.Status.UpdatedWorkloadCount != instance.Status.WorkloadCount {
@@ -275,4 +284,58 @@ func (r *Reconciler) updateDeployments(ctx context.Context, instance *appsv1alph
 		}
 	}
 	return count, nil
+}
+
+func (r *Reconciler) syncImagePullSecret(instance *appsv1alpha1.EdgeAppSet) error {
+	if instance.Annotations == nil {
+		instance.Annotations = map[string]string{}
+	}
+	if instance.Annotations[appsv1alpha1.ImagePullSecretAnnotation] != "" {
+		klog.V(3).Infof("image pull secret already exists, skip sync")
+		return nil
+	}
+
+	logger := r.Logger.WithName("syncImagePullSecret")
+	imagePullSecrets := instance.Spec.DeploymentTemplate.Spec.Template.Spec.ImagePullSecrets
+	if len(imagePullSecrets) == 0 {
+		return nil
+	}
+
+	for _, imagePullSecret := range imagePullSecrets {
+		originSecret := &corev1.Secret{}
+		err := r.Get(context.TODO(), types.NamespacedName{Name: imagePullSecret.Name, Namespace: "default"}, originSecret)
+		if err != nil {
+			logger.Error(err, "get image pull secret failed", "imagePullSecret", imagePullSecret.Name)
+			return err
+		}
+		addedNamespace := map[string]bool{}
+		for _, selector := range instance.Spec.NodeSelectors {
+			if addedNamespace[selector.Project] {
+				continue
+			}
+			targetSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      originSecret.Name,
+					Namespace: selector.Project,
+				},
+				Immutable:  originSecret.Immutable,
+				Data:       originSecret.Data,
+				StringData: originSecret.StringData,
+				Type:       originSecret.Type,
+			}
+			err = r.Create(context.Background(), targetSecret)
+			if err != nil {
+				if apierrors.IsAlreadyExists(err) {
+					logger.Info("image pull secret already exists", "imagePullSecret", imagePullSecret.Name, "namespace", selector.Project)
+				} else {
+					logger.Error(err, "create image pull secret failed", "imagePullSecret", imagePullSecret.Name, "namespace", selector.Project)
+					return err
+				}
+			}
+			addedNamespace[selector.Project] = true
+		}
+	}
+	klog.V(3).Infof("sync image pull secret for instance %s success", instance.Name)
+	instance.Annotations[appsv1alpha1.ImagePullSecretAnnotation] = "true"
+	return nil
 }
