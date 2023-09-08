@@ -32,6 +32,7 @@ spec:
       imagePullSecrets:
       {{ toYaml .Values.imagePullSecrets | indent 8 }}
       {{ end }}
+      {{- if eq .Values.clusterType "auto" }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -39,6 +40,7 @@ spec:
               - matchExpressions:
                   - key: node-role.kubernetes.io/edge
                     operator: DoesNotExist
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service

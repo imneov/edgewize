@@ -127,6 +127,7 @@ spec:
           runAsUser: 65532
       nodeSelector:
         kubernetes.io/os: linux
+      {{- if eq .Values.clusterType "auto" }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -134,6 +135,7 @@ spec:
               - matchExpressions:
                   - key: node-role.kubernetes.io/edge
                     operator: DoesNotExist
+      {{- end }}
       serviceAccountName: kube-state-metrics
       {{ if .Values.imagePullSecrets }}
       imagePullSecrets:

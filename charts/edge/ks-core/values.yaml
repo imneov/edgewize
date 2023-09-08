@@ -61,6 +61,19 @@ config:
     prometheusEndpoint: ""
     thanosRulerEndpoint: http://whizard-agent-proxy.kubesphere-monitoring-system.svc:9090
     thanosRuleResourceLabels: ""
+  auditing:
+    enable: true
+    webhookUrl: ""
+    eventSendersNum: 0
+    eventBatchSize: 0
+    eventBatchInterval: 0s
+    host: ""
+    basicAuth: true
+    username: admin
+    password: admin
+    indexPrefix: ks-whizard-auditing
+    version: ""
+    mode: "edge"
 
 imagePullSecrets: []
 # - name: secretName

@@ -67,6 +67,7 @@ spec:
           runAsUser: 65532
       nodeSelector:
         kubernetes.io/os: linux
+      {{- if eq .Values.clusterType "auto" }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -74,6 +75,7 @@ spec:
               - matchExpressions:
                   - key: node-role.kubernetes.io/edge
                     operator: DoesNotExist
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534

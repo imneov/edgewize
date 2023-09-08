@@ -51,16 +51,6 @@ dcgm_exporter:
 
   podSecurityContext: {}
 
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-          - matchExpressions:
-              - key: nvidia.com/gpu.present
-                operator: Exists
-              - key: node-role.kubernetes.io/edge
-                operator: Exists
-
   tolerations:
     - key: node-role.kubernetes.io/edge
       operator: Exists
@@ -85,3 +75,4 @@ dcgm_exporter:
 
 defaultImageRegistry: ""
 imagePullSecrets: []
+clusterType: "auto"

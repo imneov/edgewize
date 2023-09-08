@@ -204,7 +204,7 @@ whizardEdgeGateway:
   image:
     registry: ""
     repository: kubesphere/whizard-edge-gateway
-    tag: "v0.3.3"
+    tag: "v0.3.4"
     digest: ""
     pullPolicy: IfNotPresent
     pullSecrets: [ ]
@@ -328,7 +328,11 @@ values:
           - edge-deploy-secret
         storageClass: ""
   whizardEdgeAgent:
+    whizard_agent_proxy:
+      gateway_address: ""
     whizard_edge_proxy:
+      image:
+        tag: "v0.3.4"
       edge_gateway_address: ""
       chrony_port: ""
     prometheus:
@@ -411,6 +415,9 @@ values:
       multicluster:
         enabled: true
         clusterRole: member
+      auditing:
+        webhookUrl: "" # auditing webhook url in Host cluster
+        host: "" # opensearch address in Host cluster
     kube_version: v1.23.5+k3s1
     imagePullSecrets:
       - name: edge-deploy-secret

@@ -24,6 +24,19 @@ data:
 {{- end }}
     multicluster:
       clusterRole: member
+    auditing:
+      enable: {{ .Values.config.auditing.enable | default true}}
+      webhookUrl: {{ .Values.config.auditing.webhookUrl }}
+      eventSendersNum: {{ .Values.config.auditing.eventSendersNum | default 0 }}
+      eventBatchSize: {{ .Values.config.auditing.eventBatchSize | default 0 }}
+      eventBatchInterval: {{ .Values.config.auditing.eventBatchInterval | default "0s" }}
+      host: {{ .Values.config.auditing.host }}
+      basicAuth: {{ .Values.config.auditing.basicAuth | default true }}
+      username: {{ .Values.config.auditing.username | default "admin" }}
+      password: {{ .Values.config.auditing.password | default "admin" }}
+      indexPrefix: {{ .Values.config.auditing.indexPrefix }}
+      version: {{ .Values.config.auditing.version | default "" }}
+      mode: {{ .Values.config.auditing.mode | default "edge" }}
     monitoring:
       endpoint: {{ .Values.config.monitoring.endpoint | default "http://whizard-agent-proxy.kubesphere-monitoring-system.svc:9090" }}
     alerting:
@@ -35,6 +48,7 @@ data:
       endpoint: ""
     edgewizeota:
       endpoint: {{ .Values.config.edgewizeota.endpoint | default "http://edge-ota-server.edgewize-system.svc/api/" }}
+
 
     {{- with .Values.config.servicemesh }}
     servicemesh:
