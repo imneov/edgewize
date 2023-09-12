@@ -62,7 +62,7 @@ config:
     thanosRulerEndpoint: http://whizard-agent-proxy.kubesphere-monitoring-system.svc:9090
     thanosRuleResourceLabels: ""
   auditing:
-    enable: true
+    enable: false
     webhookUrl: ""
     eventSendersNum: 0
     eventBatchSize: 0
