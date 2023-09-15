@@ -331,8 +331,6 @@ values:
     whizard_agent_proxy:
       gateway_address: ""
     whizard_edge_proxy:
-      image:
-        tag: "v0.3.4"
       edge_gateway_address: ""
       chrony_port: ""
     prometheus:

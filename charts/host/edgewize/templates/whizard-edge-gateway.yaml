@@ -4,6 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: whizard-edge-gateway
     app.kubernetes.io/name: whizard-edge-gateway
+    app: whizard-edge-gateway
   name: whizard-edge-gateway
   namespace: kubesphere-monitoring-system
 spec:
