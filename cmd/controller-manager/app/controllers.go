@@ -17,8 +17,10 @@ limitations under the License.
 package app
 
 import (
-	"github.com/edgewize-io/edgewize/pkg/controller/edgeappset"
 	"time"
+
+	"github.com/edgewize-io/edgewize/pkg/controller/apptemplate"
+	"github.com/edgewize-io/edgewize/pkg/controller/edgeappset"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
@@ -35,6 +37,7 @@ var allControllers = []string{
 	"edgecluster",
 	"edgeappset",
 	"cluster",
+	"apptemplate",
 }
 
 const (
@@ -56,6 +59,9 @@ func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory i
 		// "edgeappset" controller
 		edgeAppSetReconciler := &edgeappset.Reconciler{}
 		addControllerWithSetup(mgr, "edgeappset", edgeAppSetReconciler)
+		// "apptemplate" controller
+		appTemplateReconciler := &apptemplate.Reconciler{}
+		addControllerWithSetup(mgr, "apptemplate", appTemplateReconciler)
 	}
 
 	// log all controllers process result
