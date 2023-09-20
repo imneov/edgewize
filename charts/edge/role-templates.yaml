@@ -127,7 +127,12 @@ rules:
       - clustermembers
     verbs:
       - list
-
+  - apiGroups:
+      - monitoring.kubesphere.io
+    resources:
+      - namespaces
+    verbs:
+      - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -156,7 +161,12 @@ rules:
       - clustermembers
     verbs:
       - list
-
+  - apiGroups:
+      - monitoring.kubesphere.io
+    resources:
+      - namespaces
+    verbs:
+      - list
 ---
 apiVersion: iam.kubesphere.io/v1alpha2
 kind: GlobalRole
