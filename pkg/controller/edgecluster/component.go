@@ -344,6 +344,11 @@ func (r *Reconciler) ReconcileCloudCore(ctx context.Context, instance *infrav1al
 
 func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component, clientset *kubernetes.Clientset) error {
 	logger := log.FromContext(ctx, "ReconcileCloudCore", instance.Name)
+	if IsClusterTypeManual(instance) {
+		logger.Info("clusterType is manual, skip install fluent-operator")
+		return nil
+	}
+
 	if instance.Status.KubeConfig == "" {
 		logger.Info("kubeconfig is null, skip install fluent-operator")
 		return nil
@@ -365,7 +370,6 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 		upgrade = true
 	}
 
-	r.ManageEdgeNodeAffinity(values, instance)
 	klog.V(3).Infof("fluent-operator upgrade: %v, instance: %s", upgrade, instance.Name)
 	status, err := UpgradeChart("fluent-operator", "fluent-operator", namespace, instance.Name, values, upgrade)
 	if err != nil {
@@ -379,14 +383,6 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 		instance.Status.Components[component.Name] = component
 	}
 	return nil
-}
-
-// ManageEdgeNodeAffinity
-// if instance.Spec.Type == "manual", "node-role.kubernetes.io/edge" will be removed from NodeAffinity
-func (r *Reconciler) ManageEdgeNodeAffinity(foConf chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
-	kubeEdgeConf := make(map[string]interface{})
-	kubeEdgeConf["clusterType"] = string(instance.Spec.Type)
-	foConf["kubeedge"] = kubeEdgeConf
 }
 
 func (r *Reconciler) SetKSCoreValues(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) error {
@@ -441,12 +437,6 @@ func (r *Reconciler) ManageExternalKSCoreAuditing(auditingCfg map[string]interfa
 	case infrav1alpha1.InstallTypeAuto:
 		return
 	case infrav1alpha1.InstallTypeManual:
-		auditingCfg["webhookUrl"], err = values.PathValue("config.auditing.webhookUrl")
-		if err != nil {
-			klog.Errorf("get manual webhookUrl error, err: %v", err)
-			return
-		}
-
 		auditingCfg["host"], err = values.PathValue("config.auditing.host")
 		if err != nil {
 			klog.Errorf("parse manual opensearch host error, err: %v", err)
@@ -470,12 +460,7 @@ func (r *Reconciler) GetKSCoreAuditingCfg(ctx context.Context, ksCfgValue chartu
 		return
 	}
 
-	auditingCfg["webhookUrl"], err = r.ParseDefaultAuditingWebhookPath(ctx)
-	if err != nil {
-		klog.Errorf("get host auditing webhook svc failed, err: %v", err)
-		return
-	}
-
+	auditingCfg["enable"] = false
 	auditingCfg["host"], err = r.ParseOpensearchPath(ctx)
 	if err != nil {
 		klog.Errorf("get host opensearch svc failed, err: %v", err)
@@ -483,7 +468,7 @@ func (r *Reconciler) GetKSCoreAuditingCfg(ctx context.Context, ksCfgValue chartu
 	}
 
 	auditingCfg["indexPrefix"] = clusterName
-	auditingCfg["mode"] = AuditEdgeMode
+	auditingCfg["mode"] = ""
 	return
 }
 
@@ -515,6 +500,10 @@ func (r *Reconciler) ParseDefaultAuditingWebhookPath(ctx context.Context) (strin
 	}
 
 	return fmt.Sprintf("https://%s:6443/audit/webhook/event", webhookService.Spec.ClusterIP), nil
+}
+
+func IsClusterTypeManual(instance *infrav1alpha1.EdgeCluster) bool {
+	return instance.Spec.Type == infrav1alpha1.InstallTypeManual
 }
 
 func SetCloudCoreValues(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) error {

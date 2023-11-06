@@ -25,7 +25,7 @@ data:
     multicluster:
       clusterRole: member
     auditing:
-      enable: {{ .Values.config.auditing.enable | default true}}
+      enable: {{ .Values.config.auditing.enable | default false }}
       webhookUrl: {{ .Values.config.auditing.webhookUrl }}
       eventSendersNum: {{ .Values.config.auditing.eventSendersNum | default 0 }}
       eventBatchSize: {{ .Values.config.auditing.eventBatchSize | default 0 }}
@@ -36,7 +36,7 @@ data:
       password: {{ .Values.config.auditing.password | default "admin" }}
       indexPrefix: {{ .Values.config.auditing.indexPrefix }}
       version: {{ .Values.config.auditing.version | default "" }}
-      mode: {{ .Values.config.auditing.mode | default "edge" }}
+      mode: {{ .Values.config.auditing.mode | default "" }}
     monitoring:
       endpoint: {{ .Values.config.monitoring.endpoint | default "http://whizard-agent-proxy.kubesphere-monitoring-system.svc:9090" }}
     alerting:

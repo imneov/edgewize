@@ -9,6 +9,7 @@ source "${KUBE_ROOT}/hack/lib/init.sh"
 # push to kubesphere with default latest tag
 TAG=${TAG:-latest}
 REPO=${REPO:-kubesphere}
+TARGET_IMAGE=${TARGET_IMAGE:-}
 
 # If set, just building, no pushing
 DRY_RUN=${DRY_RUN:-}
@@ -21,27 +22,38 @@ CONTAINER_BUILDER=${CONTAINER_BUILDER:-build}
 TARGETOS=${TARGETOS:-$(kube::util::host_os)}
 TARGETARCH=${TARGETARCH:-$(kube::util::host_arch)}
 
-${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
-  --build-arg TARGETARCH="${TARGETARCH}" \
-  --build-arg TARGETOS="${TARGETOS}" \
-  -f build/apiserver/Dockerfile \
-  -t "${REPO}"/edgewize-apiserver:"${TAG}" .
+if [[ ${TARGET_IMAGE} == "" || ${TARGET_IMAGE} == "edgewize-apiserver" ]]; then
+  ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
+    --build-arg TARGETARCH="${TARGETARCH}" \
+    --build-arg TARGETOS="${TARGETOS}" \
+    -f build/apiserver/Dockerfile \
+    -t "${REPO}"/edgewize-apiserver:"${TAG}" .
 
+  if [[ -z "${DRY_RUN:-}" ]]; then
+    ${CONTAINER_CLI} push "${REPO}"/edgewize-apiserver:"${TAG}"
+  fi
+fi
 
-${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
-  --build-arg "TARGETARCH=${TARGETARCH}" \
-  --build-arg "TARGETOS=${TARGETOS}" \
-  -f build/controller-manager/Dockerfile \
-  -t "${REPO}"/edgewize-controller-manager:"${TAG}" .
+if [[ ${TARGET_IMAGE} == "" || ${TARGET_IMAGE} == "edgewize-controller-manager" ]]; then
+  ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
+    --build-arg "TARGETARCH=${TARGETARCH}" \
+    --build-arg "TARGETOS=${TARGETOS}" \
+    -f build/controller-manager/Dockerfile \
+    -t "${REPO}"/edgewize-controller-manager:"${TAG}" .
 
-${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
-  --build-arg "TARGETARCH=${TARGETARCH}" \
-  --build-arg "TARGETOS=${TARGETOS}" \
-  -f build/edgewize-gateway/Dockerfile \
-  -t "${REPO}"/edgewize-gateway:"${TAG}" .
+  if [[ -z "${DRY_RUN:-}" ]]; then
+    ${CONTAINER_CLI} push "${REPO}"/edgewize-controller-manager:"${TAG}"
+  fi
+fi
 
-if [[ -z "${DRY_RUN:-}" ]]; then
-  ${CONTAINER_CLI} push "${REPO}"/edgewize-apiserver:"${TAG}"
-  ${CONTAINER_CLI} push "${REPO}"/edgewize-controller-manager:"${TAG}"
-  ${CONTAINER_CLI} push "${REPO}"/edgewize-gateway:"${TAG}"
+if [[ ${TARGET_IMAGE} == "" || ${TARGET_IMAGE} == "edgewize-gateway" ]]; then
+  ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
+    --build-arg "TARGETARCH=${TARGETARCH}" \
+    --build-arg "TARGETOS=${TARGETOS}" \
+    -f build/edgewize-gateway/Dockerfile \
+    -t "${REPO}"/edgewize-gateway:"${TAG}" .
+
+  if [[ -z "${DRY_RUN:-}" ]]; then
+    ${CONTAINER_CLI} push "${REPO}"/edgewize-gateway:"${TAG}"
+  fi
 fi
