@@ -32,6 +32,7 @@ type HTTPSProxyServer struct {
 	serverCAFile, serverCertFile, serverKeyFile string
 	clientCertFile, clientKeyFile               string
 	caKey                                       []byte
+	defaultTransport                            *http.Transport
 }
 
 func NewHTTPSProxyServer(opt *options.ServerRunOptions, proxyPort int, listenPort int, backendServers *ServerEndpoints) *HTTPSProxyServer {
@@ -61,7 +62,7 @@ func (s *HTTPSProxyServer) Run(ctx context.Context) error {
 	// Load the backend server certificate and private key
 	serverCert, err := LoadX509KeyFromFile(s.serverCertFile, s.serverKeyFile)
 	if err != nil {
-		err := fmt.Errorf("Error loading server certificate and private key (%s,%s): %v", s.serverCertFile, s.serverKeyFile, err)
+		err := fmt.Errorf("error loading server certificate and private key (%s,%s): %v", s.serverCertFile, s.serverKeyFile, err)
 		return err
 	}
 
@@ -78,6 +79,8 @@ func (s *HTTPSProxyServer) Run(ctx context.Context) error {
 		TLSConfig: tlsConfig,
 		Handler:   s,
 	}
+
+	s.initHttpsTransport()
 
 	// Listen for incoming HTTPS connections with TLS encryption and handle errors
 	err = server.ListenAndServeTLS("", "")
@@ -131,23 +134,7 @@ func (s *HTTPSProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}
 
-	// Load the client certificate and private key
-	cliCert, err := LoadX509KeyFromFile(s.clientCertFile, s.clientKeyFile)
-	if err != nil {
-		klog.Error("error load client certificate and private key", err)
-		return
-	}
-
-	// Create a new http transport with a custom TLS client configuration
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			// Skip verification of the server's certificate chain
-			InsecureSkipVerify: true,
-			// Set the client certificate to use for authentication
-			Certificates: []tls.Certificate{cliCert},
-		},
-	}
-	proxy.Transport = transport
+	proxy.Transport = s.defaultTransport
 	proxy.ServeHTTP(w, r)
 }
 
@@ -204,4 +191,31 @@ func getHeaderString(header map[string]interface{}, key string) (val string) {
 		return ""
 	}
 	return res
+}
+
+func (s *HTTPSProxyServer) initHttpsTransport() {
+
+	// Create a new http transport with a custom TLS client configuration
+	if s.defaultTransport != nil {
+		return
+	}
+	// Load the client certificate and private key
+	cliCert, err := LoadX509KeyFromFile(s.clientCertFile, s.clientKeyFile)
+	if err != nil {
+		klog.Error("error load client certificate and private key", err)
+		return
+	}
+
+	s.defaultTransport = &http.Transport{
+		TLSClientConfig: &tls.Config{
+			// Skip verification of the server's certificate chain
+			InsecureSkipVerify: true,
+			// Set the client certificate to use for authentication
+			Certificates: []tls.Certificate{cliCert},
+		},
+		MaxIdleConns:          MaxIdleConns,
+		IdleConnTimeout:       IdleConnTimeout,
+		ExpectContinueTimeout: ExpectContinueTimeout,
+		MaxConnsPerHost:       MaxConnsPerHost,
+	}
 }

@@ -42,6 +42,7 @@ type WebsocketProxyServer struct {
 	listenPort                                  int
 	serverCAFile, serverCertFile, serverKeyFile string
 	clientCertFile, clientKeyFile               string
+	defaultTransport                            *http.Transport
 }
 
 func NewWebsocketProxyServer(opt *options.ServerRunOptions, proxyPort int, listenPort int, backendServers *ServerEndpoints) *WebsocketProxyServer {
@@ -63,14 +64,14 @@ func (s *WebsocketProxyServer) Run(ctx context.Context) error {
 	// Load the backend server certificate and private key
 	serverCert, err := LoadX509KeyFromFile(s.serverCertFile, s.serverKeyFile)
 	if err != nil {
-		err := fmt.Errorf("Error loading server certificate and private key (%s,%s): %v", s.serverCertFile, s.serverKeyFile, err)
+		err := fmt.Errorf("error loading server certificate and private key (%s,%s): %v", s.serverCertFile, s.serverKeyFile, err)
 		return err
 	}
 
 	// Load the client CA certificate
 	caCert, err := os.ReadFile(s.serverCAFile)
 	if err != nil {
-		err := fmt.Errorf("Error loading server certificate and private key (%s): %v", s.serverCAFile, err)
+		err := fmt.Errorf("error loading server certificate and private key (%s): %v", s.serverCAFile, err)
 		return err
 	}
 	caCertPool := x509.NewCertPool()
@@ -100,6 +101,7 @@ func (s *WebsocketProxyServer) Run(ctx context.Context) error {
 		Handler:   s,
 	}
 
+	s.initHttpsTransport()
 	// Listen for incoming HTTPS connections with TLS encryption and handle errors
 	err = server.ListenAndServeTLS("", "")
 	if err != nil {
@@ -142,23 +144,7 @@ func (s *WebsocketProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return nil
 	}
 
-	// Load the client certificate and private key
-	cliCert, err := LoadX509KeyFromFile(s.clientCertFile, s.clientKeyFile)
-	if err != nil {
-		klog.Errorf("error load client certificate and private key, %v", err)
-		return
-	}
-
-	// Create a new http transport with a custom TLS client configuration
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			// Skip verification of the server's certificate chain
-			InsecureSkipVerify: true,
-			// Set the client certificate to use for authentication
-			Certificates: []tls.Certificate{cliCert},
-		},
-	}
-	proxy.Transport = transport
+	proxy.Transport = s.defaultTransport
 	proxy.ServeHTTP(w, r)
 }
 
@@ -246,4 +232,31 @@ func LoadX509KeyFromFile(certFile, keyFile string) (tls.Certificate, error) {
 		pem.EncodeToMemory(&pem.Block{Type: certutil.CertificateBlockType, Bytes: certdata}),
 		pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keydata}),
 	)
+}
+
+func (s *WebsocketProxyServer) initHttpsTransport() {
+
+	// Create a new http transport with a custom TLS client configuration
+	if s.defaultTransport != nil {
+		return
+	}
+	// Load the client certificate and private key
+	cliCert, err := LoadX509KeyFromFile(s.clientCertFile, s.clientKeyFile)
+	if err != nil {
+		klog.Error("error load client certificate and private key", err)
+		return
+	}
+
+	s.defaultTransport = &http.Transport{
+		TLSClientConfig: &tls.Config{
+			// Skip verification of the server's certificate chain
+			InsecureSkipVerify: true,
+			// Set the client certificate to use for authentication
+			Certificates: []tls.Certificate{cliCert},
+		},
+		MaxIdleConns:          MaxIdleConns,
+		IdleConnTimeout:       IdleConnTimeout,
+		ExpectContinueTimeout: ExpectContinueTimeout,
+		MaxConnsPerHost:       MaxConnsPerHost,
+	}
 }

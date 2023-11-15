@@ -16,9 +16,10 @@ import (
 
 type HTTPProxyServer struct {
 	sync.RWMutex
-	backendServers *ServerEndpoints
-	proxyPort      int
-	listenPort     int
+	backendServers   *ServerEndpoints
+	proxyPort        int
+	listenPort       int
+	defaultTransport *http.Transport
 }
 
 func NewHTTPProxyServer(opt *options.ServerRunOptions, proxyPort int, listenPort int, backendServers *ServerEndpoints) *HTTPProxyServer {
@@ -37,6 +38,7 @@ func (s *HTTPProxyServer) Run(ctx context.Context) error {
 		Handler: s,
 	}
 
+	s.initHttpsTransport()
 	// Listen for incoming HTTPS connections with TLS encryption and handle errors
 	err := server.ListenAndServe()
 	if err != nil {
@@ -90,9 +92,7 @@ func (s *HTTPProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}
 
-	// Create a new http transport with a custom TLS client configuration
-	transport := &http.Transport{}
-	proxy.Transport = transport
+	proxy.Transport = s.defaultTransport
 	proxy.ServeHTTP(w, r)
 }
 
@@ -113,4 +113,19 @@ func (s *HTTPProxyServer) selectServer(r *http.Request) (*url.URL, error) {
 		klog.Infof("ret, %v", *ret)
 	}
 	return ret, err
+}
+
+func (s *HTTPProxyServer) initHttpsTransport() {
+
+	// Create a new http transport with a custom TLS client configuration
+	if s.defaultTransport != nil {
+		return
+	}
+
+	s.defaultTransport = &http.Transport{
+		MaxIdleConns:          MaxIdleConns,
+		IdleConnTimeout:       IdleConnTimeout,
+		ExpectContinueTimeout: ExpectContinueTimeout,
+		MaxConnsPerHost:       MaxConnsPerHost,
+	}
 }
