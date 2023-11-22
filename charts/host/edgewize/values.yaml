@@ -414,7 +414,6 @@ values:
         enabled: true
         clusterRole: member
       auditing:
-        webhookUrl: "" # auditing webhook url in Host cluster
         host: "" # opensearch address in Host cluster
     kube_version: v1.23.5+k3s1
     imagePullSecrets:

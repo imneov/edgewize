@@ -1,3 +1,4 @@
+{{- if eq .Values.clusterType "auto" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -17,3 +18,4 @@ data:
 
       - action: "keep"
         regex: "machine_npu_nums|machine_npu_name|npu_chip_info_.+|container_npu_.+"
+{{- end }}

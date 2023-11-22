@@ -257,7 +257,6 @@ fluentbit:
 
   kubeedge:
     enable: true
-    clusterType: "auto"
     prometheusRemoteWrite:
       host: "127.0.0.1"
       port: "30992"

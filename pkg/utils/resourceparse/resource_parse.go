@@ -28,7 +28,7 @@ import (
 )
 
 func Parse(reader io.Reader, namespace, rlsName string, local bool) ([]*resource.Info, error) {
-	if klog.V(2) {
+	if klog.V(2).Enabled() {
 		klog.Infof("parse resources, namespace: %s, release: %s", namespace, rlsName)
 		start := time.Now()
 		defer func() {
