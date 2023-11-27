@@ -21,6 +21,7 @@ import (
 
 	"github.com/edgewize-io/edgewize/pkg/controller/apptemplate"
 	"github.com/edgewize-io/edgewize/pkg/controller/edgeappset"
+	"github.com/edgewize-io/edgewize/pkg/controller/vclusternamespace"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
@@ -38,6 +39,7 @@ var allControllers = []string{
 	"edgeappset",
 	"cluster",
 	"apptemplate",
+	"vclusternamespace",
 }
 
 const (
@@ -55,6 +57,8 @@ func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory i
 		// "edgecluster" controller
 		edgeclusterReconciler := &edgecluster.Reconciler{}
 		addControllerWithSetup(mgr, "edgecluster", edgeclusterReconciler)
+		vclusterNamespaceReconciler := &vclusternamespace.Reconciler{}
+		addControllerWithSetup(mgr, "vclusternamespace", vclusterNamespaceReconciler)
 	} else {
 		// "edgeappset" controller
 		edgeAppSetReconciler := &edgeappset.Reconciler{}

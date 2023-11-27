@@ -75,6 +75,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Infra().V1alpha1().Clusters().Informer()}, nil
 	case infrav1alpha1.SchemeGroupVersion.WithResource("edgeclusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Infra().V1alpha1().EdgeClusters().Informer()}, nil
+	case infrav1alpha1.SchemeGroupVersion.WithResource("vclusternamespaces"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Infra().V1alpha1().VClusterNamespaces().Informer()}, nil
 
 	}
 

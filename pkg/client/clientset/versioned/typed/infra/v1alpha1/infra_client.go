@@ -30,6 +30,7 @@ type InfraV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ClustersGetter
 	EdgeClustersGetter
+	VClusterNamespacesGetter
 }
 
 // InfraV1alpha1Client is used to interact with features provided by the infra.edgewize.io group.
@@ -43,6 +44,10 @@ func (c *InfraV1alpha1Client) Clusters() ClusterInterface {
 
 func (c *InfraV1alpha1Client) EdgeClusters(namespace string) EdgeClusterInterface {
 	return newEdgeClusters(c, namespace)
+}
+
+func (c *InfraV1alpha1Client) VClusterNamespaces(namespace string) VClusterNamespaceInterface {
+	return newVClusterNamespaces(c, namespace)
 }
 
 // NewForConfig creates a new InfraV1alpha1Client for the given config.
