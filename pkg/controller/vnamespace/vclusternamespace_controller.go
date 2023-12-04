@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package vclusternamespace
+// vclusternamespace 目录名太长导致goland无法索引，改为vnamespace
+package vnamespace
 
 import (
 	"context"
@@ -23,14 +24,14 @@ import (
 	infrav1alpha1 "github.com/edgewize-io/edgewize/pkg/apis/infra/v1alpha1"
 	"github.com/edgewize-io/edgewize/pkg/utils/sliceutil"
 	"github.com/go-logr/logr"
-	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/kubernetes/pkg/apis/rbac"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -115,7 +116,21 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 }
 
 func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.VClusterNamespace) (ctrl.Result, error) {
+	//logger := r.Logger.WithName("undoReconcile")
 	// do nothing in current version
+	// 删除vnamespace会导致，安装的边缘集群消失，暂不实现
+	//err := r.DeleteNamespace(ctx, instance.Name)
+	//if err != nil {
+	//	logger.Error(err, "delete edge cluster failed", "instance", instance.Name)
+	//	return ctrl.Result{}, err
+	//}
+	//
+	//err = r.RemoveEdgeWizeNamespaceConfig(instance.Namespace)
+	//if err != nil {
+	//	logger.Error(err, "remove edge cluster failed", "instance", instance.Name)
+	//	return ctrl.Result{}, err
+	//}
+
 	return ctrl.Result{}, nil
 }
 
@@ -195,12 +210,12 @@ func (r *Reconciler) createAdminServiceAccount(namespace string) error {
 		logger.Error(err, "create service account failed")
 		return err
 	}
-	role := &rbac.Role{
+	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "admin",
 			Namespace: namespace,
 		},
-		Rules: []rbac.PolicyRule{
+		Rules: []rbacv1.PolicyRule{
 			{
 				APIGroups: []string{"*"},
 				Resources: []string{"*"},
@@ -213,18 +228,18 @@ func (r *Reconciler) createAdminServiceAccount(namespace string) error {
 		logger.Error(err, "create role failed")
 		return err
 	}
-	rolebinding := &rbac.RoleBinding{
+	rolebinding := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "admin",
 			Namespace: namespace,
 		},
-		Subjects: []rbac.Subject{
+		Subjects: []rbacv1.Subject{
 			{
 				Kind: "ServiceAccount",
 				Name: "admin",
 			},
 		},
-		RoleRef: rbac.RoleRef{
+		RoleRef: rbacv1.RoleRef{
 			Kind:     "Role",
 			Name:     "admin",
 			APIGroup: "rbac.authorization.k8s.io",
@@ -269,9 +284,6 @@ func (r *Reconciler) GetAdminKubeConfig(namespace string, serviceAccountName str
 	kubeconfig := &clientcmdapi.Config{
 		APIVersion: "v1",
 		Kind:       "Config",
-		Preferences: clientcmdapi.Preferences{
-			Colors: true,
-		},
 		Clusters: map[string]*clientcmdapi.Cluster{
 			"admin": cluster,
 		},
@@ -282,8 +294,7 @@ func (r *Reconciler) GetAdminKubeConfig(namespace string, serviceAccountName str
 			"admin": ctx,
 		},
 	}
-
-	data, err := yaml.Marshal(kubeconfig)
+	data, err := clientcmd.Write(*kubeconfig)
 	if err != nil {
 		logger.Error(err, "marshal kubeconfig failed")
 		return "", err
@@ -301,6 +312,39 @@ func (r *Reconciler) UpdateEdgeWizeNamespaceConfig(namespace string, kubeconfig 
 		return nil
 	}
 	cm.Data[namespace] = kubeconfig
+	err = r.Update(ctx, cm)
+	if err != nil {
+		logger.Error(err, "update edgewize-namespaces-config failed")
+		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) DeleteNamespace(ctx context.Context, name string) error {
+	logger := r.Logger.WithName("DeleteNamespace")
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	err := r.Delete(ctx, namespace)
+	if err != nil {
+		logger.Error(err, "delete namespace failed", "instance", name)
+		return err
+	}
+	return nil
+}
+
+func (r *Reconciler) RemoveEdgeWizeNamespaceConfig(namespace string) error {
+	logger := r.Logger.WithName("RemoveEdgeWizeNamespaceConfig")
+	ctx := context.Background()
+	cm := &corev1.ConfigMap{}
+	err := r.Get(ctx, types.NamespacedName{Namespace: "edgewize-system", Name: "edgewize-namespaces-config"}, cm)
+	if err != nil {
+		logger.Error(err, "get edgewize-namespaces-config failed")
+		return nil
+	}
+	delete(cm.Data, namespace)
 	err = r.Update(ctx, cm)
 	if err != nil {
 		logger.Error(err, "update edgewize-namespaces-config failed")
