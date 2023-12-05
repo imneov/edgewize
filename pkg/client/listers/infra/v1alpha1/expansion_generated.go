@@ -29,11 +29,3 @@ type EdgeClusterListerExpansion interface{}
 // EdgeClusterNamespaceListerExpansion allows custom methods to be added to
 // EdgeClusterNamespaceLister.
 type EdgeClusterNamespaceListerExpansion interface{}
-
-// VClusterNamespaceListerExpansion allows custom methods to be added to
-// VClusterNamespaceLister.
-type VClusterNamespaceListerExpansion interface{}
-
-// VClusterNamespaceNamespaceListerExpansion allows custom methods to be added to
-// VClusterNamespaceNamespaceLister.
-type VClusterNamespaceNamespaceListerExpansion interface{}

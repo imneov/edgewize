@@ -28,8 +28,6 @@ type Interface interface {
 	Clusters() ClusterInformer
 	// EdgeClusters returns a EdgeClusterInformer.
 	EdgeClusters() EdgeClusterInformer
-	// VClusterNamespaces returns a VClusterNamespaceInformer.
-	VClusterNamespaces() VClusterNamespaceInformer
 }
 
 type version struct {
@@ -51,9 +49,4 @@ func (v *version) Clusters() ClusterInformer {
 // EdgeClusters returns a EdgeClusterInformer.
 func (v *version) EdgeClusters() EdgeClusterInformer {
 	return &edgeClusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// VClusterNamespaces returns a VClusterNamespaceInformer.
-func (v *version) VClusterNamespaces() VClusterNamespaceInformer {
-	return &vClusterNamespaceInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

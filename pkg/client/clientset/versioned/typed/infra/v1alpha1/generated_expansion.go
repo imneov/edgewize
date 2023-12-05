@@ -21,5 +21,3 @@ package v1alpha1
 type ClusterExpansion interface{}
 
 type EdgeClusterExpansion interface{}
-
-type VClusterNamespaceExpansion interface{}

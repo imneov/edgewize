@@ -116,21 +116,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 }
 
 func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.VClusterNamespace) (ctrl.Result, error) {
-	//logger := r.Logger.WithName("undoReconcile")
 	// do nothing in current version
-	// 删除vnamespace会导致，安装的边缘集群消失，暂不实现
-	//err := r.DeleteNamespace(ctx, instance.Name)
-	//if err != nil {
-	//	logger.Error(err, "delete edge cluster failed", "instance", instance.Name)
-	//	return ctrl.Result{}, err
-	//}
-	//
-	//err = r.RemoveEdgeWizeNamespaceConfig(instance.Namespace)
-	//if err != nil {
-	//	logger.Error(err, "remove edge cluster failed", "instance", instance.Name)
-	//	return ctrl.Result{}, err
-	//}
-
 	return ctrl.Result{}, nil
 }
 
@@ -312,39 +298,6 @@ func (r *Reconciler) UpdateEdgeWizeNamespaceConfig(namespace string, kubeconfig 
 		return nil
 	}
 	cm.Data[namespace] = kubeconfig
-	err = r.Update(ctx, cm)
-	if err != nil {
-		logger.Error(err, "update edgewize-namespaces-config failed")
-		return err
-	}
-	return nil
-}
-
-func (r *Reconciler) DeleteNamespace(ctx context.Context, name string) error {
-	logger := r.Logger.WithName("DeleteNamespace")
-	namespace := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-	err := r.Delete(ctx, namespace)
-	if err != nil {
-		logger.Error(err, "delete namespace failed", "instance", name)
-		return err
-	}
-	return nil
-}
-
-func (r *Reconciler) RemoveEdgeWizeNamespaceConfig(namespace string) error {
-	logger := r.Logger.WithName("RemoveEdgeWizeNamespaceConfig")
-	ctx := context.Background()
-	cm := &corev1.ConfigMap{}
-	err := r.Get(ctx, types.NamespacedName{Namespace: "edgewize-system", Name: "edgewize-namespaces-config"}, cm)
-	if err != nil {
-		logger.Error(err, "get edgewize-namespaces-config failed")
-		return nil
-	}
-	delete(cm.Data, namespace)
 	err = r.Update(ctx, cm)
 	if err != nil {
 		logger.Error(err, "update edgewize-namespaces-config failed")

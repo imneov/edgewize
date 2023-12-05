@@ -36,10 +36,6 @@ func (c *FakeInfraV1alpha1) EdgeClusters(namespace string) v1alpha1.EdgeClusterI
 	return &FakeEdgeClusters{c, namespace}
 }
 
-func (c *FakeInfraV1alpha1) VClusterNamespaces(namespace string) v1alpha1.VClusterNamespaceInterface {
-	return &FakeVClusterNamespaces{c, namespace}
-}
-
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeInfraV1alpha1) RESTClient() rest.Interface {
