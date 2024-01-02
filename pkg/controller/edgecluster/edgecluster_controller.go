@@ -90,6 +90,8 @@ var ComponentsNamespaces = []NameNamespace{
 	{"ks-core", "kubesphere-system"},
 	{"edge-ota-server", "edgewize-system"},
 	{"kubefed", "kube-federation-system"},
+	{"eventbus", "edgewize-system"},
+	{"router-manager", "edgewize-system"},
 }
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -991,6 +993,18 @@ func (r *Reconciler) InstallEdgeClusterComponents(ctx context.Context, instance 
 			err = r.ReconcileKubefed(ctx, instance, component, clientset)
 			if err != nil {
 				logger.Error(err, "install kubefed error")
+				return err
+			}
+		case "eventbus":
+			err = r.ReconcileEventbus(ctx, instance, component, clientset)
+			if err != nil {
+				logger.Error(err, "install eventbus error")
+				return err
+			}
+		case "router-manager":
+			err = r.ReconcileRouterManager(ctx, instance, component, clientset)
+			if err != nil {
+				logger.Error(err, "install router-manager error")
 				return err
 			}
 		default:

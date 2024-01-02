@@ -5,10 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	ksclusterv1alpha1 "kubesphere.io/api/cluster/v1alpha1"
 	"os/exec"
 	"reflect"
 	"strings"
+
+	ksclusterv1alpha1 "kubesphere.io/api/cluster/v1alpha1"
 
 	"k8s.io/client-go/util/retry"
 
@@ -379,6 +380,119 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 	}
 	klog.V(3).Infof("fluent-operator status: %s, instance: %s", status, instance.Name)
 	instance.Status.FluentOperator = status
+	if status == infrav1alpha1.RunningStatus {
+		instance.Status.Components[component.Name] = component
+	}
+	return nil
+}
+
+func (r *Reconciler) ReconcileEventbus(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component, clientset *kubernetes.Clientset) error {
+	logger := log.FromContext(ctx, "ReconcileEventbus", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.V(4).Info("kubeconfig is null, skip install eventbus")
+		return nil
+	}
+
+	namespace := component.Namespace
+	if instance.Status.Eventbus == "" {
+
+	}
+	emqxService := &corev1.Service{}
+	key := types.NamespacedName{
+		Name:      "emqx",
+		Namespace: "edgewize-system",
+	}
+
+	err := r.Get(ctx, key, emqxService)
+	if err != nil {
+		return err
+	}
+	values := component.Values.ToValues()
+	values["clusterName"] = instance.Name
+	if emqx, ok := values["emqx"]; ok {
+		if emqxMap, ok := emqx.(map[string]interface{}); ok {
+			emqxMap["clusterName"] = instance.Name
+			emqxMap["messageGatewayInner"] = emqxService.Spec.ClusterIP + ":1883"
+			values["emqx"] = emqxMap
+		}
+	}
+
+	if len(instance.Spec.AdvertiseAddress) == 0 {
+		logger.V(4).Info("advertise address, skip install eventbus")
+		return nil
+	}
+	values["messageGateway"] = fmt.Sprintf("%s:%v", instance.Spec.AdvertiseAddress[0], values["gatewayPort"])
+	klog.V(3).Infof("ReconcileEventbus: %v", values)
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+	if instance.Status.Eventbus == infrav1alpha1.InstallingStatus {
+		klog.V(3).Infof("event-bus is installing, skip upgrade")
+		upgrade = false
+	} else if instance.Status.Eventbus == infrav1alpha1.ErrorStatus {
+		upgrade = true
+	}
+	klog.V(3).Infof("eventbus upgrade: %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("eventbus", "eventbus", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		logger.Error(err, "install eventbus error")
+		instance.Status.RouterManager = infrav1alpha1.ErrorStatus
+		return err
+	}
+	klog.V(3).Infof("eventbus status: %s, instance: %s", status, instance.Name)
+	instance.Status.Eventbus = status
+	if status == infrav1alpha1.RunningStatus {
+		instance.Status.Components[component.Name] = component
+	}
+	return nil
+}
+
+func (r *Reconciler) ReconcileRouterManager(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component, clientset *kubernetes.Clientset) error {
+	logger := log.FromContext(ctx, "ReconcileRouterManager", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.V(4).Info("kubeconfig is null, skip install router-manager")
+		return nil
+	}
+
+	namespace := component.Namespace
+	if instance.Status.RouterManager == "" {
+
+	}
+	values := component.Values.ToValues()
+	klog.V(3).Infof("ReconcileRouterManager: %v", values)
+	values["clusterName"] = instance.Name
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+	if instance.Status.RouterManager == infrav1alpha1.InstallingStatus {
+		klog.V(3).Infof("router-manager is installing, skip upgrade")
+		upgrade = false
+	} else if instance.Status.RouterManager == infrav1alpha1.ErrorStatus {
+		upgrade = true
+	}
+	klog.V(3).Infof("router-manager upgrade: %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("router-manager", "router-manager", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		logger.Error(err, "install router-manager error")
+		instance.Status.RouterManager = infrav1alpha1.ErrorStatus
+		return err
+	}
+	klog.V(3).Infof("router-manager status: %s, instance: %s", status, instance.Name)
+	instance.Status.RouterManager = status
 	if status == infrav1alpha1.RunningStatus {
 		instance.Status.Components[component.Name] = component
 	}

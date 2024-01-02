@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: emqx-config
+spec:
+  template:
+    metadata:
+      name: emqx-config
+    spec:
+      containers:
+      - name: emqx-config
+        image: "{{ .Values.defaultImageRegistry }}{{ .Values.emqxConfigImage.repository }}:{{ .Values.emqxConfigImage.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.emqxConfigImage.pullPolicy }}
+        command:
+            - /usr/local/bin/emqx-config
+        env:
+          - name: CLUSTER_NAME
+            value: {{ .Values.clusterName }}
+          - name: MESSAGE_GATEWAY_INNER
+            value: {{ .Values.messageGatewayInner }}
+          - name: RUNTYPE
+            value: EDGE
+          - name: USERNAME
+            value: {{ .Values.defaultUserName }}
+          - name: PASSWORD
+            value: {{ .Values.defaultPassword }}
+      restartPolicy: Never

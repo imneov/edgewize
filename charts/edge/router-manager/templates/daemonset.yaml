@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "router-manager-edge.fullname" . }}
+  labels:
+    {{- include "router-manager-edge.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "router-manager-edge.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "router-manager-edge.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ template "router-manager-edge.image" . }}
+
+          imagePullPolicy: {{ .Values.routerManagerEdge.image.pullPolicy }}
+          command:
+            - router-manager
+          args:
+            - '-v=2'
+          env:
+            - name: CLUSTER_NAME
+              value: {{ .Values.clusterName }}
+            - name: MQTT_SERVER
+              value: 'tcp://127.0.0.1:1883'
+            - name: RUNTYPE
+              value: EDGE
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      dnsPolicy: ClusterFirst
+      serviceAccountName: {{ include "router-manager.serviceAccountName" . }}
+      hostNetwork: true
+      securityContext: {}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/edge
+                    operator: Exists
+      schedulerName: default-scheduler
+      tolerations:
+        - key: node-role.kubernetes.io/edge
+          operator: Exists
+          effect: NoSchedule
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 20%
+      maxSurge: 0
+  revisionHistoryLimit: 10

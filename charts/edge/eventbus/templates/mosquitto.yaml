@@ -1,0 +1,82 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: eventbus
+  name: eventbus
+  namespace: edgewize-system
+spec:
+  selector:
+    matchLabels:
+      app: eventbus
+  template:
+    metadata:
+      name: eventbus
+      namespace: edgewize-system
+      labels:
+        app: eventbus
+    spec:
+      volumes:
+        - name: mosquitto-config
+          emptyDir: {}
+      initContainers:
+        - name: init-config
+          image: {{ .Values.defaultImageRegistry }}{{ .Values.initconfig.image.repository }}:{{ .Values.initconfig.image.tag }}
+          command:
+            - /usr/local/bin/mosquitto-config
+          args:
+            - '--config=/mosquitto/config/mosquitto.conf'
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: CLUSTER_NAME
+              value: {{ .Values.clusterName }}
+            - name: MESSAGE_GATEWAY
+              value: {{ .Values.messageGateway }}
+            - name: USERNAME
+              value: {{ .Values.defaultUserName }}
+            - name: PASSWORD
+              value: {{ .Values.defaultPassword }}
+          volumeMounts:
+            - name: mosquitto-config
+              mountPath: /mosquitto/config/
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: FallbackToLogsOnError
+          imagePullPolicy: IfNotPresent
+      containers:
+        - name: mosquitto
+          image: {{ .Values.defaultImageRegistry }}{{ .Values.mosquitto.image.repository }}:{{ .Values.mosquitto.image.tag }}
+          ports:
+            - name: proxy
+              hostPort: 1883
+              containerPort: 1883
+              protocol: TCP
+          {{- if .Values.mosquitto.resources }}
+          resources:
+            {{- toYaml .Values.mosquitto.resources | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: mosquitto-config
+              mountPath: /mosquitto/config/
+          imagePullPolicy: IfNotPresent
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      hostNetwork: true
+      {{- if eq .Values.clusterType "auto" }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/edge
+                    operator: Exists
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations:
+      {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}

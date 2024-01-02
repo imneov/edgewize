@@ -138,6 +138,10 @@ type EdgeClusterStatus struct {
 	EdgewizeMonitor Status `json:"edgewizeMonitor,omitempty"`
 
 	EdgeOtaServer Status `json:"edgeOtaServer,omitempty"`
+
+	Eventbus Status `json:"eventbus,omitempty"`
+
+	RouterManager Status `json:"routerManager,omitempty"`
 }
 
 // +genclient
