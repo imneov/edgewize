@@ -242,13 +242,13 @@ func (r *Reconciler) createAdminServiceAccount(namespace string) error {
 func (r *Reconciler) GetAdminKubeConfig(namespace string, serviceAccountName string) (string, error) {
 	logger := r.Logger.WithName("GetAdminKubeConfig")
 	sa := &corev1.ServiceAccount{}
-	err := r.Get(context.Background(), types.NamespacedName{namespace, serviceAccountName}, sa)
+	err := r.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: serviceAccountName}, sa)
 	if err != nil {
 		logger.Error(err, "get service account failed")
 		return "", err
 	}
 	secret := &corev1.Secret{}
-	err = r.Get(context.Background(), types.NamespacedName{namespace, sa.Secrets[0].Name}, secret)
+	err = r.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: sa.Secrets[0].Name}, secret)
 	if err != nil {
 		logger.Error(err, "get secret failed")
 		return "", err
