@@ -32,11 +32,6 @@ jobs:
 
       - name: Set up Docker buildx
         uses: docker/setup-buildx-action@v1
-
-    
-      - name: Log into registry
-        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ vars.DOCKER_USERNAME }} --password-stdin ${{ vars.IMAGE_REPO }}
-        
       
       - name: Build and push docker images
         env:
