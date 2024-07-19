@@ -3,7 +3,7 @@ name: BuildNightlyContainerImage
 on:
     schedule:
       # This is a UTC time
-      - cron: "0 13 * * *"
+      - cron: "0 16 * * *"
     # Keep it only for test purpose, comment it once everything is ok
     workflow_dispatch:
 
