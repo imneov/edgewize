@@ -31,6 +31,7 @@ spec:
               operator: In
               values:
                 - huawei-Ascend310
+                - huawei-Ascend310P
             - key: node-role.kubernetes.io/edge
               operator: Exists
             - key: vcluster.loft.sh/fake-node

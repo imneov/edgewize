@@ -1,0 +1,120 @@
+# Default values for hami-vgpu.
+
+nameOverride: ""
+fullnameOverride: ""
+imagePullSecrets: [ ]
+version: "v2.3.11.2"
+defaultImageRegistry: ""
+
+#Nvidia GPU Parameters
+resourceName: "qingcloud.nvidia.com/vgpu"
+resourceMem: "qingcloud.nvidia.com/vgpumem"
+resourceMemPercentage: "qingcloud.nvidia.com/vgpumem-percentage"
+resourceCores: "qingcloud.nvidia.com/vgpucores"
+resourcePriority: "qingcloud.nvidia.com/vgpupriority"
+
+#MLU Parameters
+mluResourceName: "cambricon.com/vmlu"
+mluResourceMem: "cambricon.com/mlu.smlu.vmemory"
+mluResourceCores: "cambricon.com/mlu.smlu.vcore"
+
+#Hygon DCU Parameters
+dcuResourceName: "qingcloud.hygon.com/dcunum"
+dcuResourceMem: "qingcloud.hygon.com/dcumem"
+dcuResourceCores: "qingcloud.hygon.com/dcucores"
+
+#Adapter Parameters
+adapterResourceName: "qingcloud.adapter.com/adapter"
+
+#Ascend 910B Parameters
+#ascendResourceName: "qingcloud.huawei.com/vnpu"
+ascendResourceName: "qingcloud.adapter.com/adapter"
+
+#Iluvatar GPU Parameters
+iluvatarResourceName: "iluvatar.ai/vgpu"
+iluvatarResourceMem: "iluvatar.ai/vcuda-memory"
+iluvatarResourceCore: "iluvatar.ai/vcuda-core"
+
+
+schedulerName: "hami-scheduler"
+
+podSecurityPolicy:
+  enabled: false
+
+global:
+  gpuHookPath: /usr/local
+  labels: {}
+  annotations: {}
+
+frpClientConfig:
+  serverAddress: ""
+  serverPort: 7500
+  proxyName: ""
+  secretKey: abc001
+  authToken: "qingcloud"
+
+devicePlugin:
+  ascendAicoreMap: "2:vir02_1c,4:vir04_3c,123456:310P3=8=100"
+
+
+scheduler:
+  # @param nodeName defines the node name and the nvidia-vgpu-scheduler-scheduler will schedule to the node.
+  # if we install the nvidia-vgpu-scheduler-scheduler as default scheduler, we need to remove the k8s defualt
+  # scheduler pod from the cluster first, we must specified node name to skip the schedule workflow.
+  nodeName: ""
+  defaultMem: 0
+  defaultCores: 0
+  defaultGPUNum: 1
+  defaultSchedulerPolicy:
+    nodeSchedulerPolicy: binpack
+    gpuSchedulerPolicy: spread
+  metricsBindAddress: ":9395"
+  leaderElect: true
+  frpClientImage: 'fatedier/frpc:v0.59.0'
+  kubeScheduler:
+    # @param enabled indicate whether to run kube-scheduler container in the scheduler pod, it's true by default.
+    enabled: true
+    imageTag: "v1.23.5"
+    image: google_containers/kube-scheduler
+    imagePullPolicy: IfNotPresent
+    extraNewArgs:
+      - --config=/config/config.yaml
+      - -v=4
+    extraArgs:
+      - --policy-config-file=/config/config.json
+      - -v=4
+  extender:
+    image: "aicp/hami"
+    imagePullPolicy: IfNotPresent
+    extraArgs:
+      - --debug
+      - -v=4
+  podAnnotations: {}
+  #nodeSelector: 
+  #  gpu: "on"
+  tolerations: []
+  #serviceAccountName: "hami-vgpu-scheduler-sa"
+  customWebhook:
+    enabled: false
+    # must be an endpoint using https.
+    # should generate host certs here
+    host: 127.0.0.1 # hostname or ip, can be your node'IP if you want to use https://<nodeIP>:<schedulerPort>/<path>
+    port: 31998
+    path: /webhook
+  patch:
+    image: jettech/kube-webhook-certgen:v1.5.2
+    imageNew: aicp/kube-webhook-certgen:v1.1.1
+    imagePullPolicy: IfNotPresent
+    priorityClassName: ""
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    runAsUser: 2000
+  mutatingWebhookConfiguration:
+    failurePolicy: Ignore
+  service:
+    httpPort: 443
+    schedulerPort: 31998
+    monitorPort: 31993
+    labels: {}
+    annotations: {}

@@ -145,6 +145,38 @@ const (
 	EdgeAppSetTag      = "EdgeAppSet"
 	EdgeAppTemplateTag = "EdgeAppTemplate"
 
+	EdgeInferModelTemplateTag   = "EdgeInferModelTemplate"
+	EdgeInferModelDeploymentTag = "EdgeInferModelDeploymentTag"
+
+	ServiceGroupPrefix                 = "servicegroup.edgewize.io/"
+	WebhookModelServerInjectLabel      = "server.modelmesh.edgewize.io/injection"
+	WebhookApplicationInjectLabel      = "client.modelmesh.edgewize.io/injection"
+	WebhookInjectEnable                = "enabled"
+	IMProxyServiceGroupLabel           = "client.modelmesh.edgewize.io/servicegroup"
+	IMServerDeployNameLabel            = "server.modelmesh.edgewize.io/name"
+	IMServerDeployNamespaceLabel       = "server.modelmesh.edgewize.io/namespace"
+	IMServerBrokerHostPortLabel        = "server.modelmesh.edgewize.io/hostport"
+	IMServiceGroupClientAssignedPrefix = "client.servicegroup.edgewize.io/"
+	IMDefaultServiceGroup              = "default"
+	IMServerNextHostPortAnnotation     = "hostport.modelmesh.edgewize.io/next"
+	DefaultMinHostPort                 = 30550
+	DefaultMaxHostPort                 = 31050
+
+	EdgeNodeTypeNPU    = "NPU"
+	EdgeNodeTypeGPU    = "GPU"
+	EdgeNodeTypeCommon = "COMMON"
+
+	EdgeNodeNPULabel            = "accelerator"
+	EdgeNodeGPULabel            = "nvidia"
+	EdgeNodeVirtualizationLabel = "aicp.group/aipods_type"
+	ResTemplateKey              = "resource-template.yaml"
+	ResTemplateConfigMap        = "resource-template"
+	AicpHamiSchedulerName       = "hami-scheduler"
+
+	DefaultEdgewizeNamespace = "edgewize-system"
+
+	DefaultNamespace = "default"
+
 	DashboardTag = "Dashboard"
 )
 

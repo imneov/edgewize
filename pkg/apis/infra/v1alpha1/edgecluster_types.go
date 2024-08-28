@@ -142,6 +142,12 @@ type EdgeClusterStatus struct {
 	Eventbus Status `json:"eventbus,omitempty"`
 
 	RouterManager Status `json:"routerManager,omitempty"`
+
+	ModelMesh Status `json:"modelmesh,omitempty"`
+
+	HamiDevicePlugin Status `json:"hamiDevicePlugin,omitempty"`
+
+	HamiScheduler Status `json:"hamiScheduler,omitempty"`
 }
 
 // +genclient
@@ -157,6 +163,9 @@ type EdgeClusterStatus struct {
 // +kubebuilder:printcolumn:name="EdgewizeMonitor",type=string,priority=1,JSONPath=`.status.edgewizeMonitor`
 // +kubebuilder:printcolumn:name="KS-Core",type=string,priority=1,JSONPath=`.status.ksCore`
 // +kubebuilder:printcolumn:name="Kubefed",type=string,priority=1,JSONPath=`.status.kubefed`
+// +kubebuilder:printcolumn:name="ModelMesh",type=string,priority=1,JSONPath=`.status.modelmesh`
+// +kubebuilder:printcolumn:name="HamiDevicePlugin",type=string,priority=1,JSONPath=`.status.hamiDevicePlugin`
+// +kubebuilder:printcolumn:name="HamiScheduler",type=string,priority=1,JSONPath=`.status.hamiScheduler`
 
 // EdgeCluster is the Schema for the edgeclusters API
 type EdgeCluster struct {

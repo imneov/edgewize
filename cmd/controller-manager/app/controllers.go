@@ -17,10 +17,13 @@ limitations under the License.
 package app
 
 import (
+	"github.com/edgewize-io/edgewize/pkg/controller/imservicegroup"
 	"time"
 
 	"github.com/edgewize-io/edgewize/pkg/controller/apptemplate"
 	"github.com/edgewize-io/edgewize/pkg/controller/edgeappset"
+	"github.com/edgewize-io/edgewize/pkg/controller/imdeployment"
+	"github.com/edgewize-io/edgewize/pkg/controller/imtemplate"
 	"github.com/edgewize-io/edgewize/pkg/controller/vnamespace"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -40,6 +43,9 @@ var allControllers = []string{
 	"cluster",
 	"apptemplate",
 	"vclusternamespace",
+	"imtemplate",
+	"imdeployment",
+	"imservicegroup",
 }
 
 const (
@@ -66,6 +72,15 @@ func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory i
 		// "apptemplate" controller
 		appTemplateReconciler := &apptemplate.Reconciler{}
 		addControllerWithSetup(mgr, "apptemplate", appTemplateReconciler)
+
+		imTemplateReconciler := &imtemplate.Reconciler{}
+		addControllerWithSetup(mgr, "imtemplate", imTemplateReconciler)
+
+		imDeploymentReconciler := &imdeployment.Reconciler{}
+		addControllerWithSetup(mgr, "imdeployment", imDeploymentReconciler)
+
+		imServiceGroupReconciler := &imservicegroup.Reconciler{}
+		addControllerWithSetup(mgr, "imservicegroup", imServiceGroupReconciler)
 	}
 
 	// log all controllers process result

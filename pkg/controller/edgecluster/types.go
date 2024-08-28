@@ -8,7 +8,6 @@ import (
 	"sync"
 )
 
-
 const (
 	CurrentNamespace             = "edgewize-system"
 	controllerName               = "edgecluster-controller"
@@ -20,6 +19,7 @@ const (
 	EdgeDeploySecret             = "edge-deploy-secret"
 	MonitorPromServiceName       = "prometheus-k8s"
 	WhizardEdgeGatewayConfigName = "whizard-edge-gateway-configmap"
+	FrpServerServiceName         = "frps"
 )
 
 type ServiceMap map[string]corev1.ServiceSpec

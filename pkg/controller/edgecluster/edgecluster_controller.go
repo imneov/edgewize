@@ -92,6 +92,9 @@ var ComponentsNamespaces = []NameNamespace{
 	{"kubefed", "kube-federation-system"},
 	{"eventbus", "edgewize-system"},
 	{"router-manager", "edgewize-system"},
+	{"modelmesh", "edgewize-system"},
+	{"hami-device-plugin", "hami-device"},
+	{"hami-scheduler", "hami"},
 }
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -1005,6 +1008,24 @@ func (r *Reconciler) InstallEdgeClusterComponents(ctx context.Context, instance 
 			err = r.ReconcileRouterManager(ctx, instance, component, clientset)
 			if err != nil {
 				logger.Error(err, "install router-manager error")
+				return err
+			}
+		case "modelmesh":
+			err = r.ReconcileModelMesh(ctx, instance, component, clientset)
+			if err != nil {
+				logger.Error(err, "install router-manager error")
+				return err
+			}
+		case "hami-device-plugin":
+			err = r.ReconcileHamiDevicePlugin(ctx, instance, component, clientset)
+			if err != nil {
+				logger.Error(err, "install hami-device-plugin error")
+				return err
+			}
+		case "hami-scheduler":
+			err = r.ReconcileHamiScheduler(ctx, instance, component, clientset)
+			if err != nil {
+				logger.Error(err, "install hami-scheduler error")
 				return err
 			}
 		default:

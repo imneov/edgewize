@@ -1,0 +1,152 @@
+# Default values for model-service-controller.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+replicaCount: 1
+
+imagePullPolicy: "IfNotPresent"
+imageRegistry: "harbor.dev.thingsdao.com"
+imagePullSecrets:
+  - name: edge-deploy-secret
+
+
+imageReference:
+  modelMeshMsc:
+    name: "edgewize/model-mesh-msc"
+    tag: "20240919"
+    imagePullSecrets: []
+  modelMeshProxy:
+    name: "edgewize/model-mesh-proxy"
+    tag: "20240919"
+  modelMeshBroker:
+    name: "edgewize/model-mesh-broker"
+    tag: "20240919"
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8444
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+   limits:
+     cpu: 500m
+     memory: 512Mi
+   requests:
+     cpu: 100m
+     memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: node-role.kubernetes.io/edge
+              operator: DoesNotExist
+
+modelMeshProxy:
+  conf:
+    base:
+      profpathprefix: debug
+      loglevel: info
+      profenable: false
+      tracerenable: false
+      whitelist: [ ]
+      endpoints: [ ]
+      baseconfig: ""
+    proxyServer:
+      addr: :8080
+      timeout: 1s
+      idletimeout: 1m0s
+      maxlifetime: 2h0m0s
+      forceclosewait: 20s
+      keepaliveinterval: 1m0s
+      keepalivetimeout: 20s
+      maxmessagesize: 52428800
+      maxconcurrentstreams: 1024
+      enableopentracing: false
+    dispatch:
+      queue:
+        size: 10
+      client:
+        addr: 127.0.0.1:8010
+        timeout: 5s
+    serviceGroup:
+      name: pay
+
+modelMeshBroker:
+  port: 8010
+  hostPort: 30550
+  conf:
+    promMetrics:
+      addr: 0.0.0.0:5501
+      scrapeInterval: 1m
+    base:
+      profpathprefix: debug
+      loglevel: info
+      profenable: false
+      tracerenable: false
+      whitelist: [ ]
+      endpoints: [ ]
+      baseconfig: ""
+    brokerServer:
+      addr: 0.0.0.0:8010
+      timeout: 3s
+      idletimeout: 1m0s
+      maxlifetime: 2h0m0s
+      forceclosewait: 20s
+      keepaliveinterval: 1m0s
+      keepalivetimeout: 20s
+      maxmessagesize: 52428800
+      maxconcurrentstreams: 1024
+      enableopentracing: false
+    schedule:
+      method: WRR
+    queue:
+      size: 10
+    dispatch:
+      queue:
+        size: 10
+      client:
+        addr: 127.0.0.1:5500
+        timeout: 5s
+    serviceGroups:
+      - name: default
+        weight: 100

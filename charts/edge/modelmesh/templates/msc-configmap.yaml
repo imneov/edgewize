@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: model-mesh-msc
+  namespace: {{ .Release.Namespace }}
+data:
+  model-mesh-msc.yaml: |
+    namespace: {{ .Release.Namespace }}
+    webhookServiceName: {{ include "model-service-controller.fullname" . }}
+    webhookPort: 8444
+    proxySidecar:
+      containers:
+        - name: model-mesh-proxy
+          image: "{{ template "model-mesh-proxy.image" . }}"
+          imagePullPolicy: "{{ .Values.imagePullPolicy }}"
+          volumeMounts:
+            - name: proxy-config
+              mountPath: /etc/model-mesh-proxy
+      volumes:
+        - name: proxy-config
+          configMap:
+            name:  model-mesh-proxy
+
+    brokerSidecar:
+      containers:
+        - name: model-mesh-broker
+          image: "{{ template "model-mesh-broker.image" . }}"
+          imagePullPolicy: "{{ .Values.imagePullPolicy }}"
+          env:
+            - name: CONTAINER_NAME
+              value: "broker"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          ports:
+            - name: broker-grpc
+              containerPort: {{ .Values.modelMeshBroker.port | default 8010 }}
+              protocol: TCP
+              hostPort: {{ .Values.modelMeshBroker.hostPort | default 30550 }}
+          volumeMounts:
+            - name: broker-config
+              mountPath: /etc/model-mesh-broker
+            - name: metrics
+              mountPath: /data/broker-metrics
+              subPathExpr: $(POD_NAME)
+      volumes:
+        - name: metrics
+          hostPath:
+            path: /data/broker-metrics
+            type: DirectoryOrCreate
+        - name: broker-config
+          configMap:
+            name: model-mesh-broker

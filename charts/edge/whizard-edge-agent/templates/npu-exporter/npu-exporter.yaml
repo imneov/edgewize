@@ -32,6 +32,7 @@ spec:
                     operator: In
                     values:
                       - huawei-Ascend310
+                      - huawei-Ascend310P
                   {{- include "whizard-edge-agent.edgeNodeAffinity" . | nindent 18 }}
       containers:
       - name: npu-exporter
