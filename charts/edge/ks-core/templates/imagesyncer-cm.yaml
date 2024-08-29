@@ -1,0 +1,180 @@
+﻿kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: imagesyncer
+data:
+  imagesyncer: |-
+    apiVersion: apps/v1
+    kind: DaemonSet
+    metadata:
+      name: {{.instance}}
+      namespace: kubesphere-system
+      labels:
+        app.kubernetes.io/name: imagesyncer
+        app.kubernetes.io/instance: {{.instance}}
+      ownerReferences:
+      - apiVersion: infra.kubesphere.io/v1alpha1
+        blockOwnerDeletion: true
+        controller: true
+        kind: NodeGroup
+        name: {{.nodegroup}}
+        uid: {{.nodegroupUid}}
+    spec:
+      updateStrategy:
+        {}
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: imagesyncer
+          app.kubernetes.io/instance: {{.instance}}
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: imagesyncer
+            app.kubernetes.io/instance: {{.instance}}
+        spec:
+          securityContext:
+            {}
+          priorityClassName: system-node-critical
+          initContainers:
+          - name: configuration
+            image: "ghcr.io/spegel-org/spegel@sha256:2b027756efd44a14bd2973b7650e54cc9ce54a0852357366f5f96c6dc0079a2c"
+            imagePullPolicy: IfNotPresent
+            securityContext:
+                {}
+            args:
+              - configuration
+              - --log-level=WARN
+              - --containerd-registry-config-path=/etc/containerd/certs.d
+              - --registries
+              - "https://cgr.dev"
+              - "https://docker.io"
+              - "https://ghcr.io"
+              - "https://quay.io"
+              - "https://mcr.microsoft.com"
+              - "https://public.ecr.aws"
+              - "https://gcr.io"
+              - "https://registry.k8s.io"
+              - "https://k8s.gcr.io"
+              - "https://lscr.io"
+              - "https://harbor.dev.thingsdao.com"
+              - --mirror-registries
+              - http://$(NODE_IP):30020
+              - --resolve-tags=true
+              - --append-mirrors=false
+            env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            volumeMounts:
+              - name: containerd-config
+                mountPath: /etc/containerd/certs.d
+          containers:
+          - name: registry
+            image: "ghcr.io/spegel-org/spegel@sha256:2b027756efd44a14bd2973b7650e54cc9ce54a0852357366f5f96c6dc0079a2c"
+            imagePullPolicy: IfNotPresent
+            securityContext:
+                {}
+            args:
+              - registry
+              - --log-level=WARN
+              - --mirror-resolve-retries=3
+              - --mirror-resolve-timeout=20ms
+              - --registry-addr=:30020
+              - --router-addr=:5001
+              - --metrics-addr=:9099
+              - --registries
+              - "https://cgr.dev"
+              - "https://docker.io"
+              - "https://ghcr.io"
+              - "https://quay.io"
+              - "https://mcr.microsoft.com"
+              - "https://public.ecr.aws"
+              - "https://gcr.io"
+              - "https://registry.k8s.io"
+              - "https://k8s.gcr.io"
+              - "https://lscr.io"
+              - "https://harbor.dev.thingsdao.com"
+              - --containerd-sock=/run/containerd/containerd.sock
+              - --containerd-namespace=k8s.io
+              - --containerd-registry-config-path=/etc/containerd/certs.d
+              - --bootstrap-kind=http
+              - --http-bootstrap-addr=0.0.0.0:30018
+              - --http-bootstrap-peer=http://{{.bootstrapPeer}}:30018/id
+              - --leader-election-namespace=spegel
+              - --leader-election-name=spegel-leader-election
+              - --resolve-latest-tag=true
+              - --local-addr=$(NODE_IP):30020
+              - --containerd-content-path=/var/lib/containerd/io.containerd.content.v1.content
+            env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            ports:
+              - name: registry
+                containerPort: 30020
+                hostPort: 30020
+                protocol: TCP
+              - name: test
+                containerPort: 30018 
+                hostPort: 30018 
+                protocol: TCP
+              - name: router
+                containerPort: 5001
+                protocol: TCP
+              - name: metrics
+                containerPort: 9099
+                protocol: TCP
+            # Startup may take a bit longer on bootsrap as Pods need to find each other.
+            # This is why the startup proben is a bit more forgiving, while hitting the endpoint more often.
+            startupProbe:
+              periodSeconds: 3
+              failureThreshold: 60
+              httpGet:
+                path: /healthz
+                port: registry
+            readinessProbe:
+              httpGet:
+                path: /healthz
+                port: registry
+            volumeMounts:
+              - name: containerd-sock
+                mountPath: /run/containerd/containerd.sock
+              - name: containerd-content
+                mountPath: /var/lib/containerd/io.containerd.content.v1.content
+                readOnly: true
+            resources:
+              {}
+          hostNetwork: true
+          volumes:
+            - name: containerd-sock
+              hostPath:
+                path: /run/containerd/containerd.sock
+                type: Socket
+            - name: containerd-content
+              hostPath:
+                path: /var/lib/containerd/io.containerd.content.v1.content
+                type: Directory
+            - name: containerd-config
+              hostPath:
+                path: /etc/containerd/certs.d
+                type: DirectoryOrCreate
+          nodeSelector:
+            kubernetes.io/os: linux
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: apps.edgewize.io/nodegroup
+                    operator: In
+                    values:
+                    - {{.nodegroup}}
+          tolerations:
+            - key: CriticalAddonsOnly
+              operator: Exists
+            - effect: NoExecute
+              operator: Exists
+            - effect: NoSchedule
+              operator: Exists
