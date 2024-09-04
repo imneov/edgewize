@@ -45,15 +45,3 @@ if [[ ${TARGET_IMAGE} == "" || ${TARGET_IMAGE} == "edgewize-controller-manager" 
     ${CONTAINER_CLI} push "${REPO}"/edgewize-controller-manager:"${TAG}"
   fi
 fi
-
-if [[ ${TARGET_IMAGE} == "" || ${TARGET_IMAGE} == "edgewize-gateway" ]]; then
-  ${CONTAINER_CLI} "${CONTAINER_BUILDER}" \
-    --build-arg "TARGETARCH=${TARGETARCH}" \
-    --build-arg "TARGETOS=${TARGETOS}" \
-    -f build/edgewize-gateway/Dockerfile \
-    -t "${REPO}"/edgewize-gateway:"${TAG}" .
-
-  if [[ -z "${DRY_RUN:-}" ]]; then
-    ${CONTAINER_CLI} push "${REPO}"/edgewize-gateway:"${TAG}"
-  fi
-fi

@@ -36,11 +36,3 @@ ${CONTAINER_CLI} ${CONTAINER_BUILDER} \
   ${PUSH} \
   -f build/controller-manager/Dockerfile \
   -t "${REPO}"/edgewize-controller-manager:"${TAG}" .
-
-# shellcheck disable=SC2086 # intended splitting of CONTAINER_BUILDER
-${CONTAINER_CLI} ${CONTAINER_BUILDER} \
-  --platform ${PLATFORMS} \
-  ${PUSH} \
-  -f build/edgewize-gateway/Dockerfile \
-  -t "${REPO}"/edgewize-gateway:"${TAG}" .
-
