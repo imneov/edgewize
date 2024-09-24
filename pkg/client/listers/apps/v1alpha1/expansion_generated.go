@@ -33,3 +33,19 @@ type EdgeAppSetListerExpansion interface{}
 // EdgeAppSetNamespaceListerExpansion allows custom methods to be added to
 // EdgeAppSetNamespaceLister.
 type EdgeAppSetNamespaceListerExpansion interface{}
+
+// InferModelDeploymentListerExpansion allows custom methods to be added to
+// InferModelDeploymentLister.
+type InferModelDeploymentListerExpansion interface{}
+
+// InferModelDeploymentNamespaceListerExpansion allows custom methods to be added to
+// InferModelDeploymentNamespaceLister.
+type InferModelDeploymentNamespaceListerExpansion interface{}
+
+// InferModelTemplateListerExpansion allows custom methods to be added to
+// InferModelTemplateLister.
+type InferModelTemplateListerExpansion interface{}
+
+// InferModelTemplateVersionListerExpansion allows custom methods to be added to
+// InferModelTemplateVersionLister.
+type InferModelTemplateVersionListerExpansion interface{}

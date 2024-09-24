@@ -31,6 +31,9 @@ type AppsV1alpha1Interface interface {
 	AppTemplatesGetter
 	AppTemplateVersionsGetter
 	EdgeAppSetsGetter
+	InferModelDeploymentsGetter
+	InferModelTemplatesGetter
+	InferModelTemplateVersionsGetter
 }
 
 // AppsV1alpha1Client is used to interact with features provided by the apps.edgewize.io group.
@@ -48,6 +51,18 @@ func (c *AppsV1alpha1Client) AppTemplateVersions() AppTemplateVersionInterface {
 
 func (c *AppsV1alpha1Client) EdgeAppSets(namespace string) EdgeAppSetInterface {
 	return newEdgeAppSets(c, namespace)
+}
+
+func (c *AppsV1alpha1Client) InferModelDeployments(namespace string) InferModelDeploymentInterface {
+	return newInferModelDeployments(c, namespace)
+}
+
+func (c *AppsV1alpha1Client) InferModelTemplates() InferModelTemplateInterface {
+	return newInferModelTemplates(c)
+}
+
+func (c *AppsV1alpha1Client) InferModelTemplateVersions() InferModelTemplateVersionInterface {
+	return newInferModelTemplateVersions(c)
 }
 
 // NewForConfig creates a new AppsV1alpha1Client for the given config.

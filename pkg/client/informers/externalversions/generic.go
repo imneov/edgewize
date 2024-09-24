@@ -69,12 +69,20 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().AppTemplateVersions().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("edgeappsets"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().EdgeAppSets().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("infermodeldeployments"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().InferModelDeployments().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("infermodeltemplates"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().InferModelTemplates().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("infermodeltemplateversions"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().InferModelTemplateVersions().Informer()}, nil
 
 		// Group=infra.edgewize.io, Version=v1alpha1
 	case infrav1alpha1.SchemeGroupVersion.WithResource("clusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Infra().V1alpha1().Clusters().Informer()}, nil
 	case infrav1alpha1.SchemeGroupVersion.WithResource("edgeclusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Infra().V1alpha1().EdgeClusters().Informer()}, nil
+	case infrav1alpha1.SchemeGroupVersion.WithResource("vclusternamespaces"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Infra().V1alpha1().VClusterNamespaces().Informer()}, nil
 
 	}
 

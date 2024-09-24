@@ -49,6 +49,18 @@ spec:
       name: Kubefed
       priority: 1
       type: string
+    - jsonPath: .status.modelmesh
+      name: ModelMesh
+      priority: 1
+      type: string
+    - jsonPath: .status.hamiDevicePlugin
+      name: HamiDevicePlugin
+      priority: 1
+      type: string
+    - jsonPath: .status.hamiScheduler
+      name: HamiScheduler
+      priority: 1
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -70,11 +82,14 @@ spec:
             description: EdgeClusterSpec defines the desired state of EdgeCluster
             properties:
               advertiseAddress:
+                description: AdvertiseAddress is the advertise address of the Cloudcore
+                  in edge cluster, in manual mode
                 items:
                   type: string
                 type: array
               components:
-                description: Components will install in the edgecluster
+                description: Components will install in the edgecluster , in auto
+                  mode
                 items:
                   properties:
                     dependencies:
@@ -95,7 +110,7 @@ spec:
                 type: array
               distro:
                 description: 'Distro is Kubernetes distro to use for the virtual cluster.
-                  Allowed distros: k3s, k0s, k8s, eks (default "k3s")'
+                  Allowed distros: k3s, k0s, k8s, eks (default "k3s"), in auto mode'
                 type: string
               hostCluster:
                 description: HostCluster is the cluster in which the edge cluster
@@ -104,21 +119,23 @@ spec:
                 type: string
               kubeConfig:
                 description: KubeConfig is the edge cluster kubeconfig, encode by
-                  base64
+                  base64 , in manual,auto mode
                 format: byte
                 type: string
               location:
                 description: Location is the location of the current cluster. TODO
                 type: string
               namespace:
-                description: Namespace is the target namespace where the edge cluster
-                  will be installed
+                description: Namespace is the target namespace in the metacluster
+                  where the edge cluster will be installed , in auto mode
                 type: string
               type:
-                description: Type is the edge cluster installation method
+                description: Type is the edge cluster installation method, auto or
+                  manual
                 type: string
               version:
-                description: Version is the edge cluster distro version. TODO
+                description: Version is the edge cluster distro version. TODO, in
+                  auto mode
                 type: string
             type: object
           status:
@@ -126,6 +143,10 @@ spec:
             properties:
               cloudcore:
                 type: string
+              componentStatus:
+                additionalProperties:
+                  type: string
+                type: object
               components:
                 additionalProperties:
                   properties:
@@ -153,7 +174,13 @@ spec:
                 type: string
               edgewizeMonitor:
                 type: string
+              eventbus:
+                type: string
               fluentOperator:
+                type: string
+              hamiDevicePlugin:
+                type: string
+              hamiScheduler:
                 type: string
               ksCore:
                 type: string
@@ -162,6 +189,10 @@ spec:
                   base64
                 type: string
               kubefed:
+                type: string
+              modelmesh:
+                type: string
+              routerManager:
                 type: string
               status:
                 description: Status is the edge cluster release installation status

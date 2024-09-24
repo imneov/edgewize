@@ -108,6 +108,86 @@ func AddToContainer(container *restful.Container, ksclient kubesphere.Interface,
 		Returns(http.StatusOK, kapi.StatusOK, appsv1alpha1.AppTemplate{}).
 		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeAppTemplateTag}))
 
+	ws.Route(ws.GET("/workspaces/{workspace}/infermodeltemplates").
+		To(handler.handleListWorkspaceInferModelTemplates).
+		Param(ws.QueryParameter(query.ParameterName, "name used to do filtering").Required(false)).
+		Param(ws.QueryParameter(query.ParameterPage, "page").Required(false).DataFormat("page=%d").DefaultValue("page=1")).
+		Param(ws.QueryParameter(query.ParameterLimit, "limit").Required(false)).
+		Param(ws.QueryParameter(query.ParameterAscending, "sort parameters, e.g. reverse=true").Required(false).DefaultValue("ascending=false")).
+		Param(ws.QueryParameter(query.ParameterOrderBy, "sort parameters, e.g. sortBy=createTime")).
+		Returns(http.StatusOK, kapi.StatusOK, kapi.ListResult{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeInferModelTemplateTag}))
+
+	ws.Route(ws.GET("/workspaces/{workspace}/infermodeltemplates/{name}").
+		To(handler.handleGetWorkSpaceInferModelTemplate).
+		Doc("get the infer model template with the specified name").
+		Returns(http.StatusOK, kapi.StatusOK, appsv1alpha1.InferModelTemplate{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeInferModelTemplateTag}))
+
+	ws.Route(ws.GET("/infermodeltemplates").
+		To(handler.handleListInferModelTemplates).
+		Doc("list all imtemplates").
+		Param(ws.QueryParameter(query.ParameterName, "name used to do filtering").Required(false)).
+		Param(ws.QueryParameter(query.ParameterPage, "page").Required(false).DataFormat("page=%d").DefaultValue("page=1")).
+		Param(ws.QueryParameter(query.ParameterLimit, "limit").Required(false)).
+		Param(ws.QueryParameter(query.ParameterAscending, "sort parameters, e.g. reverse=true").Required(false).DefaultValue("ascending=false")).
+		Param(ws.QueryParameter(query.ParameterOrderBy, "sort parameters, e.g. orderBy=createTime")).
+		Returns(http.StatusOK, kapi.StatusOK, kapi.ListResult{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeInferModelTemplateTag}))
+
+	ws.Route(ws.GET("/infermodeltemplates/{name}").
+		To(handler.handleGetInferModelTemplate).
+		Doc("get the apptemplate with the specified name").
+		Returns(http.StatusOK, kapi.StatusOK, appsv1alpha1.AppTemplate{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeInferModelTemplateTag}))
+
+	ws.Route(ws.GET("/infermodeldeployments").
+		To(handler.handleListAllInferModelDeployments).
+		Doc("list infer model deployments in the all namespace").
+		Param(ws.QueryParameter(query.ParameterName, "name used to do filtering").Required(false)).
+		Param(ws.QueryParameter(query.ParameterPage, "page").Required(false).DataFormat("page=%d").DefaultValue("page=1")).
+		Param(ws.QueryParameter(query.ParameterLimit, "limit").Required(false)).
+		Param(ws.QueryParameter(query.ParameterAscending, "sort parameters, e.g. reverse=true").Required(false).DefaultValue("ascending=false")).
+		Param(ws.QueryParameter(query.ParameterOrderBy, "sort parameters, e.g. orderBy=createTime")).
+		Returns(http.StatusOK, kapi.StatusOK, kapi.ListResult{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeInferModelDeploymentTag}))
+
+	ws.Route(ws.GET("/namespaces/{namespace}/infermodeldeployments").
+		To(handler.handleListInferModelDeployments).
+		Doc("list infer model deployments in the specified namespace").
+		Param(ws.QueryParameter(query.ParameterName, "name used to do filtering").Required(false)).
+		Param(ws.QueryParameter(query.ParameterPage, "page").Required(false).DataFormat("page=%d").DefaultValue("page=1")).
+		Param(ws.QueryParameter(query.ParameterLimit, "limit").Required(false)).
+		Param(ws.QueryParameter(query.ParameterAscending, "sort parameters, e.g. reverse=true").Required(false).DefaultValue("ascending=false")).
+		Param(ws.QueryParameter(query.ParameterOrderBy, "sort parameters, e.g. orderBy=createTime")).
+		Returns(http.StatusOK, kapi.StatusOK, kapi.ListResult{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeInferModelDeploymentTag}))
+
+	ws.Route(ws.GET("/namespaces/{namespace}/infermodeldeployments/{name}").
+		To(handler.handleGetInferModelDeployment).
+		Doc("get the infer model deployment with the specified name in the specified namespace").
+		Returns(http.StatusOK, kapi.StatusOK, appsv1alpha1.InferModelDeployment{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeInferModelDeploymentTag}))
+
+	ws.Route(ws.DELETE("/namespaces/{namespace}/infermodeldeployments/{name}").
+		To(handler.handleDeleteInferModelDeployment).
+		Doc("get the infer model deployment with the specified name in the specified namespace").
+		Returns(http.StatusOK, kapi.StatusOK, appsv1alpha1.InferModelDeployment{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeInferModelDeploymentTag}))
+
+	ws.Route(ws.GET("/specification/{node}").
+		To(handler.handleGetSpecifications).
+		Doc("get NPU/GPU specifications for the node").
+		Returns(http.StatusOK, kapi.StatusOK, appsv1alpha1.NodeSpecifications{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeInferModelDeploymentTag}))
+
+	ws.Route(ws.GET("/infermodelservers").
+		To(handler.handleGetDeployedInferModelServer).
+		Doc("get running infer model servers").
+		Param(ws.QueryParameter("node_group", "node group of edge node")).
+		Returns(http.StatusOK, kapi.StatusOK, appsv1alpha1.RunningInferModelServers{}).
+		Metadata(restfulspec.KeyOpenAPITags, []string{constants.EdgeInferModelDeploymentTag}))
+
 	container.Add(ws)
 
 	return nil

@@ -1,0 +1,105 @@
+# Default values for hami-vgpu.
+
+nameOverride: ""
+fullnameOverride: ""
+imagePullSecrets: [ ]
+version: "v2.3.11.2"
+defaultImageRegistry: ""
+
+#Nvidia GPU Parameters
+resourceName: "qingcloud.nvidia.com/vgpu"
+resourceMem: "qingcloud.nvidia.com/vgpumem"
+resourceMemPercentage: "qingcloud.nvidia.com/vgpumem-percentage"
+resourceCores: "qingcloud.nvidia.com/vgpucores"
+resourcePriority: "qingcloud.nvidia.com/vgpupriority"
+
+#MLU Parameters
+mluResourceName: "cambricon.com/vmlu"
+mluResourceMem: "cambricon.com/mlu.smlu.vmemory"
+mluResourceCores: "cambricon.com/mlu.smlu.vcore"
+
+#Hygon DCU Parameters
+dcuResourceName: "qingcloud.hygon.com/dcunum"
+dcuResourceMem: "qingcloud.hygon.com/dcumem"
+dcuResourceCores: "qingcloud.hygon.com/dcucores"
+
+#Adapter Parameters
+adapterResourceName: "qingcloud.adapter.com/adapter"
+
+#Ascend 910B Parameters
+#ascendResourceName: "qingcloud.huawei.com/vnpu"
+ascendResourceName: "qingcloud.adapter.com/adapter"
+
+#Iluvatar GPU Parameters
+iluvatarResourceName: "iluvatar.ai/vgpu"
+iluvatarResourceMem: "iluvatar.ai/vcuda-memory"
+iluvatarResourceCore: "iluvatar.ai/vcuda-core"
+
+
+schedulerName: "hami-scheduler"
+
+podSecurityPolicy:
+  enabled: false
+
+global:
+  gpuHookPath: /usr/local
+  labels: {}
+  annotations: {}
+
+frpClientConfig:
+  serverAddress: ""
+  serverPort: 30276
+  proxyName: "1"
+  secretKey: abc001
+  authToken: "qingcloud"
+
+devicePlugin:
+  frpClientImage: 'fatedier/frpc:v0.59.0'
+  image: "aicp/hami"
+  
+  monitorimage: "aicp/hami"
+  monitorctrPath: /usr/local/vgpu/containers
+  imagePullPolicy: IfNotPresent
+  deviceSplitCount: 100
+  deviceMemoryScaling: 0.8
+  deviceCoreScaling: 2
+  runtimeClassName: ""
+  migStrategy: "none"
+  disablecorelimit: "false"
+  extraArgs:
+    - --pass-device-specs=true
+    - -v=false
+  
+  adapterimage: "aicp/hami:v2.3.11.2-edge"
+  hygonimage: "aicp/hami:v2.3.11.2"
+  hygondriver: "/root/dtk-24.04"
+  
+  service:
+    enabled: false
+    httpPort: 31992
+    
+  pluginPath: /var/lib/kubelet/device-plugins
+  libPath: /usr/local/vgpu
+  ascendAicoreMap: "2:vir02_1c,4:vir04_3c,123456:310P3=8=100"
+  ascendHome: /usr/local/Ascend
+  ascendNpuSmi: /usr/local/bin/npu-smi
+  ascendLibPath: /usr/local/Ascend/driver/lib64/common:/usr/local/Ascend/driver/lib64/driver
+
+  podAnnotations: {}
+  nvidianodeSelector:
+    aicp.group/aipods_type: "vGPU"
+  mlunodeSelector:
+    mlu: "on"
+  hygonnodeSelector:
+    aicp.group/aipods_type: "vDCU"
+  adapternodeSelector:
+    aicp.group/aipods_type: "adapter"
+  tolerations:
+    - key: "aicp.group/worker"
+      operator: "Exists"
+    - key: "aicp.group/resource_group"
+      operator: "Exists"
+    - key: node-role.kubernetes.io/edge
+      operator: Exists
+      effect: NoSchedule
+

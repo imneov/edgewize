@@ -23,3 +23,9 @@ type AppTemplateExpansion interface{}
 type AppTemplateVersionExpansion interface{}
 
 type EdgeAppSetExpansion interface{}
+
+type InferModelDeploymentExpansion interface{}
+
+type InferModelTemplateExpansion interface{}
+
+type InferModelTemplateVersionExpansion interface{}

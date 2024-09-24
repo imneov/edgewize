@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"reflect"
+	"strconv"
 	"strings"
 
 	ksclusterv1alpha1 "kubesphere.io/api/cluster/v1alpha1"
@@ -499,6 +500,132 @@ func (r *Reconciler) ReconcileRouterManager(ctx context.Context, instance *infra
 	return nil
 }
 
+func (r *Reconciler) ReconcileModelMesh(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component, clientset *kubernetes.Clientset) error {
+	logger := log.FromContext(ctx, "ReconcileModelMesh", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.V(4).Info("kubeconfig is null, skip install modelmesh")
+		return nil
+	}
+
+	namespace := component.Namespace
+	values := component.Values.ToValues()
+	klog.V(3).Infof("ReconcileModelMesh: %v", values)
+
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+
+	klog.V(3).Infof(": %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("modelmesh", "modelmesh", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		logger.Error(err, "install modelmesh error", "instance", instance.Name)
+		instance.Status.EdgewizeMonitor = infrav1alpha1.ErrorStatus
+		return err
+	}
+
+	klog.V(3).Infof("modelmesh status: %s, instance: %s", status, instance.Name)
+	instance.Status.ModelMesh = status
+	if status == infrav1alpha1.RunningStatus {
+		instance.Status.Components[component.Name] = component
+	}
+	return nil
+
+}
+
+func (r *Reconciler) ReconcileHamiDevicePlugin(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component, clientset *kubernetes.Clientset) error {
+	logger := log.FromContext(ctx, "ReconcileHamiDevicePlugin", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.V(4).Info("kubeconfig is null, skip install hamiDevicePlugin")
+		return nil
+	}
+
+	namespace := component.Namespace
+	values := component.Values.ToValues()
+	err := r.SetEdgeFrpClientConfig(ctx, values, instance)
+	if err != nil {
+		klog.Warningf("set hamiDevicePlugin frpClientConfig  values error, err: %v", err)
+	}
+	klog.V(3).Infof("ReconcileHamiDevicePlugin: %v", values)
+
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+
+	klog.V(3).Infof(": %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("hami-device-plugin", "hami-device-plugin", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		logger.Error(err, "install hamiDevicePlugin error", "instance", instance.Name)
+		instance.Status.HamiDevicePlugin = infrav1alpha1.ErrorStatus
+		return err
+	}
+
+	klog.V(3).Infof("hamiDevicePlugin status: %s, instance: %s", status, instance.Name)
+	instance.Status.HamiDevicePlugin = status
+	if status == infrav1alpha1.RunningStatus {
+		instance.Status.Components[component.Name] = component
+	}
+	return nil
+}
+
+func (r *Reconciler) ReconcileHamiScheduler(ctx context.Context, instance *infrav1alpha1.EdgeCluster, component infrav1alpha1.Component, clientset *kubernetes.Clientset) error {
+	logger := log.FromContext(ctx, "ReconcileHamiScheduler", instance.Name)
+	if instance.Status.KubeConfig == "" {
+		logger.V(4).Info("kubeconfig is null, skip install hamiScheduler")
+		return nil
+	}
+
+	namespace := component.Namespace
+	values := component.Values.ToValues()
+	err := r.SetCloudFrpClientConfig(ctx, values, instance)
+	if err != nil {
+		klog.Warningf("set hamiScheduler frpClientConfig  values error, err: %v", err)
+	}
+	klog.V(3).Infof("ReconcileHamiScheduler: %v", values)
+
+	upgrade := false
+	if instance.Status.Components == nil {
+		instance.Status.Components = make(map[string]infrav1alpha1.Component)
+	}
+
+	oldComponent, ok := instance.Status.Components[component.Name]
+	if ok {
+		upgrade = !reflect.DeepEqual(oldComponent.Values, component.Values)
+	} else {
+		upgrade = true
+	}
+
+	klog.V(3).Infof(": %v, instance: %s", upgrade, instance.Name)
+	status, err := UpgradeChart("hami-scheduler", "hami-scheduler", namespace, instance.Name, values, upgrade)
+	if err != nil {
+		logger.Error(err, "install hamiScheduler error", "instance", instance.Name)
+		instance.Status.HamiScheduler = infrav1alpha1.ErrorStatus
+		return err
+	}
+
+	klog.V(3).Infof("hamiScheduler status: %s, instance: %s", status, instance.Name)
+	instance.Status.HamiScheduler = status
+	if status == infrav1alpha1.RunningStatus {
+		instance.Status.Components[component.Name] = component
+	}
+	return nil
+}
+
 func (r *Reconciler) SetKSCoreValues(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) error {
 	ksConfig := &corev1.ConfigMap{}
 	key := types.NamespacedName{
@@ -657,6 +784,31 @@ func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.V
 	return
 }
 
+func (r *Reconciler) SetEdgeFrpClientConfig(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
+	frpClientConfig := values["frpClientConfig"].(map[string]interface{})
+	frpClientConfig["proxyName"] = instance.GetName()
+	values["frpClientConfig"] = frpClientConfig
+	return
+}
+
+func (r *Reconciler) SetCloudFrpClientConfig(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
+	frpClientConfig := values["frpClientConfig"].(map[string]interface{})
+	frpClientConfig["proxyName"] = instance.GetName()
+
+	switch instance.Spec.Type {
+	case infrav1alpha1.InstallTypeAuto:
+		frpClientConfig["serverAddress"], frpClientConfig["serverPort"], err = r.GetFrpServerInternalAddr(ctx)
+		if err != nil {
+			return
+		}
+	default:
+		klog.Warningf("use CloudFrpClientConfig from user")
+	}
+
+	values["frpClientConfig"] = frpClientConfig
+	return
+}
+
 func (r *Reconciler) GetWhizardGatewayInternalAddr(ctx context.Context) (addr string, err error) {
 	gatewayService := &corev1.Service{}
 	key := types.NamespacedName{
@@ -674,6 +826,28 @@ func (r *Reconciler) GetWhizardGatewayInternalAddr(ctx context.Context) (addr st
 		addr = fmt.Sprintf("http://%s:%d", gatewayIP, gatewayPort)
 	}
 
+	return
+}
+
+func (r *Reconciler) GetFrpServerInternalAddr(ctx context.Context) (internalIP, port string, err error) {
+	frpServerService := &corev1.Service{}
+	key := types.NamespacedName{
+		Namespace: CurrentNamespace,
+		Name:      FrpServerServiceName,
+	}
+
+	err = r.Get(ctx, key, frpServerService)
+	if err != nil {
+		return
+	}
+
+	if frpServerService.Spec.Ports != nil && len(frpServerService.Spec.Ports) > 0 {
+		internalIP = frpServerService.Spec.ClusterIP
+		port = strconv.Itoa(int(frpServerService.Spec.Ports[0].Port))
+		return
+	}
+
+	err = fmt.Errorf("parse Frps service failed")
 	return
 }
 

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: model-mesh-proxy
+  namespace: {{ .Release.Namespace }}
+data:
+  model-mesh-proxy.yaml: |
+    {{- .Values.modelMeshProxy.conf | toYaml | nindent 4 }}

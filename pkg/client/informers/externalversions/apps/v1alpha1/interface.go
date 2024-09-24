@@ -30,6 +30,12 @@ type Interface interface {
 	AppTemplateVersions() AppTemplateVersionInformer
 	// EdgeAppSets returns a EdgeAppSetInformer.
 	EdgeAppSets() EdgeAppSetInformer
+	// InferModelDeployments returns a InferModelDeploymentInformer.
+	InferModelDeployments() InferModelDeploymentInformer
+	// InferModelTemplates returns a InferModelTemplateInformer.
+	InferModelTemplates() InferModelTemplateInformer
+	// InferModelTemplateVersions returns a InferModelTemplateVersionInformer.
+	InferModelTemplateVersions() InferModelTemplateVersionInformer
 }
 
 type version struct {
@@ -56,4 +62,19 @@ func (v *version) AppTemplateVersions() AppTemplateVersionInformer {
 // EdgeAppSets returns a EdgeAppSetInformer.
 func (v *version) EdgeAppSets() EdgeAppSetInformer {
 	return &edgeAppSetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// InferModelDeployments returns a InferModelDeploymentInformer.
+func (v *version) InferModelDeployments() InferModelDeploymentInformer {
+	return &inferModelDeploymentInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// InferModelTemplates returns a InferModelTemplateInformer.
+func (v *version) InferModelTemplates() InferModelTemplateInformer {
+	return &inferModelTemplateInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// InferModelTemplateVersions returns a InferModelTemplateVersionInformer.
+func (v *version) InferModelTemplateVersions() InferModelTemplateVersionInformer {
+	return &inferModelTemplateVersionInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

@@ -1,0 +1,20 @@
+{{- if .Values.devicePlugin.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hami-vgpu.device-plugin" . }}-monitor
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app.kubernetes.io/component: hami-scheduler
+    {{- include "hami-vgpu.labels" . | nindent 4 }}
+spec:
+  externalTrafficPolicy: Local
+  selector:
+    app.kubernetes.io/component: hami-device-plugin
+  type: NodePort
+  ports:
+    - name: monitorport
+      port: {{ .Values.devicePlugin.service.httpPort }}
+      targetPort: 9394
+      nodePort: {{ .Values.devicePlugin.service.httpPort }}
+{{- end }}

@@ -29,24 +29,29 @@ import (
 	"github.com/edgewize-io/edgewize/pkg/informers"
 	apptemplatemodels "github.com/edgewize-io/edgewize/pkg/models/apptemplate"
 	edgeappsetmodels "github.com/edgewize-io/edgewize/pkg/models/edgeappset"
+	infermodelmodels "github.com/edgewize-io/edgewize/pkg/models/infermodel"
 )
 
 type handler struct {
 	operator            edgeappsetmodels.Operator
 	appTemplateOperator apptemplatemodels.Operator
+	imtOperator         infermodelmodels.IMTOperator
+	imdOperator         infermodelmodels.IMDOperator
 }
 
 func newHandler(ksclient kubesphere.Interface, client kubernetes.Interface, informers informers.InformerFactory) *handler {
 	return &handler{
 		operator:            edgeappsetmodels.NewAppSetOperator(ksclient, client, informers),
 		appTemplateOperator: apptemplatemodels.NewAppTemplateOperator(informers),
+		imtOperator:         infermodelmodels.NewInferModelTemplateOperator(informers),
+		imdOperator:         infermodelmodels.NewInferModelDeploymentOperator(ksclient, client, informers),
 	}
 }
 
 func (h *handler) handleListAppTemplates(req *restful.Request, resp *restful.Response) {
-	query := query.ParseQueryParameter(req)
+	queryParams := query.ParseQueryParameter(req)
 
-	result, err := h.appTemplateOperator.ListAppTemplate(req.Request.Context(), "", query)
+	result, err := h.appTemplateOperator.ListAppTemplate(req.Request.Context(), "", queryParams)
 	if err != nil {
 		klog.Error(err)
 		kapi.HandleError(resp, req, err)
@@ -68,10 +73,10 @@ func (h *handler) handleGetAppTemplate(req *restful.Request, resp *restful.Respo
 }
 
 func (h *handler) handleListWorkSpaceAppTemplates(req *restful.Request, resp *restful.Response) {
-	query := query.ParseQueryParameter(req)
+	queryParams := query.ParseQueryParameter(req)
 	workspace := req.PathParameter("workspace")
 
-	result, err := h.appTemplateOperator.ListAppTemplate(req.Request.Context(), workspace, query)
+	result, err := h.appTemplateOperator.ListAppTemplate(req.Request.Context(), workspace, queryParams)
 	if err != nil {
 		klog.Error(err)
 		kapi.HandleError(resp, req, err)
@@ -94,9 +99,9 @@ func (h *handler) handleGetWorkSpaceAppTemplate(req *restful.Request, resp *rest
 }
 
 func (h *handler) handleListAllEdgeAppSets(req *restful.Request, resp *restful.Response) {
-	query := query.ParseQueryParameter(req)
+	queryParams := query.ParseQueryParameter(req)
 
-	result, err := h.operator.ListEdgeAppSets(req.Request.Context(), "", query)
+	result, err := h.operator.ListEdgeAppSets(req.Request.Context(), "", queryParams)
 	if err != nil {
 		klog.Error(err)
 		kapi.HandleError(resp, req, err)
@@ -107,9 +112,9 @@ func (h *handler) handleListAllEdgeAppSets(req *restful.Request, resp *restful.R
 
 func (h *handler) handleListEdgeAppSets(req *restful.Request, resp *restful.Response) {
 	namespace := req.PathParameter("namespace")
-	query := query.ParseQueryParameter(req)
+	queryParams := query.ParseQueryParameter(req)
 
-	result, err := h.operator.ListEdgeAppSets(req.Request.Context(), namespace, query)
+	result, err := h.operator.ListEdgeAppSets(req.Request.Context(), namespace, queryParams)
 	if err != nil {
 		klog.Error(err)
 		kapi.HandleError(resp, req, err)
@@ -142,5 +147,132 @@ func (h *handler) handleDeleteEdgeAppSet(req *restful.Request, resp *restful.Res
 		kapi.HandleError(resp, req, err)
 		return
 	}
+	resp.WriteEntity(result)
+}
+
+func (h *handler) handleListWorkspaceInferModelTemplates(req *restful.Request, resp *restful.Response) {
+	queryParams := query.ParseQueryParameter(req)
+	workspace := req.PathParameter("workspace")
+
+	result, err := h.imtOperator.ListInferModelTemplate(req.Request.Context(), workspace, queryParams)
+	if err != nil {
+		klog.Error(err)
+		kapi.HandleError(resp, req, err)
+		return
+	}
+	resp.WriteEntity(result)
+}
+
+func (h *handler) handleGetWorkSpaceInferModelTemplate(req *restful.Request, resp *restful.Response) {
+	name := req.PathParameter("name")
+	workspace := req.PathParameter("workspace")
+
+	result, err := h.imtOperator.GetInferModelTemplate(req.Request.Context(), workspace, name)
+	if err != nil {
+		klog.Error(err)
+		kapi.HandleError(resp, req, err)
+		return
+	}
+	resp.WriteEntity(result)
+}
+
+func (h *handler) handleListInferModelTemplates(req *restful.Request, resp *restful.Response) {
+	queryParams := query.ParseQueryParameter(req)
+
+	result, err := h.imtOperator.ListInferModelTemplate(req.Request.Context(), "", queryParams)
+	if err != nil {
+		klog.Error(err)
+		kapi.HandleError(resp, req, err)
+		return
+	}
+	resp.WriteEntity(result)
+}
+
+func (h *handler) handleGetInferModelTemplate(req *restful.Request, resp *restful.Response) {
+	name := req.PathParameter("name")
+
+	result, err := h.imtOperator.GetInferModelTemplate(req.Request.Context(), "", name)
+	if err != nil {
+		klog.Error(err)
+		kapi.HandleError(resp, req, err)
+		return
+	}
+	resp.WriteEntity(result)
+}
+
+func (h *handler) handleListAllInferModelDeployments(req *restful.Request, resp *restful.Response) {
+	queryParams := query.ParseQueryParameter(req)
+
+	result, err := h.imdOperator.ListInferModelDeployments(req.Request.Context(), "", queryParams)
+	if err != nil {
+		klog.Error(err)
+		kapi.HandleError(resp, req, err)
+		return
+	}
+	resp.WriteEntity(result)
+}
+
+func (h *handler) handleListInferModelDeployments(req *restful.Request, resp *restful.Response) {
+	namespace := req.PathParameter("namespace")
+	queryParams := query.ParseQueryParameter(req)
+
+	result, err := h.imdOperator.ListInferModelDeployments(req.Request.Context(), namespace, queryParams)
+	if err != nil {
+		klog.Error(err)
+		kapi.HandleError(resp, req, err)
+		return
+	}
+	resp.WriteEntity(result)
+}
+
+func (h *handler) handleGetInferModelDeployment(req *restful.Request, resp *restful.Response) {
+	namespace := req.PathParameter("namespace")
+	name := req.PathParameter("name")
+
+	result, err := h.imdOperator.GetInferModelDeployment(req.Request.Context(), namespace, name)
+	if err != nil {
+		klog.Error(err)
+		kapi.HandleError(resp, req, err)
+		return
+	}
+	resp.WriteEntity(result)
+}
+
+func (h *handler) handleDeleteInferModelDeployment(req *restful.Request, resp *restful.Response) {
+	namespace := req.PathParameter("namespace")
+	name := req.PathParameter("name")
+	deleteWorkloads, _ := strconv.ParseBool(req.QueryParameter("delete_workloads"))
+
+	result, err := h.imdOperator.DeleteInferModelDeployment(req.Request.Context(), namespace, name, deleteWorkloads)
+	if err != nil {
+		klog.Error(err)
+		kapi.HandleError(resp, req, err)
+		return
+	}
+	resp.WriteEntity(result)
+}
+
+func (h *handler) handleGetSpecifications(req *restful.Request, resp *restful.Response) {
+	nodeName := req.PathParameter("node")
+	result, err := h.imdOperator.ListNodeSpecifications(req.Request.Context(), nodeName)
+	if err != nil {
+		klog.Error(err)
+		kapi.HandleError(resp, req, err)
+		return
+	}
+
+	resp.WriteEntity(result)
+}
+
+func (h *handler) handleGetDeployedInferModelServer(req *restful.Request, resp *restful.Response) {
+	nodeGroup := req.QueryParameter("node_group")
+
+	result, err := h.imdOperator.ListRunningInferModelServers(req.Request.Context(), nodeGroup)
+	if err != nil {
+		klog.Error(err)
+		kapi.HandleError(resp, req, err)
+		return
+	}
+
 	resp.WriteEntity(result)
 }

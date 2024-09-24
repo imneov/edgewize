@@ -40,6 +40,18 @@ func (c *FakeAppsV1alpha1) EdgeAppSets(namespace string) v1alpha1.EdgeAppSetInte
 	return &FakeEdgeAppSets{c, namespace}
 }
 
+func (c *FakeAppsV1alpha1) InferModelDeployments(namespace string) v1alpha1.InferModelDeploymentInterface {
+	return &FakeInferModelDeployments{c, namespace}
+}
+
+func (c *FakeAppsV1alpha1) InferModelTemplates() v1alpha1.InferModelTemplateInterface {
+	return &FakeInferModelTemplates{c}
+}
+
+func (c *FakeAppsV1alpha1) InferModelTemplateVersions() v1alpha1.InferModelTemplateVersionInterface {
+	return &FakeInferModelTemplateVersions{c}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeAppsV1alpha1) RESTClient() rest.Interface {
