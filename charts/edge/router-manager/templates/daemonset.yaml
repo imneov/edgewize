@@ -41,9 +41,9 @@ spec:
                   apiVersion: v1
                   fieldPath: spec.nodeName
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml .Values.routerManagerEdge.resources | nindent 12 }}
       dnsPolicy: ClusterFirst
-      serviceAccountName: {{ include "router-manager.serviceAccountName" . }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
       hostNetwork: true
       securityContext: {}
       affinity:

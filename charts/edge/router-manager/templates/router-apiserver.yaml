@@ -1,0 +1,56 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: router-apiserver
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "router-apiserver.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "router-apiserver.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "router-apiserver.selectorLabels" . | nindent 8 }}
+    spec:
+      volumes:
+        - name: host-time
+          hostPath:
+            path: /etc/localtime
+            type: ''
+        - name: router-controller-webhook-cert
+          secret:
+            secretName: router-controller-webhook-cert
+            defaultMode: 420
+      containers:
+        - name: router-apiserver
+          image: {{ template "router-apiserver.image" . }}
+          imagePullPolicy: {{ .Values.apiserver.image.pullPolicy }}
+          command:
+            - router-apiserver
+            - '--logtostderr=true'
+          ports:
+            - containerPort: 9090
+              protocol: TCP
+          volumeMounts:
+          {{- toYaml .Values.volumeMounts | nindent 12 }}
+          resources:
+            {{- toYaml .Values.apiserver.resources | nindent 12 }}
+      restartPolicy: Always
+      dnsPolicy: ClusterFirst
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      schedulerName: default-scheduler
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,139 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.15.0
+  name: rules.rules.edgewize.io
+spec:
+  group: rules.edgewize.io
+  names:
+    kind: Rule
+    listKind: RuleList
+    plural: rules
+    singular: rule
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: Rule is the Schema for the rules API
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: RuleSpec defines the desired state of Rule
+              properties:
+                source:
+                  type: string
+                sourceResource:
+                  additionalProperties:
+                    type: string
+                  type: object
+                status:
+                  description: |-
+                    INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                    Important: Run "make" to regenerate code after modifying this file
+                    issue=https://github.com/edgewize-io/router-manager/issues/5，新增字段，表示规则启动/停止状态
+                    必须为Running、Stopped字符串，Running=启动，Stopped=停止，不填默认为Stopped，填错会禁止创建
+                  type: string
+                target:
+                  type: string
+                targetResource:
+                  additionalProperties:
+                    type: string
+                  type: object
+              required:
+                - source
+                - sourceResource
+                - status
+                - target
+                - targetResource
+              type: object
+            status:
+              description: RuleStatus defines the observed state of Rule
+              properties:
+                created:
+                  description: |-
+                    INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+                    Important: Run "make" to regenerate code after modifying this file
+                  type: boolean
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.15.0
+  name: ruleendpoints.rules.edgewize.io
+spec:
+  group: rules.edgewize.io
+  names:
+    kind: RuleEndpoint
+    listKind: RuleEndpointList
+    plural: ruleendpoints
+    singular: ruleendpoint
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: RuleEndpoint is the Schema for the ruleendpoints API
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: RuleEndpointSpec defines the desired state of RuleEndpoint
+              properties:
+                properties:
+                  additionalProperties:
+                    type: string
+                  type: object
+                ruleEndpointType:
+                  type: string
+              required:
+                - properties
+                - ruleEndpointType
+              type: object
+            status:
+              description: RuleEndpointStatus defines the observed state of RuleEndpoint
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}

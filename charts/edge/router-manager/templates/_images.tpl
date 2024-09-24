@@ -1,6 +1,14 @@
 {{/*
 Return the proper image name
 */}}
+{{- define "router-apiserver.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.apiserver.image "global" .Values.global) }}
+{{- end -}}
+
+{{- define "router-controller.image" -}}
+{{ include "common.images.image" (dict "imageRoot" .Values.controller.image "global" .Values.global) }}
+{{- end -}}
+
 {{- define "router-manager.image" -}}
 {{ include "common.images.image" (dict "imageRoot" .Values.routerManager.image "global" .Values.global) }}
 {{- end -}}

@@ -6,7 +6,7 @@ metadata:
     {{- include "router-manager.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.routerManager.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
@@ -20,11 +20,11 @@ spec:
       labels:
         {{- include "router-manager.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- with .Values.routerManager.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "router-manager.serviceAccountName" . }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -42,9 +42,9 @@ spec:
             - name: CLUSTER_NAME
               value: {{ .Values.clusterName }}
             - name: USERNAME
-              value: {{ .Values.defaultUserName }}
+              value: {{ .Values.routerManager.defaultUserName }}
             - name: PASSWORD
-              value: {{ .Values.defaultPassword }}
+              value: {{ .Values.routerManager.defaultPassword }}
             - name: MQTT_SERVER
               value: 'tcp://eventbus-emqx.edgewize-system:1883'
             - name: POD_NAME
@@ -57,7 +57,7 @@ spec:
               containerPort: 8000
               protocol: TCP
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml .Values.routerManager.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

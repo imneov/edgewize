@@ -48,7 +48,10 @@ data:
       endpoint: ""
     edgewizeota:
       endpoint: {{ .Values.config.edgewizeota.endpoint | default "http://edge-ota-server.edgewize-system.svc/api/" }}
-
+    edgewizerule:
+      endpoint: {{ .Values.config.edgewizerule.endpoint | default "http://router-apiserver.edgewize-system.svc:80/kapis/rules.edgewize.io/" }}
+    edgewizemessage:
+      endpoint: {{ .Values.config.edgewizemessage.endpoint | default "http://router-manager.edgewize-system.svc:8000" }}
 
     {{- with .Values.config.servicemesh }}
     servicemesh:
