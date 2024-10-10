@@ -60,7 +60,7 @@ func (r *Reconciler) syncServiceGroup(obj client.Object) (templateRequests []rec
 		return
 	}
 
-	templateRequests = append(templateRequests, reconcile.Request{types.NamespacedName{Name: imTemplateName}})
+	templateRequests = append(templateRequests, reconcile.Request{NamespacedName: types.NamespacedName{Name: imTemplateName}})
 	return
 }
 

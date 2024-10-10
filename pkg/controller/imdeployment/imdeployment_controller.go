@@ -245,7 +245,7 @@ func (r *Reconciler) deployWorkloads(ctx context.Context, instance *apisappsv1al
 			workloadStatus.Message = ""
 		}
 
-		workloadStatus.LastTransitionTime = metav1.Time{time.Now()}
+		workloadStatus.LastTransitionTime = metav1.Time{Time: time.Now()}
 		instance.Status.WorkLoadInstances[name] = workloadStatus
 	}
 }
