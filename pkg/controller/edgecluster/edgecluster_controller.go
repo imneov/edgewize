@@ -314,6 +314,12 @@ func (r *Reconciler) verifyEdgeCluster(ctx context.Context, nn types.NamespacedN
 			cluster.Spec.AdvertiseAddress = []string{}
 			updated = true
 		}
+
+		if len(cluster.Spec.DNSNames) == 0 {
+			cluster.Spec.DNSNames = []string{GetDefaultEdgeClusterDnsName(instance.Name)}
+			updated = true
+		}
+
 		if updated {
 			logger.V(3).Info("update edge cluster", "distro", cluster.Spec.Distro,
 				"components", cluster.Spec.Components, "advertiseaddress", cluster.Spec.AdvertiseAddress)
@@ -1250,4 +1256,8 @@ func getClientSetByKubeConfigFile(kubeconfigFile string) (*kubernetes.Clientset,
 		return nil, err
 	}
 	return clientset, nil
+}
+
+func GetDefaultEdgeClusterDnsName(clusterName string) string {
+	return fmt.Sprintf("%s.edgewize.io", clusterName)
 }

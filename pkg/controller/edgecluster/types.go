@@ -20,8 +20,6 @@ const (
 	EdgeDeploySecret             = "edge-deploy-secret"
 	MonitorPromServiceName       = "prometheus-k8s"
 	WhizardEdgeGatewayConfigName = "whizard-edge-gateway-configmap"
-	FrpServerServiceName         = "frps"
-
 	EdgeClusterService = "edgecluster-service"
 )
 

@@ -32,31 +32,22 @@ spec:
       priorityClassName: system-node-critical
       hostPID: true
       hostNetwork: true
+      hostAliases:
+        - hostnames:
+            - {{ .Values.apiServerConfig.gatewayDnsName | quote }}
+          ip: {{ .Values.apiServerConfig.gatewayAddress | quote }}
       containers:
-        - name: apiserver-proxy
-          image: {{ .Values.defaultImageRegistry}}{{ .Values.devicePlugin.frpClientImage }}
-          command:
-            - /usr/bin/frpc
-            - '-c'
-            - /config/frpc-edge.ini
-          resources: { }
-          volumeMounts:
-            - name: frpc-config
-              mountPath: /config
-          terminationMessagePath: /dev/termination-log
-          terminationMessagePolicy: File
-          imagePullPolicy: IfNotPresent
         - name: adapter-device-plugin-ctr
-          image: {{ .Values.defaultImageRegistry}}{{ .Values.devicePlugin.adapterimage }}
+          image: {{ template "hami-vgpu-device-plugin.image" (list .Values.defaultImageRegistry .Values.devicePlugin.adapterimage)}}
           imagePullPolicy: {{ .Values.devicePlugin.imagePullPolicy | quote }}
           command: ["/bin/bash","-c"]
           args:
           - adapter-device-plugin -logtostderr=true -stderrthreshold=INFO -v=5 -adapter-name={{ .Values.adapterResourceName }}  -ascend-aicore={{ .Values.devicePlugin.ascendAicoreMap }}
           env:
             - name: KUBERNETES_SERVICE_HOST
-              value: 127.0.0.1
+              value: {{ .Values.apiServerConfig.gatewayDnsName | quote }}
             - name: KUBERNETES_SERVICE_PORT
-              value: '6000'
+              value: {{ .Values.apiServerConfig.gatewayPort | quote }}
             - name: LD_LIBRARY_PATH
               value: {{ .Values.devicePlugin.ascendLibPath }}
             - name: NODE_NAME
@@ -81,10 +72,6 @@ spec:
             - name: sysinfo
               mountPath: /sys
       volumes:
-        - name: frpc-config
-          configMap:
-            name: frpc
-            defaultMode: 420
         - name: device-plugin
           hostPath:
             path: {{ .Values.devicePlugin.pluginPath }}

@@ -46,13 +46,6 @@ global:
   labels: {}
   annotations: {}
 
-frpClientConfig:
-  serverAddress: ""
-  serverPort: 7500
-  proxyName: ""
-  secretKey: abc001
-  authToken: "qingcloud"
-
 devicePlugin:
   ascendAicoreMap: "2:vir02_1c,4:vir04_3c,123456:310P3=8=100"
 
@@ -70,7 +63,6 @@ scheduler:
     gpuSchedulerPolicy: spread
   metricsBindAddress: ":9395"
   leaderElect: true
-  frpClientImage: 'fatedier/frpc:v0.59.0'
   kubeScheduler:
     # @param enabled indicate whether to run kube-scheduler container in the scheduler pod, it's true by default.
     enabled: true

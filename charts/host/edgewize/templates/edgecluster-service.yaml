@@ -1,9 +1,9 @@
-{{- $existing := (lookup "v1" "ConfigMap" "edgewize-system" "edgewize-cloudcore-service") -}}
+{{- $existing := (lookup "v1" "ConfigMap" "edgewize-system" "edgecluster-service") -}}
 {{- if not $existing }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: edgewize-cloudcore-service
+  name: edgecluster-service
 data:
   edgewize-servers.yaml: ""
 {{- else }}

@@ -88,6 +88,13 @@ spec:
       nodePort: {{ .Values.gateway.nodePort.otaport }}
       {{ end }}
       name: otaport
+    - port: 30091
+      protocol: TCP
+      targetPort: 30091
+      {{- if .Values.gateway.nodePort.k8sport }}
+      nodePort: {{ .Values.gateway.nodePort.k8sport }}
+      {{ end }}
+      name: k8sport
   selector:
     app: edgewize-gateway
     tier: backend

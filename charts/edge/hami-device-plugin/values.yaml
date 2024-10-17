@@ -46,15 +46,12 @@ global:
   labels: {}
   annotations: {}
 
-frpClientConfig:
-  serverAddress: ""
-  serverPort: 30276
-  proxyName: "1"
-  secretKey: abc001
-  authToken: "qingcloud"
+apiServerConfig:
+  gatewayAddress: ""
+  gatewayPort: 30091
+  gatewayDnsName: ""
 
 devicePlugin:
-  frpClientImage: 'fatedier/frpc:v0.59.0'
   image: "aicp/hami"
   
   monitorimage: "aicp/hami"
@@ -103,3 +100,81 @@ devicePlugin:
       operator: Exists
       effect: NoSchedule
 
+ascendDevicePlugin:
+  Ascend310:
+    image: ascendhub/ascend-k8sdeviceplugin:v5.0.0-edgewize
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        memory: 100Mi
+        cpu: 100m
+      limits:
+        memory: 500Mi
+        cpu: 500m
+    nodeSelector:
+      accelerator: huawei-Ascend310
+    tolerations:
+      - key: node-role.kubernetes.io/edge
+        operator: Exists
+        effect: NoSchedule
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - key: huawei.com/Ascend310
+        operator: Exists
+        effect: NoSchedule
+      - key: "device-plugin"
+        operator: "Equal"
+        value: "v2"
+        effect: NoSchedule
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: servertype
+                  operator: NotIn
+                  values:
+                    - soc
+                - key: aicp.group/aipods_type
+                  operator: NotIn
+                  values:
+                    - adapter
+
+  Ascend310P:
+    image: ascendhub/ascend-k8sdeviceplugin:v5.0.0-edgewize
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        memory: 100Mi
+        cpu: 100m
+      limits:
+        memory: 500Mi
+        cpu: 500m
+    nodeSelector:
+      accelerator: huawei-Ascend310P
+    tolerations:
+      - key: node-role.kubernetes.io/edge
+        operator: Exists
+        effect: NoSchedule
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - key: huawei.com/Ascend310P
+        operator: Exists
+        effect: NoSchedule
+      - key: "device-plugin"
+        operator: "Equal"
+        value: "v2"
+        effect: NoSchedule
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: servertype
+                  operator: NotIn
+                  values:
+                    - soc
+                - key: aicp.group/aipods_type
+                  operator: NotIn
+                  values:
+                    - adapter

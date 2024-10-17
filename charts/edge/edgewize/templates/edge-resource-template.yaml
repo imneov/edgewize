@@ -8,38 +8,17 @@ data:
     NPU:
       virtualized:
         huawei-Ascend310P:
-          - description: "Apply for 2 AICores"
+          - description: "2 AICores"
             resourceRequest:
               "qingcloud.adapter.com/adapter": 2
-          - description: "Apply for 4 AICores"
+          - description: "4 AICores"
             resourceRequest:
               "qingcloud.adapter.com/adapter": 2
-      physical:
-        huawei-Ascend310:
-          - description: "Apply for 1 Chip"
-            resourceRequest:
-              huawei.com/Ascend310: 1
-          - description: "Apply for 1 Chip"
-            resourceRequest:
-              huawei.com/Ascend310: 2
-        huawei-Ascend310P:
-          - description: "Apply for 1 Chip"
-            resourceRequest:
-              huawei.com/Ascend310P: 1
-          - description: "Apply for 2 Chip"
-            resourceRequest:
-              huawei.com/Ascend310P: 2
 
     GPU:
       virtualized:
         nvidia-RTX3050:
-          - description: "Apply for 1 GPU and 500 GPU memory"
+          - description: "1 GPU and 500 GPU memory"
             resourceRequest:
               qingcloud.nvidia.com/vgpu: 1
               qingcloud.nvidia.com/vgpumem: 500
-
-      physical:
-        nvidia-RTX3050:
-          - description: "Apply for 1 GPU"
-            resourceRequest:
-              nvidia.com/gpu: 1

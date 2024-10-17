@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ascend-device-plugin-sa-310p
+  namespace: {{ .Release.Namespace | quote }}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pods-node-ascend-device-plugin-role-310p
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "update", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "patch"]
+  - apiGroups: [""]
+    resources: ["nodes/status"]
+    verbs: ["get", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "create", "update"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pods-node-ascend-device-plugin-rolebinding-310p
+subjects:
+  - kind: ServiceAccount
+    name: ascend-device-plugin-sa-310p
+    namespace: {{ .Release.Namespace | quote }}
+roleRef:
+  kind: ClusterRole
+  name: pods-node-ascend-device-plugin-role-310p
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ascend-device-plugin310p-daemonset
+  namespace: {{ .Release.Namespace | quote }}
+spec:
+  selector:
+    matchLabels:
+      name: ascend-device-plugin-310p
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+        seccomp.security.alpha.kubernetes.io/pod: runtime/default
+      labels:
+        name: ascend-device-plugin-310p
+    spec:
+      {{- include "hami-vgpu.imagePullSecrets" . | nindent 6}}
+      {{- if .Values.ascendDevicePlugin.Ascend310P.tolerations }}
+      tolerations: {{ toYaml .Values.ascendDevicePlugin.Ascend310P.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if .Values.ascendDevicePlugin.Ascend310P.affinity }}
+      affinity: {{ toYaml .Values.ascendDevicePlugin.Ascend310P.affinity | nindent 8 }}
+      {{- end }}
+      priorityClassName: "system-node-critical"
+      {{- if .Values.ascendDevicePlugin.Ascend310P.nodeSelector }}
+      nodeSelector: {{ toYaml .Values.ascendDevicePlugin.Ascend310P.nodeSelector | nindent 8 }}
+      {{- end }}
+      hostAliases:
+        - hostnames:
+            - {{ .Values.apiServerConfig.gatewayDnsName | quote }}
+          ip: {{ .Values.apiServerConfig.gatewayAddress | quote }}
+      serviceAccountName: ascend-device-plugin-sa-310p
+      containers:
+        - image: {{ template "ascend-device-plugin-310P.image" . }}
+          name: device-plugin-01
+          {{- if .Values.ascendDevicePlugin.Ascend310P.resources }}
+          resources: {{- toYaml .Values.ascendDevicePlugin.Ascend310P.resources | nindent 12 }}
+          {{- end }}
+          command: [ "/bin/bash", "-c", "--"]
+          args: [ "device-plugin  -useAscendDocker=true
+                   -logFile=/var/log/mindx-dl/devicePlugin/devicePlugin.log -logLevel=0" ]
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: false
+          imagePullPolicy: {{ .Values.ascendDevicePlugin.Ascend310P.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: pod-resource
+              mountPath: /var/lib/kubelet/pod-resources
+            - name: hiai-driver
+              mountPath: /usr/local/Ascend/driver
+              readOnly: true
+            - name: log-path
+              mountPath: /var/log/mindx-dl/devicePlugin
+            - name: tmp
+              mountPath: /tmp
+          env:
+            - name: KUBERNETES_SERVICE_HOST
+              value: {{ .Values.apiServerConfig.gatewayDnsName | quote }}
+            - name: KUBERNETES_SERVICE_PORT
+              value: {{ .Values.apiServerConfig.gatewayPort | quote }}
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: pod-resource
+          hostPath:
+            path: /var/lib/kubelet/pod-resources
+        - name: hiai-driver
+          hostPath:
+            path: /usr/local/Ascend/driver
+        - name: log-path
+          hostPath:
+            path: /var/log/mindx-dl/devicePlugin
+            type: DirectoryOrCreate
+        - name: tmp
+          hostPath:
+            path: /tmp
