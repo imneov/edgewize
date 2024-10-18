@@ -105,6 +105,9 @@ type EdgeClusterSpec struct {
 	// AdvertiseAddress is the advertise address of the Cloudcore in edge cluster, in manual mode
 	AdvertiseAddress []string `json:"advertiseAddress,omitempty"`
 
+	// DNSNames is the dns names of the Cloudcore in edge cluster, in manual mode
+	DNSNames []string `json:"dnsNames,omitempty"`
+
 	// HostCluster is the cluster in which the edge cluster will be created and hosted (default to "host")
 	// it depends on the multi-cluster component.
 	HostCluster string `json:"hostCluster,omitempty"`

@@ -1,11 +1,12 @@
 package edgecluster
 
 import (
+	"sync"
+
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sync"
 )
 
 const (
@@ -20,6 +21,8 @@ const (
 	MonitorPromServiceName       = "prometheus-k8s"
 	WhizardEdgeGatewayConfigName = "whizard-edge-gateway-configmap"
 	FrpServerServiceName         = "frps"
+
+	EdgeClusterService = "edgecluster-service"
 )
 
 type ServiceMap map[string]corev1.ServiceSpec
