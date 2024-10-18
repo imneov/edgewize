@@ -50,8 +50,14 @@ import (
 )
 
 var (
-	NotFoundError           = errors.New("not found")
-	InstallEdgeClusterError = errors.New("Install edge cluster error")
+	NotFoundError            = errors.New("not found")
+	InstallEdgeClusterError  = errors.New("Install edge cluster error")
+	ErrEdgeClusterNil        = errors.New("EdgeCluster is nil")
+	ErrEdgeClusterK8sAddress = errors.New("Get EdgeCluster k8s apiserver error")
+)
+
+const (
+	K8S_GATEWAY_PORT = "K8S_GATEWAY_PORT"
 )
 
 type updateEdgeClusterFunc func(*infrav1alpha1.EdgeCluster) (err error)
@@ -70,6 +76,7 @@ type EdgeClusterOperator interface {
 	updateServices(ctx context.Context, name types.NamespacedName, instance *infrav1alpha1.EdgeCluster) error
 	needUpgrade(instance *infrav1alpha1.EdgeCluster) bool
 	prepareNamespace(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error
+	LoadExternalKubeConfigAbs(ctx context.Context, instance *infrav1alpha1.EdgeCluster) (string, error)
 }
 
 var ClusterComponentName = "vcluster"
@@ -276,6 +283,7 @@ func (r *Reconciler) undoReconcile(ctx context.Context, instance *infrav1alpha1.
 	}
 
 	StopWatchEdgeClusterResource(instance.Name)
+	StopWatchExternClusterResource(instance.Name)
 	return ctrl.Result{}, nil
 }
 
@@ -312,6 +320,9 @@ func (r *Reconciler) verifyEdgeCluster(ctx context.Context, nn types.NamespacedN
 		}
 		return nil
 	})
+	if err != nil {
+		logger.Error(err, "update edge cluster error")
+	}
 	return nil
 }
 
@@ -915,6 +926,11 @@ func doReconcile(ctx context.Context, r EdgeClusterOperator, log logr.Logger, in
 				"status", instance.Status.Status, "type", instance.Spec.Type, "kubeconfig", instance.Status.KubeConfig,
 				"version", instance.Spec.Version, "components", instance.Spec.Components, "status.components", instance.Status.Components)
 			StartWatchEdgeClusterResource(instance.Name, instance.Status.KubeConfig, r.(*Reconciler).Client)
+			extKubeConfig, err := r.LoadExternalKubeConfigAbs(ctx, instance)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			StartWatchExternClusterResource(instance.Name, extKubeConfig, r.(*Reconciler).Client)
 			return ctrl.Result{}, nil
 			// ServiceUpdating 应该是后台的服务，不应该放在 Reconcile 的行为中
 			//case infrav1alpha1.ComponentSuccessStatus:
@@ -1212,6 +1228,19 @@ func (r *Reconciler) getClusterClientset(clusterName string) (*kubernetes.Client
 
 func getClientSetByKubeConfig(kubeconfig string) (*kubernetes.Clientset, error) {
 	config, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return clientset, nil
+}
+
+func getClientSetByKubeConfigFile(kubeconfigFile string) (*kubernetes.Clientset, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigFile)
 	if err != nil {
 		return nil, err
 	}

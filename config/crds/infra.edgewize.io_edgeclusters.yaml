@@ -112,6 +112,12 @@ spec:
                 description: 'Distro is Kubernetes distro to use for the virtual cluster.
                   Allowed distros: k3s, k0s, k8s, eks (default "k3s"), in auto mode'
                 type: string
+              dnsNames:
+                description: DNSNames is the dns names of the Cloudcore in edge cluster,
+                  in manual mode
+                items:
+                  type: string
+                type: array
               hostCluster:
                 description: HostCluster is the cluster in which the edge cluster
                   will be created and hosted (default to "host") it depends on the
