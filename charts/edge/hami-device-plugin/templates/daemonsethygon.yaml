@@ -34,7 +34,7 @@ spec:
       hostNetwork: true
       containers:
         - name: dcu-device-plugin-ctr
-          image: {{ .Values.defaultImageRegistry}}{{ .Values.devicePlugin.hygonimage }}
+          image: {{ template "hami-vgpu-device-plugin.image" (list .Values.defaultImageRegistry .Values.devicePlugin.hygonimage)}}
           imagePullPolicy: {{ .Values.devicePlugin.imagePullPolicy | quote }}
           #command: ["/hygon","-logtostderr=true","-stderrthreshold=INFO","-v=5"]
           command: ["/bin/bash","-c"]

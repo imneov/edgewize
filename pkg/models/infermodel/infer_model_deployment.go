@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/klog/v2"
+	"strconv"
 	"strings"
 
 	v1 "k8s.io/api/apps/v1"
@@ -176,7 +177,7 @@ func (o *imdOperator) ListNodeSpecifications(ctx context.Context, nodeName strin
 
 	devType, devModel := GetDevTypeOnNode(edgeNode.GetLabels())
 
-	items, err := GetSpecificDevResTemplates(templateConfig, devType, devModel, isVirtualized(edgeNode.GetLabels()))
+	items, err := o.GetSpecificDevResTemplates(templateConfig, devType, devModel, isVirtualized(edgeNode.GetLabels()), nodeName)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +278,7 @@ func isVirtualized(nodeLabels map[string]string) (virtualized bool) {
 	return
 }
 
-func GetSpecificDevResTemplates(cm *corev1.ConfigMap, devType, devModel string, virtualized bool) (items []appsv1alpha1.TemplateItem, err error) {
+func (o *imdOperator) GetSpecificDevResTemplates(cm *corev1.ConfigMap, devType, devModel string, virtualized bool, nodeName string) (items []appsv1alpha1.TemplateItem, err error) {
 	items = []appsv1alpha1.TemplateItem{}
 	dataBytes, ok := cm.Data[constants.ResTemplateKey]
 	if !ok {
@@ -292,13 +293,13 @@ func GetSpecificDevResTemplates(cm *corev1.ConfigMap, devType, devModel string, 
 		return
 	}
 
-	items = ParseDevResTemplate(templateConfig, devType, devModel, virtualized)
+	items = o.ParseDevResTemplate(templateConfig, devType, devModel, virtualized, nodeName)
 	return
 }
 
-func ParseDevResTemplate(
+func (o *imdOperator) ParseDevResTemplate(
 	resTemplateConfig appsv1alpha1.ResourceTemplateConfig,
-	devType string, devModel string, virtualized bool) (items []appsv1alpha1.TemplateItem) {
+	devType string, devModel string, virtualized bool, nodeName string) (items []appsv1alpha1.TemplateItem) {
 	items = []appsv1alpha1.TemplateItem{}
 
 	var devResTemplate appsv1alpha1.DevResourceTemplate
@@ -319,11 +320,26 @@ func ParseDevResTemplate(
 			klog.Warningf("template not found for virtualized devType [%s] devModel [%s] ", devType, devModel)
 			return
 		}
-	} else if !virtualized && devResTemplate.Physical != nil {
-		if devModelDetails, found = devResTemplate.Physical[devModel]; !found {
-			klog.Warningf("template not found for physical devType [%s] devModel [%s] ", devType, devModel)
+
+		// Add Hardware info
+		devModelDetails = AddHardwareInfoToVirtualTemplateDesc(devModel, devModelDetails)
+	} else if !virtualized {
+		var err error
+		// if Physical Template not specified by admin, Get from Node Capacity
+		if devResTemplate.Physical != nil {
+			devModelDetails, found = devResTemplate.Physical[devModel]
+			if !found {
+				devModelDetails, err = o.GetPhysicalTemplateEntriesFromNodeStatus(nodeName, devModel)
+			}
+		} else {
+			devModelDetails, err = o.GetPhysicalTemplateEntriesFromNodeStatus(nodeName, devModel)
+		}
+
+		if err != nil {
+			klog.Errorf("get Physical template failed on node [%s] for device [%s]", nodeName, devModel)
 			return
 		}
+
 	} else {
 		klog.Warningf("this resTemplate for devType [%s] devModel [%s] is empty", devType, devModel)
 		return
@@ -340,4 +356,83 @@ func ParseDevResTemplate(
 	}
 
 	return
+}
+
+func (o *imdOperator) GetPhysicalTemplateEntriesFromNodeStatus(nodeName, devModel string) (entries []appsv1alpha1.TemplateDetail, err error) {
+	entries = []appsv1alpha1.TemplateDetail{}
+	ctx := context.Background()
+	nodeInfo, err := o.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("get node %s failed, %v", nodeName, err)
+		return
+	}
+
+	resourceName := GetResourceName(devModel)
+	if resourceName == "" {
+		err = fmt.Errorf("not support device %s now", devModel)
+		return
+	}
+
+	maxChips, ok := nodeInfo.Status.Capacity[corev1.ResourceName(resourceName)]
+	if !ok {
+		err = fmt.Errorf("resource %s not registered on Node %s", resourceName, nodeName)
+		return
+	}
+
+	maxChipCount, err := strconv.Atoi(maxChips.String())
+	if err != nil {
+		err = fmt.Errorf("parse resource %s:%s failed, %v", resourceName, maxChips.String(), err)
+		return
+	}
+
+	for i := 1; i <= maxChipCount; i++ {
+		entries = append(entries, appsv1alpha1.TemplateDetail{
+			Description:     GetPhysicalDesc(devModel, i),
+			ResourceRequest: map[string]int{resourceName: i},
+		})
+	}
+
+	return
+}
+
+func GetPhysicalDesc(devModel string, count int) string {
+	var dev string
+	if strings.HasPrefix(devModel, constants.DeviceHuaweiPrefix) {
+		dev = strings.TrimPrefix(devModel, constants.DeviceHuaweiPrefix)
+	} else {
+		dev = constants.DeviceNvidiaCommon
+	}
+
+	return fmt.Sprintf("%d Chip (%s)", count, dev)
+}
+
+func GetResourceName(deviceName string) string {
+	switch {
+	case deviceName == constants.DeviceAscend310:
+		return constants.ResourceAscend310
+	case deviceName == constants.DeviceAscend310P:
+		return constants.ResourceAscend310P
+	case strings.Contains(strings.ToLower(deviceName), constants.DeviceNvidiaCommon):
+		return constants.ResourceNvidia
+	default:
+	}
+
+	return ""
+}
+
+func AddHardwareInfoToVirtualTemplateDesc(devModel string, devModelDetails []appsv1alpha1.TemplateDetail) []appsv1alpha1.TemplateDetail {
+	var dev string
+	if strings.HasPrefix(devModel, constants.DeviceHuaweiPrefix) {
+		dev = strings.TrimPrefix(devModel, constants.DeviceHuaweiPrefix)
+	} else {
+		dev = constants.DeviceNvidiaCommon
+	}
+
+	result := []appsv1alpha1.TemplateDetail{}
+	for _, item := range devModelDetails {
+		item.Description = fmt.Sprintf("%s (%s)", item.Description, dev)
+		result = append(result, item)
+	}
+
+	return result
 }

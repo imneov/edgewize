@@ -52,6 +52,10 @@ spec:
           command: {{- include "common.tplvalues.render" (dict "value" .Values.gateway.command "context" $) | nindent 12 }}
           {{- end }}
           env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: CLOUDHUB_PORT
               value: {{ .Values.gateway.nodePort.cloudhub | quote }}
             - name: CLOUDHUBHTTPS_PORT
@@ -71,8 +75,8 @@ spec:
             - name: edgewize-gateway-certs
               mountPath: /etc/edgewize/gateway-certs/
               readOnly: true
-            - name: edgewize-cloudcore-service
-              mountPath: /etc/edgewize/cloudcore-services/
+            - name: edgecluster-service
+              mountPath: /etc/edgewize/edgecluster-services/
           {{- if .Values.gateway.extraVolumeMounts }}
           {{- include "common.tplvalues.render" (dict "value" .Values.gateway.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
@@ -89,9 +93,9 @@ spec:
           secret:
             defaultMode: 420
             secretName: edgewize-controller-manager-webhook-cert
-        - name: edgewize-cloudcore-service
+        - name: edgecluster-service
           configMap:
-            name: edgewize-cloudcore-service
+            name: edgecluster-service
         {{- if .Values.controller.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraVolumes "context" $) | nindent 8 }}
         {{- end }}

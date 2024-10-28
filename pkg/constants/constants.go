@@ -173,6 +173,16 @@ const (
 	ResTemplateConfigMap        = "resource-template"
 	AicpHamiSchedulerName       = "hami-scheduler"
 
+	ResourceAscend310  = "huawei.com/Ascend310"
+	ResourceAscend310P = "huawei.com/Ascend310P"
+	ResourceNvidia     = "nvidia.com/gpu"
+
+	DeviceAscend310    = "huawei-Ascend310"
+	DeviceAscend310P   = "huawei-Ascend310P"
+	DeviceNvidiaCommon = "nvidia"
+
+	DeviceHuaweiPrefix = "huawei-"
+
 	DefaultEdgewizeNamespace = "edgewize-system"
 
 	DefaultNamespace = "default"

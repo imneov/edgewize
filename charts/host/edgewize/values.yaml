@@ -2,7 +2,7 @@
 ## @param global.tag Global Docker image tag
 global:
   imageRegistry: ""
-  tag: v0.7.2
+  tag: v0.9.0
   imagePullSecrets: [ ]
   # - secretName
 
@@ -94,7 +94,7 @@ apiserver:
   replicaCount: 1
   image:
     registry: ""
-    repository: kubesphere/edgewize-apiserver
+    repository: edgewize/edgewize-apiserver
     tag: ""
     digest: ""
     pullPolicy: IfNotPresent
@@ -146,8 +146,8 @@ controller:
   replicaCount: 1
   image:
     registry: ""
-    repository: kubesphere/edgewize-controller-manager
-    tag: ""
+    repository: edgewize/edgewize-controller-manager
+    tag: "v0.9.0"
     digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
@@ -217,7 +217,7 @@ gateway:
   replicaCount: 1
   image:
     registry: ""
-    repository: kubesphere/edgewize-gateway
+    repository: edgewize/edgewize-gateway
     tag: ""
     digest: ""
     pullPolicy: IfNotPresent
@@ -240,11 +240,14 @@ gateway:
       containerPort: 30004
     - protocol: TCP
       containerPort: 30080
+    - protocol: TCP
+      containerPort: 30091
   nodePort:
     cloudhub: 30000
     cloudhubHttps: 30002
     tunnelport: 30004
     otaport: 30080
+    k8sport: 30091
   ## edgewize-apiserver resource requests and limits
   ## ref: https://kubernetes.io/docs/user-guide/compute-resources/
   ## @param resources.limits The resources limits for the haproxy containers
@@ -311,6 +314,8 @@ values:
     defaultImageRegistry: ""
     syncer:
       image: edgewize/vcluster:v0.13
+      extraArgs:
+        - --tls-san=*.edgewize.io
     storage:
       persistence: true
       provisioning: "dynamic" # static or dynamic, default is dynamic
@@ -383,29 +388,28 @@ values:
   edgewize:
     global:
       imageRegistry: ""
-      tag: v0.7.0
+      tag: v0.9.0
       imagePullSecrets:
         - edge-deploy-secret
     apiserver:
       image:
         registry: ""
-        repository: kubesphere/edgewize-apiserver
+        repository: edgewize/edgewize-apiserver
         tag: ""
         digest: ""
         pullPolicy: IfNotPresent
     controller:
       image:
         registry: ""
-        repository: kubesphere/edgewize-controller-manager
-        tag: ""
+        repository: edgewize/edgewize-controller-manager
+        tag: "v0.9.0"
         digest: ""
         pullPolicy: IfNotPresent
   ksCore:
     defaultImageRegistry: ""
     image:
-      ks_apiserver_tag: kse-release-3.3-abc
-      ks_console_tag: kse-release-3.3-abc
-      ks_controller_manager_tag: kse-release-3.3-abc
+      ks_apiserver_tag: kse-release-3.3-abc-v0.9.0
+      ks_controller_manager_tag: kse-release-3.3-abc-v0.9.0
       pullPolicy: IfNotPresent
     config:
       create: true
@@ -443,3 +447,64 @@ values:
         image: kubefed
         repository: kubesphere
         tag: v0.8.1
+  eventbus:
+    replicaCount: 1
+    defaultImageRegistry: "harbor.dev.thingsdao.com/"
+    clusterName: ""
+    messageGateway: ""
+    gatewayPort: "31883"
+    mosquitto:
+      image:
+        repository: edgewize/eclipse-mosquitto
+        tag: 2.0.14
+    initconfig:
+      image:
+        repository: edgewize/mosquitto-config
+        tag: 0.1.0
+  routerManager:
+    clusterName: ""
+    routerManager:
+      replicaCount: 1
+      image:
+        registry: ""
+        repository: edgewize/router-manager
+        pullPolicy: IfNotPresent
+        tag: "v0.9.0"
+    routerManagerEdge:
+      image:
+        registry: ""
+        repository: edgewize/router-manager
+        pullPolicy: IfNotPresent
+        tag: "v0.9.0"
+  modelmesh:
+    replicaCount: 1
+    imagePullPolicy: "IfNotPresent"
+    imageRegistry: "harbor.dev.thingsdao.com"
+    imagePullSecrets:
+      - name: edge-deploy-secret
+    imageReference:
+      modelMeshMsc:
+        name: "edgewize/model-mesh-msc"
+        tag: "v0.1.5"
+        imageRegistry: "zpk.abc:443/docker-test"
+        imagePullSecrets: [ ]
+      modelMeshProxy:
+        name: "edgewize/model-mesh-proxy"
+        tag: "v0.1.5"
+        imageRegistry: "dockerhub.kubekey.local"
+        imagePullSecrets: [ ]
+      modelMeshBroker:
+        name: "edgewize/model-mesh-broker"
+        tag: "v0.1.5"
+        imageRegistry: "dockerhub.kubekey.local"
+        imagePullSecrets: [ ]
+  hamiDevicePlugin:
+    defaultImageRegistry: "dockerhub.kubekey.local/"
+    imagePullSecrets:
+      - name: edge-deploy-secret
+    apiServerConfig:
+      gatewayPort: 30091
+  hamiScheduler:
+    defaultImageRegistry: "zpk.abc:443/docker-test/"
+    imagePullSecrets:
+      - name: edge-deploy-secret

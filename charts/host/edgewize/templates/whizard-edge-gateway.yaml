@@ -36,8 +36,8 @@ spec:
               cpu: '3'
               memory: 6Gi
             requests:
-              cpu: 600m
-              memory: 800Mi
+              cpu: 100m
+              memory: 100Mi
       volumes:
         - configMap:
             name: whizard-edge-gateway-configmap

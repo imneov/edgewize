@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os/exec"
 	"reflect"
-	"strconv"
 	"strings"
 
 	ksclusterv1alpha1 "kubesphere.io/api/cluster/v1alpha1"
@@ -547,11 +546,16 @@ func (r *Reconciler) ReconcileHamiDevicePlugin(ctx context.Context, instance *in
 		return nil
 	}
 
+	if len(instance.Spec.AdvertiseAddress) == 0 {
+		logger.V(4).Info("advertise address, skip install hamiDevicePlugin")
+		return nil
+	}
+
 	namespace := component.Namespace
 	values := component.Values.ToValues()
-	err := r.SetEdgeFrpClientConfig(ctx, values, instance)
+	err := r.SetEdgeApiServerConfig(ctx, values, instance)
 	if err != nil {
-		klog.Warningf("set hamiDevicePlugin frpClientConfig  values error, err: %v", err)
+		klog.Warningf("set hamiDevicePlugin cloud apiServerConfig values error, err: %v", err)
 	}
 	klog.V(3).Infof("ReconcileHamiDevicePlugin: %v", values)
 
@@ -592,10 +596,6 @@ func (r *Reconciler) ReconcileHamiScheduler(ctx context.Context, instance *infra
 
 	namespace := component.Namespace
 	values := component.Values.ToValues()
-	err := r.SetCloudFrpClientConfig(ctx, values, instance)
-	if err != nil {
-		klog.Warningf("set hamiScheduler frpClientConfig  values error, err: %v", err)
-	}
 	klog.V(3).Infof("ReconcileHamiScheduler: %v", values)
 
 	upgrade := false
@@ -784,28 +784,18 @@ func (r *Reconciler) SetMonitorComponent(ctx context.Context, values chartutil.V
 	return
 }
 
-func (r *Reconciler) SetEdgeFrpClientConfig(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
-	frpClientConfig := values["frpClientConfig"].(map[string]interface{})
-	frpClientConfig["proxyName"] = instance.GetName()
-	values["frpClientConfig"] = frpClientConfig
-	return
-}
-
-func (r *Reconciler) SetCloudFrpClientConfig(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
-	frpClientConfig := values["frpClientConfig"].(map[string]interface{})
-	frpClientConfig["proxyName"] = instance.GetName()
-
-	switch instance.Spec.Type {
-	case infrav1alpha1.InstallTypeAuto:
-		frpClientConfig["serverAddress"], frpClientConfig["serverPort"], err = r.GetFrpServerInternalAddr(ctx)
-		if err != nil {
-			return
-		}
-	default:
-		klog.Warningf("use CloudFrpClientConfig from user")
+func (r *Reconciler) SetEdgeApiServerConfig(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) (err error) {
+	kubeApiServerConfig := values["apiServerConfig"].(map[string]interface{})
+	kubeApiServerConfig["gatewayAddress"] = instance.Spec.AdvertiseAddress[0]
+	dnsName := GetDefaultEdgeClusterDnsName(instance.Name)
+	if len(instance.Spec.DNSNames) == 0 {
+		klog.Warningf("edge cluster [%s] dnsNames is empty", instance.Name)
+	} else {
+		dnsName = instance.Spec.DNSNames[0]
 	}
 
-	values["frpClientConfig"] = frpClientConfig
+	kubeApiServerConfig["gatewayDnsName"] = dnsName
+	values["apiServerConfig"] = kubeApiServerConfig
 	return
 }
 
@@ -826,28 +816,6 @@ func (r *Reconciler) GetWhizardGatewayInternalAddr(ctx context.Context) (addr st
 		addr = fmt.Sprintf("http://%s:%d", gatewayIP, gatewayPort)
 	}
 
-	return
-}
-
-func (r *Reconciler) GetFrpServerInternalAddr(ctx context.Context) (internalIP, port string, err error) {
-	frpServerService := &corev1.Service{}
-	key := types.NamespacedName{
-		Namespace: CurrentNamespace,
-		Name:      FrpServerServiceName,
-	}
-
-	err = r.Get(ctx, key, frpServerService)
-	if err != nil {
-		return
-	}
-
-	if frpServerService.Spec.Ports != nil && len(frpServerService.Spec.Ports) > 0 {
-		internalIP = frpServerService.Spec.ClusterIP
-		port = strconv.Itoa(int(frpServerService.Spec.Ports[0].Port))
-		return
-	}
-
-	err = fmt.Errorf("parse Frps service failed")
 	return
 }
 

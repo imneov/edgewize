@@ -85,3 +85,48 @@ Image registry secret name
 imagePullSecrets: {{ toYaml .Values.imagePullSecrets | nindent 2 }}
 {{- end }}
 
+{{- define "ascend-device-plugin-310.image" -}}
+{{ include "ascend-device-plugin.image" (dict "device" .Values.ascendDevicePlugin.Ascend310 "global" .Values) }}
+{{- end -}}
+
+{{- define "ascend-device-plugin-310P.image" -}}
+{{ include "ascend-device-plugin.image" (dict "device" .Values.ascendDevicePlugin.Ascend310P "global" .Values) }}
+{{- end -}}
+
+{{- define "ascend-device-plugin.image" -}}
+{{- if .global.defaultImageRegistry -}}
+{{- if hasSuffix "/" .global.defaultImageRegistry -}}
+{{- .global.defaultImageRegistry -}}{{- .device.image -}}
+{{- else -}}
+{{- .global.defaultImageRegistry -}}/{{- .device.image -}}
+{{- end -}}
+{{- else -}}
+{{- .device.image -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "hami-vgpu-device-plugin.image" -}}
+{{- $defaultImageRegistry := index . 0 -}}
+{{- $image := index . 1 -}}
+{{- if $defaultImageRegistry -}}
+{{- if hasSuffix "/" $defaultImageRegistry -}}
+{{- $defaultImageRegistry -}}{{- $image -}}
+{{- else -}}
+{{- $defaultImageRegistry -}}/{{- $image -}}
+{{- end -}}
+{{- else -}}
+{{- $image -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "nvidia-device-plugin.image" -}}
+{{- if .Values.defaultImageRegistry -}}
+{{- if hasSuffix "/" .Values.defaultImageRegistry -}}
+{{- .Values.defaultImageRegistry -}}{{ .Values.devicePlugin.image }}:{{ .Values.version }}
+{{- else -}}
+{{- .Values.defaultImageRegistry -}}/{{ .Values.devicePlugin.image }}:{{ .Values.version }}
+{{- end -}}
+{{- else -}}
+{{ .Values.devicePlugin.image }}:{{ .Values.version }}
+{{- end -}}
+{{- end -}}

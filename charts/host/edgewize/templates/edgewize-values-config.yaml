@@ -19,3 +19,13 @@ data:
   {{- toYaml .Values.values.kubefed | nindent 4 }}
   edge-ota-server: |
   {{- toYaml .Values.values.edgeOtaServer | nindent 4 }}
+  eventbus: |
+  {{- toYaml .Values.values.eventbus | nindent 4 }}
+  router-manager: |
+  {{- toYaml .Values.values.routerManager | nindent 4 }}
+  modelmesh: |
+  {{- toYaml .Values.values.modelmesh | nindent 4 }}
+  hami-device-plugin: |
+  {{- toYaml .Values.values.hamiDevicePlugin | nindent 4 }}
+  hami-scheduler: |
+  {{- toYaml .Values.values.hamiScheduler | nindent 4 }}
