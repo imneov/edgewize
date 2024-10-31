@@ -13,13 +13,6 @@ spec:
       targetPort: 9090
   selector:
     {{- include "router-apiserver.selectorLabels" . | nindent 4 }}
-  type: NodePort
-  sessionAffinity: None
-  externalTrafficPolicy: Cluster
-  ipFamilies:
-    - IPv4
-  ipFamilyPolicy: SingleStack
-  internalTrafficPolicy: Cluster
 ---
 kind: Service
 apiVersion: v1
@@ -36,13 +29,6 @@ spec:
       targetPort: 8443
   selector:
     {{- include "router-controller.selectorLabels" . | nindent 4 }}
-  type: NodePort
-  sessionAffinity: None
-  externalTrafficPolicy: Cluster
-  ipFamilies:
-    - IPv4
-  ipFamilyPolicy: SingleStack
-  internalTrafficPolicy: Cluster
 ---
 apiVersion: v1
 kind: Service
