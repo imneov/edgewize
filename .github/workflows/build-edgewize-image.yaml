@@ -46,4 +46,4 @@ jobs:
         run: |
           tag=$(cat VERSION | tr -d " \t\n\r")
           echo ${{ secrets.DOCKER_PASSWORD }} | docker login $IMAGE_REPO -u ${{ secrets.DOCKER_USERNAME }} --password-stdin 
-          make container-cross-push -e REPO=${{ env.REGISTRY_REPO }} -e TAG=$tag
+          REPO=$IMAGE_REPO TAG=$tag make container-cross-push
