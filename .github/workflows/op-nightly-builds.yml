@@ -24,7 +24,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: edgewize-kse-4.0
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
         with:
@@ -38,6 +37,6 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
-          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin 
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login $IMAGE_REPO -u ${{ secrets.DOCKER_USERNAME }} --password-stdin 
           tag=nightly-$(date '+%Y%m%d')
-          REPO=edgewize TAG=${tag} make container-cross-push    
+          REPO=$IMAGE_REPO TAG=${tag} make container-cross-push    
