@@ -2,22 +2,22 @@
 apiVersion: fluentbit.fluent.io/v1alpha2
 kind: FluentBit
 metadata:
-  name: fluentbit-edge-npu
+  name: fluentbit-edge
   namespace: fluent
   labels:
-    app.kubernetes.io/name: fluent-bit-npu
+    app.kubernetes.io/name: fluent-bit-edge
 spec:
-  image: {{ .Values.defaultImageRegistry }}{{ .Values.fluentbit.image.repository }}:{{ .Values.fluentbit.image.tag }}
+  image: {{ .Values.defaultImageRegistry }}{{ .Values.fluentbit.image.repository }}:{{ .Values.fluentbit.image.tagKylinV10 }}
   {{- if .Values.fluentbit.imagePullSecrets }}
   imagePullSecrets:
   {{- toYaml .Values.fluentbit.imagePullSecrets | nindent 8 }}
   {{- end }}
   positionDB:
     hostPath:
-      path: /var/lib/fluent-bit/npu/
+      path: /var/lib/fluent-bit/edge/
   resources:
 {{- toYaml .Values.fluentbit.resources | nindent 4  }}
-  fluentBitConfigName: fluent-bit-config-edge-npu
+  fluentBitConfigName: fluent-bit-config-edge
   tolerations:
     - key: node-role.kubernetes.io/edge
       operator: Exists
@@ -26,18 +26,17 @@ spec:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
-          - matchExpressions:
-            - key: accelerator
-              operator: In
-              values:
-                - huawei-Ascend310
-                - huawei-Ascend310P
-            - key: kylin-v10
-              operator: DoesNotExist
-            - key: node-role.kubernetes.io/edge
-              operator: Exists
-            - key: vcluster.loft.sh/fake-node
-              operator: DoesNotExist
+        - matchExpressions:
+          - key: accelerator
+            operator: DoesNotExist
+          - key: kylin-v10
+            operator: Exists
+          - key: nvidia.com/gpu.present
+            operator: DoesNotExist
+          - key: node-role.kubernetes.io/edge
+            operator: Exists
+          - key: vcluster.loft.sh/fake-node
+            operator: DoesNotExist
   hostNetwork : true
   volumes:
     - name: host-proc
