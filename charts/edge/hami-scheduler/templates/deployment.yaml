@@ -34,7 +34,7 @@ spec:
       containers:
       {{- if .Values.scheduler.kubeScheduler.enabled }}
         - name: kube-scheduler
-          image: {{ .Values.defaultImageRegistry }}{{ .Values.scheduler.kubeScheduler.image }}:{{ .Values.scheduler.kubeScheduler.imageTag }}
+          image: {{ template "hami-scheduler-component.image" (list .Values.defaultImageRegistry .Values.scheduler.kubeScheduler.image .Values.scheduler.kubeScheduler.imageTag) }}
           imagePullPolicy: {{ .Values.scheduler.kubeScheduler.imagePullPolicy | quote }}
           command:
             - kube-scheduler
@@ -56,7 +56,7 @@ spec:
               mountPath: /config
         {{- end }}      
         - name: vgpu-scheduler-extender
-          image: {{ .Values.defaultImageRegistry }}{{ .Values.scheduler.extender.image }}:{{ .Values.version }}
+          image: {{ template "hami-scheduler-component.image" (list .Values.defaultImageRegistry .Values.scheduler.extender.image .Values.version) }}
           imagePullPolicy: {{ .Values.scheduler.extender.imagePullPolicy | quote }}
           command:
             - scheduler

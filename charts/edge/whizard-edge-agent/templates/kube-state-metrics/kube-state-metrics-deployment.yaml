@@ -72,7 +72,7 @@ spec:
         - --resources=certificatesigningrequests,configmaps,cronjobs,daemonsets,deployments,endpoints,horizontalpodautoscalers,ingresses,jobs,leases,limitranges,mutatingwebhookconfigurations,namespaces,networkpolicies,nodes,persistentvolumeclaims,persistentvolumes,poddisruptionbudgets,pods,replicasets,replicationcontrollers,resourcequotas,secrets,services,statefulsets,storageclasses,validatingwebhookconfigurations,volumeattachments,clusterroles,clusterrolebindings,users
         - --metric-annotations-allowlist=clusterroles=[kubesphere.io/creator]
         - --metric-labels-allowlist=namespaces=[kubesphere.io/workspace],nodes=[vcluster.loft.sh/fake-node]
-        image: {{ .Values.defaultImageRegistry }}kubesphere/kube-state-metrics:v2.6.0
+        image: {{ include "component.cloudImage" (dict "global" .Values "imageInfo" .Values.kubeStateMetrics.image) }}
         name: kube-state-metrics
         resources:
           limits:
@@ -88,7 +88,7 @@ spec:
         - --secure-listen-address=:8443
         - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
         - --upstream=http://127.0.0.1:8081/
-        image: {{ .Values.defaultImageRegistry }}kubesphere/kube-rbac-proxy:v0.11.0
+        image: {{ include "component.cloudImage" (dict "global" .Values "imageInfo" .Values.kubeRBACProxy.image) }}
         name: kube-rbac-proxy-main
         ports:
         - containerPort: 8443
@@ -109,7 +109,7 @@ spec:
         - --secure-listen-address=:9443
         - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
         - --upstream=http://127.0.0.1:8082/
-        image: {{ .Values.defaultImageRegistry }}kubesphere/kube-rbac-proxy:v0.11.0
+        image: {{ include "component.cloudImage" (dict "global" .Values "imageInfo" .Values.kubeRBACProxy.image) }}
         name: kube-rbac-proxy-self
         ports:
         - containerPort: 9443
@@ -137,7 +137,7 @@ spec:
                     operator: DoesNotExist
       {{- end }}
       serviceAccountName: kube-state-metrics
-      {{ if .Values.imagePullSecrets }}
+      {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
-      {{ toYaml .Values.imagePullSecrets | indent 8 }}
-      {{ end }}
+      {{ toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}

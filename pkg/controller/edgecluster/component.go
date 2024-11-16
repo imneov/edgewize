@@ -359,6 +359,8 @@ func (r *Reconciler) ReconcileFluentOperator(ctx context.Context, instance *infr
 
 	}
 	values := component.Values.ToValues()
+	r.SetFluentOperatorValues(values, instance)
+
 	klog.V(3).Infof("fluent-operator values: %v, instance: %s", values, instance.Name)
 	upgrade := false
 	if instance.Status.Components == nil {
@@ -626,6 +628,11 @@ func (r *Reconciler) ReconcileHamiScheduler(ctx context.Context, instance *infra
 	return nil
 }
 
+func (r *Reconciler) SetFluentOperatorValues(values chartutil.Values, instance *infrav1alpha1.EdgeCluster) {
+	remoteOpensearchConf := values["remoteOpensearch"].(map[string]interface{})
+	remoteOpensearchConf["clusterName"] = instance.Name
+}
+
 func (r *Reconciler) SetKSCoreValues(ctx context.Context, values chartutil.Values, instance *infrav1alpha1.EdgeCluster) error {
 	ksConfig := &corev1.ConfigMap{}
 	key := types.NamespacedName{
@@ -669,6 +676,14 @@ func (r *Reconciler) SetKSCoreValues(ctx context.Context, values chartutil.Value
 			}
 			config["auditing"] = auditingCfg
 		}
+
+		// only support Auto Mode now
+		loggingCfg, err := r.GetKSCoreLoggingCfg(ctx, value, instance.Name)
+		if err != nil {
+			klog.Errorf("set logging config error, err: %v", err)
+			return err
+		}
+		config["logging"] = loggingCfg
 	}
 	return nil
 }
@@ -701,6 +716,7 @@ func (r *Reconciler) GetKSCoreAuditingCfg(ctx context.Context, ksCfgValue chartu
 		return
 	}
 
+	// not install auditing components on edge cluster
 	auditingCfg["enable"] = false
 	auditingCfg["host"], err = r.ParseOpensearchPath(ctx)
 	if err != nil {
@@ -710,6 +726,31 @@ func (r *Reconciler) GetKSCoreAuditingCfg(ctx context.Context, ksCfgValue chartu
 
 	auditingCfg["indexPrefix"] = clusterName
 	auditingCfg["mode"] = ""
+	return
+}
+
+func (r *Reconciler) GetKSCoreLoggingCfg(ctx context.Context, ksCfgValue chartutil.Values, clusterName string) (loggingCfg map[string]interface{}, err error) {
+	loggingCfg = make(map[string]interface{})
+	hostLogging, err := ksCfgValue.Table("logging")
+	if err != nil {
+		if _, ok := err.(chartutil.ErrNoValue); !ok {
+			klog.Errorf("parse host logging cfg error, err: %v", err)
+		} else {
+			klog.Warningf("host cluster logging module not enabled")
+		}
+	}
+
+	loggingCfg = hostLogging.AsMap()
+	if len(loggingCfg) == 0 {
+		return
+	}
+
+	loggingCfg["indexPrefix"] = fmt.Sprintf("%s-edge-logging", clusterName)
+	loggingCfg["host"], err = r.ParseOpensearchPath(ctx)
+	if err != nil {
+		klog.Errorf("get host opensearch svc failed, err: %v", err)
+	}
+
 	return
 }
 

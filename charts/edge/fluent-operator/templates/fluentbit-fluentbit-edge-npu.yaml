@@ -7,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: fluent-bit-npu
 spec:
-  image: {{ .Values.defaultImageRegistry }}{{ .Values.fluentbit.image.repository }}:{{ .Values.fluentbit.image.tag }}
+  image: {{ include "fluent-operator.edgeImage" (dict "global" .Values "imageInfo" .Values.fluentbit.image) }}
   {{- if .Values.fluentbit.imagePullSecrets }}
   imagePullSecrets:
   {{- toYaml .Values.fluentbit.imagePullSecrets | nindent 8 }}

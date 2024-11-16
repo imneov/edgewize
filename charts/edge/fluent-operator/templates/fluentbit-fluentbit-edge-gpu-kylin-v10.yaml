@@ -2,12 +2,12 @@
 apiVersion: fluentbit.fluent.io/v1alpha2
 kind: FluentBit
 metadata:
-  name: fluentbit-edge-gpu
+  name: fluentbit-edge-gpu-kylin-v10
   namespace: fluent
   labels:
-    app.kubernetes.io/name: fluent-bit-gpu
+    app.kubernetes.io/name: fluent-bit-gpu-kylin-v10
 spec:
-  image: {{ .Values.defaultImageRegistry }}{{ .Values.fluentbit.image.repository }}:{{ .Values.fluentbit.image.tagKylinV10 }}
+  image: {{ include "fluent-operator.kylinEdgeImage" (dict "global" .Values "imageInfo" .Values.fluentbit.image) }}
   {{- if .Values.fluentbit.imagePullSecrets }}
   imagePullSecrets:
   {{- toYaml .Values.fluentbit.imagePullSecrets | nindent 8 }}

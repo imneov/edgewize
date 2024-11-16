@@ -314,4 +314,18 @@ fullnameOverride: ""
 namespaceOverride: ""
 
 
+#defaultImageRegistry: "harbor.dev.thingsdao.com/"
 defaultImageRegistry: ""
+#edgeImageRegistry: "mirrors.thingsdao.com/"
+edgeImageRegistry: ""
+
+remoteOpensearch:
+  clusterName: ""
+  tlsEnable: true
+  host: ""
+  port: ""
+  username: "admin"
+  password: "admin"
+
+
+

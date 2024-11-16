@@ -50,3 +50,23 @@ imagePullSecrets:
     {{- end }}
   {{- end }}
 {{- end -}}
+
+{{- define "component.cloudImage" -}}
+{{- if .global.defaultImageRegistry -}}
+{{- trimSuffix "/" .global.defaultImageRegistry -}}/{{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
+{{- else -}}
+{{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
+{{- end -}}
+{{- end }}
+
+{{- define "component.edgeImage" -}}
+{{- $registry := .global.defaultImageRegistry -}}
+{{- if .global.edgeImageRegistry }}
+{{- $registry = .global.edgeImageRegistry -}}
+{{- end -}}
+{{- if $registry -}}
+{{- trimSuffix "/" $registry -}}/{{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
+{{- else -}}
+{{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
+{{- end -}}
+{{- end }}

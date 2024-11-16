@@ -94,11 +94,11 @@ imagePullSecrets: {{ toYaml .Values.imagePullSecrets | nindent 2 }}
 {{- end -}}
 
 {{- define "ascend-device-plugin.image" -}}
-{{- if .global.defaultImageRegistry -}}
-{{- if hasSuffix "/" .global.defaultImageRegistry -}}
-{{- .global.defaultImageRegistry -}}{{- .device.image -}}
+{{- if .global.edgeImageRegistry -}}
+{{- if hasSuffix "/" .global.edgeImageRegistry -}}
+{{- .global.edgeImageRegistry -}}{{- .device.image -}}
 {{- else -}}
-{{- .global.defaultImageRegistry -}}/{{- .device.image -}}
+{{- .global.edgeImageRegistry -}}/{{- .device.image -}}
 {{- end -}}
 {{- else -}}
 {{- .device.image -}}
@@ -120,11 +120,11 @@ imagePullSecrets: {{ toYaml .Values.imagePullSecrets | nindent 2 }}
 {{- end -}}
 
 {{- define "nvidia-device-plugin.image" -}}
-{{- if .Values.defaultImageRegistry -}}
-{{- if hasSuffix "/" .Values.defaultImageRegistry -}}
-{{- .Values.defaultImageRegistry -}}{{ .Values.devicePlugin.image }}:{{ .Values.version }}
+{{- if .Values.edgeImageRegistry -}}
+{{- if hasSuffix "/" .Values.edgeImageRegistry -}}
+{{- .Values.edgeImageRegistry -}}{{ .Values.devicePlugin.image }}:{{ .Values.version }}
 {{- else -}}
-{{- .Values.defaultImageRegistry -}}/{{ .Values.devicePlugin.image }}:{{ .Values.version }}
+{{- .Values.edgeImageRegistry -}}/{{ .Values.devicePlugin.image }}:{{ .Values.version }}
 {{- end -}}
 {{- else -}}
 {{ .Values.devicePlugin.image }}:{{ .Values.version }}

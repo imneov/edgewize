@@ -1,0 +1,35 @@
+{{- if .Values.fluentbit.kubeedge.enable -}}
+{{- if .Values.fluentbit.enable -}}
+apiVersion: fluentbit.fluent.io/v1alpha2
+kind: ClusterOutput
+metadata:
+  name: fluentd-output-opensearch-edge
+  labels:
+    fluentbit.fluent.io/enabled: "true"
+    fluentbit.fluent.io/component: logging
+    node-role.kubernetes.io/edge: "true"
+spec:
+  matchRegex: (?:kube|service)\.(.*)
+  opensearch:
+    host: {{ .Values.remoteOpensearch.host }}
+    httpPassword:
+      valueFrom:
+        secretKeyRef:
+          key: password
+          name: opensearch-credentials
+    httpUser:
+      valueFrom:
+        secretKeyRef:
+          key: username
+          name: opensearch-credentials
+    logstashFormat: true
+    logstashPrefix: {{ .Values.remoteOpensearch.clusterName }}-edge-logging
+    port: {{ .Values.remoteOpensearch.port }}
+    suppressTypeName: true
+    timeKey: '@timestamp'
+    {{- if .Values.remoteOpensearch.tlsEnable }}
+    tls:
+      verify: false
+    {{- end }}
+{{- end }}
+{{- end }}

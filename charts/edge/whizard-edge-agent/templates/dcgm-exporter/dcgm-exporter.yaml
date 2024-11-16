@@ -69,7 +69,7 @@ spec:
       - name: exporter
         securityContext:
           {{- toYaml .Values.dcgm_exporter.securityContext | nindent 10 }}
-        image: "{{ .Values.defaultImageRegistry }}{{ .Values.dcgm_exporter.image.repository }}:{{ .Values.dcgm_exporter.image.tag }}"
+        image: {{ include "component.edgeImage" (dict "global" .Values "imageInfo" .Values.dcgm_exporter.image) }}
         imagePullPolicy: "{{ .Values.dcgm_exporter.image.pullPolicy }}"
         args:
         - -f

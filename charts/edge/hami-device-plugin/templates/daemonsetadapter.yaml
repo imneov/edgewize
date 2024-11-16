@@ -38,7 +38,7 @@ spec:
           ip: {{ .Values.apiServerConfig.gatewayAddress | quote }}
       containers:
         - name: adapter-device-plugin-ctr
-          image: {{ template "hami-vgpu-device-plugin.image" (list .Values.defaultImageRegistry .Values.devicePlugin.adapterimage)}}
+          image: {{ template "hami-vgpu-device-plugin.image" (list .Values.edgeImageRegistry .Values.devicePlugin.adapterimage)}}
           imagePullPolicy: {{ .Values.devicePlugin.imagePullPolicy | quote }}
           command: ["/bin/bash","-c"]
           args:
