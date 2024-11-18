@@ -17,12 +17,15 @@ spec:
       labels:
         {{- include "router-manager-edge.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+      {{ toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: {{ template "router-manager-edge.image" . }}
-
+          image: {{ .Values.edgeImageRegistry }}{{ .Values.routerManagerEdge.image.repository }}:{{ .Values.routerManagerEdge.image.tag }}
           imagePullPolicy: {{ .Values.routerManagerEdge.image.pullPolicy }}
           command:
             - router-manager

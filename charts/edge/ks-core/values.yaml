@@ -3,6 +3,7 @@
 replicaCount: 1
 
 defaultImageRegistry: ""
+edgeImageRegistry: ""
 
 image:
   # Overrides the image tag whose default is the chart appVersion.

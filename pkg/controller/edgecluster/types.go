@@ -18,9 +18,10 @@ const (
 	MonitorNamespace             = "kubesphere-monitoring-system"
 	EdgeWizeServers              = "edgewize-servers.yaml"
 	EdgeDeploySecret             = "edge-deploy-secret"
+	CloudImagePullSecret         = "zpk-deploy-secret"
 	MonitorPromServiceName       = "prometheus-k8s"
 	WhizardEdgeGatewayConfigName = "whizard-edge-gateway-configmap"
-	EdgeClusterService = "edgecluster-service"
+	EdgeClusterService           = "edgecluster-service"
 )
 
 type ServiceMap map[string]corev1.ServiceSpec

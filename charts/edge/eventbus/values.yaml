@@ -4,6 +4,7 @@
 
 replicaCount: 1
 defaultImageRegistry: ""
+edgeImageRegistry: ""
 
 clusterName: ""
 messageGateway: ""
@@ -99,3 +100,5 @@ emqx:
   messageGatewayInner: ""
   defaultUserName: admin
   defaultPassword: P@88w0rd
+  persistence:
+    storageClassName: ""

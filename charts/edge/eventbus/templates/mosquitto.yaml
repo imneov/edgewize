@@ -21,7 +21,7 @@ spec:
           emptyDir: {}
       initContainers:
         - name: init-config
-          image: {{ .Values.defaultImageRegistry }}{{ .Values.initconfig.image.repository }}:{{ .Values.initconfig.image.tag }}
+          image: {{ .Values.edgeImageRegistry }}{{ .Values.initconfig.image.repository }}:{{ .Values.initconfig.image.tag }}
           command:
             - /usr/local/bin/mosquitto-config
           args:
@@ -48,7 +48,7 @@ spec:
           imagePullPolicy: IfNotPresent
       containers:
         - name: mosquitto
-          image: {{ .Values.defaultImageRegistry }}{{ .Values.mosquitto.image.repository }}:{{ .Values.mosquitto.image.tag }}
+          image: {{ .Values.edgeImageRegistry }}{{ .Values.mosquitto.image.repository }}:{{ .Values.mosquitto.image.tag }}
           ports:
             - name: proxy
               hostPort: 1883

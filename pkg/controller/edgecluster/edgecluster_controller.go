@@ -558,7 +558,11 @@ func (r *Reconciler) initEdgeCluster(ctx context.Context, instance *infrav1alpha
 		return err
 	}
 	// 创建 Pull Image Secret
-	err = r.prepareImagePullSecret(ctx, instance)
+	err = r.prepareImagePullSecret(ctx, instance, EdgeDeploySecret)
+	if err != nil {
+		return err
+	}
+	err = r.prepareImagePullSecret(ctx, instance, CloudImagePullSecret)
 	if err != nil {
 		return err
 	}
@@ -644,14 +648,14 @@ func createSystemNamespace(ctx context.Context, clientset *kubernetes.Clientset,
 	return nil
 }
 
-func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infrav1alpha1.EdgeCluster) error {
+func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infrav1alpha1.EdgeCluster, imagePullSecretName string) error {
 	clientset, err := r.getClusterClientset(instance.Name)
 	if err != nil {
 		return err
 	}
 
 	hostSecret := &corev1.Secret{}
-	key := types.NamespacedName{Namespace: CurrentNamespace, Name: "zpk-deploy-secret"}
+	key := types.NamespacedName{Namespace: CurrentNamespace, Name: imagePullSecretName}
 	err = r.Get(ctx, key, hostSecret)
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
@@ -663,7 +667,7 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 		}
 	}
 	for _, namespace := range SystemNamespaces {
-		edgeDeploySecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, EdgeDeploySecret, metav1.GetOptions{})
+		edgeDeploySecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, imagePullSecretName, metav1.GetOptions{})
 		// if found edge-deploy-secret, skip
 		if err == nil {
 			klog.V(3).Infof("secret edge-deploy-secret exists, skip. edge-deploy-secret: %v", edgeDeploySecret.String())
@@ -677,7 +681,7 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 
 		edgeSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      EdgeDeploySecret,
+				Name:      imagePullSecretName,
 				Namespace: namespace,
 			},
 			Immutable:  hostSecret.Immutable,
@@ -694,7 +698,7 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 	}
 
 	for _, component := range ComponentsNamespaces {
-		edgeDeploySecret, err := clientset.CoreV1().Secrets(component.namespace).Get(ctx, EdgeDeploySecret, metav1.GetOptions{})
+		edgeDeploySecret, err := clientset.CoreV1().Secrets(component.namespace).Get(ctx, imagePullSecretName, metav1.GetOptions{})
 		// if found edge-deploy-secret, skip
 		if err == nil {
 			klog.V(3).Infof("secret edge-deploy-secret exists, skip. edge-deploy-secret: %v", edgeDeploySecret.String())
@@ -708,7 +712,7 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 
 		edgeSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      EdgeDeploySecret,
+				Name:      imagePullSecretName,
 				Namespace: component.namespace,
 			},
 			Immutable:  hostSecret.Immutable,
@@ -725,7 +729,7 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 	}
 
 	for _, namespace := range ExtendedNamespaces {
-		err := createImagePullSecret(ctx, clientset, namespace, hostSecret)
+		err := createImagePullSecret(ctx, clientset, namespace, imagePullSecretName, hostSecret)
 		if err != nil {
 			return err
 		}
@@ -733,10 +737,10 @@ func (r *Reconciler) prepareImagePullSecret(ctx context.Context, instance *infra
 	return nil
 }
 
-func createImagePullSecret(ctx context.Context, clientset *kubernetes.Clientset, namespace string, hostSecret *corev1.Secret) error {
+func createImagePullSecret(ctx context.Context, clientset *kubernetes.Clientset, namespace string, imagePullSecretName string, hostSecret *corev1.Secret) error {
 	edgeSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      EdgeDeploySecret,
+			Name:      imagePullSecretName,
 			Namespace: namespace,
 		},
 		Immutable:  hostSecret.Immutable,
