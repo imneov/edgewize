@@ -35,7 +35,7 @@ spec:
           path: /var/run/docker.sock
       initContainers:
       - name: setenv
-        image: {{ .Values.defaultImageRegistry }}{{ .Values.operator.initcontainer.repository }}:{{ .Values.operator.initcontainer.tag }}
+        image: {{ include "fluent-operator.cloudImage" (dict "global" .Values "imageInfo" .Values.operator.initcontainer) }}
         command:
         - /bin/sh
         - '-c'
@@ -55,7 +55,7 @@ spec:
         emptyDir: {}
       initContainers:
       - name: setenv
-        image: {{ .Values.defaultImageRegistry }}{{ .Values.operator.initcontainer.repository }}:{{ .Values.operator.initcontainer.tag }}
+        image: {{ include "fluent-operator.cloudImage" (dict "global" .Values "imageInfo" .Values.operator.initcontainer) }}
         command:
         - /bin/sh
         - '-c'
@@ -72,7 +72,7 @@ spec:
           emptyDir: {}
       initContainers:
       - name: setenv
-        image: {{ .Values.defaultImageRegistry }}{{ .Values.operator.initcontainer.repository }}:{{ .Values.operator.initcontainer.tag }}
+        image: {{ include "fluent-operator.cloudImage" (dict "global" .Values "imageInfo" .Values.operator.initcontainer) }}
         command:
         - /bin/sh
         - '-c'
@@ -86,7 +86,7 @@ spec:
       {{- end }}
       containers:
       - name: fluent-operator
-        image: {{ .Values.defaultImageRegistry }}{{ .Values.operator.container.repository }}:{{ .Values.operator.container.tag }}
+        image: {{ include "fluent-operator.cloudImage" (dict "global" .Values "imageInfo" .Values.operator.container) }}
         {{- if .Values.operator.securityContext }}
         securityContext:
           {{ toYaml .Values.operator.securityContext | nindent 10 }}

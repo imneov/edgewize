@@ -1,4 +1,4 @@
-{{- if .Values.Kubernetes -}}
+{{- if or .Values.Kubernetes .Values.fluentbit.kubeedge.enable -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:

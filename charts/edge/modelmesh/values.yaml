@@ -4,7 +4,10 @@
 replicaCount: 1
 
 imagePullPolicy: "IfNotPresent"
-imageRegistry: "harbor.dev.thingsdao.com"
+#imageRegistry: "harbor.dev.thingsdao.com"
+#edgeImageRegistry: "mirrors.thingsdao.com"
+imageRegistry: ""
+edgeImageRegistry: ""
 imagePullSecrets:
   - name: edge-deploy-secret
 
@@ -14,12 +17,15 @@ imageReference:
     name: "edgewize/model-mesh-msc"
     tag: "20240919"
     imagePullSecrets: []
+    imageRegistry: ""
   modelMeshProxy:
     name: "edgewize/model-mesh-proxy"
     tag: "20240919"
+    imageRegistry: ""
   modelMeshBroker:
     name: "edgewize/model-mesh-broker"
     tag: "20240919"
+    imageRegistry: ""
 
 nameOverride: ""
 fullnameOverride: ""

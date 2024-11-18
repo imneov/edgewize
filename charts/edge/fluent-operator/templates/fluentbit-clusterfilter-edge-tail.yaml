@@ -1,10 +1,9 @@
-{{- if or .Values.Kubernetes .Values.fluentbit.kubeedge.enable -}}
+{{- if .Values.fluentbit.kubeedge.enable -}}
 {{- if .Values.fluentbit.enable -}}
-{{- if .Values.fluentbit.filter.systemd.enable -}}
 apiVersion: fluentbit.fluent.io/v1alpha2
 kind: ClusterFilter
 metadata:
-  name: systemd
+  name: edge-tail
   labels:
     fluentbit.fluent.io/enabled: "true"
     fluentbit.fluent.io/component: logging
@@ -12,14 +11,13 @@ metadata:
     node-role.kubernetes.io/gpu: "true"
     node-role.kubernetes.io/npu: "true"
 spec:
-  match: service.*
+  match: kube.*
   filters:
-  - lua:
-      script:
-        key: systemd.lua
-        name: fluent-bit-lua
-      call: add_time
-      timeAsTable: true
-{{- end }}
+    - lua:
+        script:
+          key: edge-tail.lua
+          name: fluent-bit-edge-tail-lua
+        call: extract_metadata
+        timeAsTable: true
 {{- end }}
 {{- end }}

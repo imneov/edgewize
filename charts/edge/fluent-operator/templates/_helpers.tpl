@@ -72,3 +72,40 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+
+{{- define "fluent-operator.cloudImage" -}}
+{{- if .global.defaultImageRegistry -}}
+{{- trimSuffix "/" .global.defaultImageRegistry -}}/{{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
+{{- else -}}
+{{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
+{{- end -}}
+{{- end }}
+
+{{- define "fluent-operator.edgeImage" -}}
+{{- $registry := "" -}}
+{{- if .global.edgeImageRegistry }}
+{{- $registry = .global.edgeImageRegistry -}}
+{{- else -}}
+{{- $registry = .global.defaultImageRegistry -}}
+{{- end -}}
+{{- if $registry -}}
+{{- trimSuffix "/" $registry -}}/{{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
+{{- else -}}
+{{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
+{{- end -}}
+{{- end }}
+
+{{- define "fluent-operator.kylinEdgeImage" -}}
+{{- $registry := "" -}}
+{{- if .global.edgeImageRegistry }}
+{{- $registry = .global.edgeImageRegistry -}}
+{{- else -}}
+{{- $registry = .global.defaultImageRegistry -}}
+{{- end -}}
+{{- if $registry -}}
+{{- trimSuffix "/" $registry -}}/{{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
+{{- else -}}
+{{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
+{{- end -}}
+{{- end }}

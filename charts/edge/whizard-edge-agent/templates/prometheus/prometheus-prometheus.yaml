@@ -40,11 +40,11 @@ spec:
         weight: 100
   evaluationInterval: 1m
   externalLabels: {}
-  image: {{ .Values.defaultImageRegistry }}prom/prometheus:v2.39.1
-  {{ if .Values.imagePullSecrets }}
+  image: {{ include "component.cloudImage" (dict "global" .Values "imageInfo" .Values.prometheus.image) }}
+  {{- if .Values.imagePullSecrets }}
   imagePullSecrets:
-  {{ toYaml .Values.imagePullSecrets | indent 4 }}
-  {{ end }}
+  {{ toYaml .Values.imagePullSecrets | nindent 4 }}
+  {{- end }}
 
   nodeSelector:
     kubernetes.io/os: linux

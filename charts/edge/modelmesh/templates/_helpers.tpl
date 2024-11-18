@@ -61,7 +61,7 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
-{{- define "model-mesh-component.image" -}}
+{{- define "model-mesh-cloud-component.image" -}}
 {{- $registryName := .global.imageRegistry -}}
 {{- $name := .component.name -}}
 {{- $separator := ":" -}}
@@ -76,6 +76,33 @@ Create the name of the service account to use
     {{- $separator = "@" -}}
     {{- $termination = .component.digest | toString -}}
 {{- end -}}
+{{- $registryName = trimSuffix "/" $registryName  }}
+{{- if and $registryName (ne $registryName "") }}
+    {{- printf "%s/%s%s%s" $registryName $name $separator $termination -}}
+{{- else -}}
+    {{- printf "%s%s%s" $name $separator $termination -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "model-mesh-edge-component.image" -}}
+{{- $registryName := .global.imageRegistry -}}
+{{- if .global.edgeImageRegistry -}}
+{{- $registryName = .global.edgeImageRegistry -}}
+{{- end -}}
+{{- $name := .component.name -}}
+{{- $separator := ":" -}}
+{{- $termination := "latest" | toString -}}
+{{- if and .component.imageRegistry (ne .component.imageRegistry "") }}
+    {{- $registryName = .component.imageRegistry -}}
+{{- end -}}
+{{- if .component.tag }}
+    {{- $termination = .component.tag | toString -}}
+{{- end -}}
+{{- if .component.digest }}
+    {{- $separator = "@" -}}
+    {{- $termination = .component.digest | toString -}}
+{{- end -}}
+{{- $registryName = trimSuffix "/" $registryName  }}
 {{- if and $registryName (ne $registryName "") }}
     {{- printf "%s/%s%s%s" $registryName $name $separator $termination -}}
 {{- else -}}
@@ -84,15 +111,15 @@ Create the name of the service account to use
 {{- end -}}
 
 {{- define "model-mesh-msc.image" -}}
-{{ include "model-mesh-component.image" (dict "component" .Values.imageReference.modelMeshMsc "global" .Values) }}
+{{ include "model-mesh-cloud-component.image" (dict "component" .Values.imageReference.modelMeshMsc "global" .Values) }}
 {{- end -}}
 
 {{- define "model-mesh-broker.image" -}}
-{{ include "model-mesh-component.image" (dict "component" .Values.imageReference.modelMeshBroker "global" .Values) }}
+{{ include "model-mesh-edge-component.image" (dict "component" .Values.imageReference.modelMeshBroker "global" .Values) }}
 {{- end -}}
 
 {{- define "model-mesh-proxy.image" -}}
-{{ include "model-mesh-component.image" (dict "component" .Values.imageReference.modelMeshProxy "global" .Values) }}
+{{ include "model-mesh-edge-component.image" (dict "component" .Values.imageReference.modelMeshProxy "global" .Values) }}
 {{- end -}}
 
 {{- define "model-mesh-component.imagePullSecrets" -}}

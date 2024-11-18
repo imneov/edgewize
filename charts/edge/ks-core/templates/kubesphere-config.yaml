@@ -37,6 +37,13 @@ data:
       indexPrefix: {{ .Values.config.auditing.indexPrefix }}
       version: {{ .Values.config.auditing.version | default "" }}
       mode: {{ .Values.config.auditing.mode | default "" }}
+    logging:
+      host: {{ .Values.config.logging.host }}
+      basicAuth: {{ .Values.config.logging.basicAuth | default true }}
+      username: {{ .Values.config.logging.username }}
+      password: {{ .Values.config.logging.password }}
+      indexPrefix: {{ .Values.config.logging.indexPrefix }}
+      version: ""
     monitoring:
       endpoint: {{ .Values.config.monitoring.endpoint | default "http://whizard-agent-proxy.kubesphere-monitoring-system.svc:9090" }}
     alerting:

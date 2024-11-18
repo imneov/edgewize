@@ -14,10 +14,10 @@ spec:
       labels:
         app: npu-exporter
     spec:
-      {{ if .Values.imagePullSecrets }}
+      {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
-      {{ toYaml .Values.imagePullSecrets | indent 8 }}
-      {{ end }}
+      {{ toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
       hostNetwork: true
       tolerations:
         - key: node-role.kubernetes.io/edge
@@ -36,7 +36,7 @@ spec:
                   {{- include "whizard-edge-agent.edgeNodeAffinity" . | nindent 18 }}
       containers:
       - name: npu-exporter
-        image: "{{ .Values.defaultImageRegistry }}{{ .Values.npu_exporter.image.repository }}:{{ .Values.npu_exporter.image.tag }}"
+        image: {{ include "component.edgeImage" (dict "global" .Values "imageInfo" .Values.npu_exporter.image) }}
         resources:
           requests:
               memory: 1000Mi

@@ -33,9 +33,24 @@ whizard_edge_proxy:
       memory: 64Mi
 
 prometheus:
+  image:
+    repository: prom/prometheus
+    pullPolicy: IfNotPresent
+    tag: v2.39.1
   storage:
     className: ""
     prometheus_pv_size: ""
+
+prometheusOperator:
+  image:
+    repository: kubesphere/prometheus-operator
+    pullPolicy: IfNotPresent
+    tag: v0.55.1
+
+  reloaderImage:
+    repository: kubesphere/prometheus-config-reloader
+    pullPolicy: IfNotPresent
+    tag: v0.55.1
 
 npu_exporter:
   image:
@@ -73,6 +88,26 @@ dcgm_exporter:
   # Comment the following line to stop profiling metrics from DCGM
   arguments: [ "-f", "/etc/dcgm-exporter/dcp-metrics-included.csv" ]
 
+kubeStateMetrics:
+  image:
+    repository: kubesphere/kube-state-metrics
+    pullPolicy: IfNotPresent
+    tag: v2.6.0
+
+kubeRBACProxy:
+  image:
+    repository: kubesphere/kube-rbac-proxy
+    pullPolicy: IfNotPresent
+    tag: v0.11.0
+
+nodeExporter:
+  image:
+    repository: prom/node-exporter
+    pullPolicy: IfNotPresent
+    tag: v1.3.1
+
 defaultImageRegistry: ""
-imagePullSecrets: []
+edgeImageRegistry: ""
+imagePullSecrets:
+- name: "abc"
 clusterType: "auto"

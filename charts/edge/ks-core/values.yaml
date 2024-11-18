@@ -58,6 +58,13 @@ config:
   edgewizeota: {}
   edgewizerule: {}
   edgewizemessage: {}
+  logging:
+    host: https://opensearch-cluster-data.kubesphere-logging-system.svc:9200
+    basicAuth: true
+    username: admin
+    password: admin
+    indexPrefix: edgeCluster-edge-logging
+    version: ""
   alerting:
     endpoint: ""
     prometheusEndpoint: ""
