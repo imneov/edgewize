@@ -104,7 +104,7 @@ Create the name of the service account to use
 {{- $registry = .global.defaultImageRegistry -}}
 {{- end -}}
 {{- if $registry -}}
-{{- trimSuffix "/" $registry -}}/{{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
+{{- trimSuffix "/" $registry -}}/{{- .imageInfo.repository -}}:{{- .imageInfo.tagKylinV10 -}}
 {{- else -}}
 {{- .imageInfo.repository -}}:{{- .imageInfo.tag -}}
 {{- end -}}
