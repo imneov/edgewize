@@ -77,6 +77,8 @@ spec:
               readOnly: true
             - name: edgecluster-service
               mountPath: /etc/edgewize/edgecluster-services/
+            - name: edgewize-gateway-middlewares
+              mountPath: /etc/edgewize/middleware-config/
           {{- if .Values.gateway.extraVolumeMounts }}
           {{- include "common.tplvalues.render" (dict "value" .Values.gateway.extraVolumeMounts "context" $) | nindent 12 }}
           {{- end }}
@@ -96,6 +98,10 @@ spec:
         - name: edgecluster-service
           configMap:
             name: edgecluster-service
+        - name: edgewize-gateway-middlewares
+          configMap:
+            name: edgewize-gateway-middlewares
+            defaultMode: 420
         {{- if .Values.controller.extraVolumes }}
         {{- include "common.tplvalues.render" (dict "value" .Values.controller.extraVolumes "context" $) | nindent 8 }}
         {{- end }}

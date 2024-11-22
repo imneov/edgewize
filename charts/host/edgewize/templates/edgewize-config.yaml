@@ -47,3 +47,27 @@ data:
         dnsNames:
           {{- toYaml .Values.gateway.dnsNames | nindent 8 }}
         {{- end }}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: edgewize-gateway-middlewares
+  namespace: edgewize-system
+  annotations:
+    kubesphere.io/creator: admin
+data:
+  middleware.yaml: |-
+    cloudhub:
+      websocket_rate_limit:
+        upbyterate: 200
+        upburstlimit: 409600
+        downbyterate: 200
+        downburstlimit: 409600
+        timewindow: 1
+    tunnelport:
+      websocket_rate_limit:
+        upbyterate: 200
+        upburstlimit: 409600
+        downbyterate: 200
+        downburstlimit: 409600
+        timewindow: 1
