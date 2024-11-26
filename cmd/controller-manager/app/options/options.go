@@ -42,12 +42,12 @@ import (
 const ClusterRoleEnv = "ROLE"
 
 type KubeSphereControllerManagerOptions struct {
-	KubernetesOptions *k8s.KubernetesOptions
-	EdgeWizeOptions   *edgewize.Options
-	LeaderElect       bool
-	LeaderElection    *leaderelection.LeaderElectionConfig
-	WebhookCertDir    string
-	AlertingOptions   *alerting.Options
+	KubernetesOptions *k8s.KubernetesOptions               `json:"kubernetes_options,omitempty"`
+	EdgeWizeOptions   *edgewize.Options                    `json:"edge_wize_options,omitempty"`
+	LeaderElect       bool                                 `json:"leader_elect,omitempty"`
+	LeaderElection    *leaderelection.LeaderElectionConfig `json:"leader_election,omitempty"`
+	WebhookCertDir    string                               `json:"webhook_cert_dir,omitempty"`
+	AlertingOptions   *alerting.Options                    `json:"alerting_options,omitempty"`
 
 	// KubeSphere is using sigs.k8s.io/application as fundamental object to implement Application Management.
 	// There are other projects also built on sigs.k8s.io/application, when KubeSphere installed along side
@@ -56,7 +56,7 @@ type KubeSphereControllerManagerOptions struct {
 	//    For example
 	//      "kubesphere.io/creator=" means reconcile applications with this label key
 	//      "!kubesphere.io/creator" means exclude applications with this key
-	ApplicationSelector string
+	ApplicationSelector string `json:"application_selector,omitempty"`
 
 	// ControllerGates is the list of controller gates to enable or disable controller.
 	// '*' means "all enabled by default controllers"
@@ -66,15 +66,18 @@ type KubeSphereControllerManagerOptions struct {
 	//     e.g. '-foo,foo' means "disable foo", 'foo,-foo' means "enable foo"
 	// * has the lowest priority.
 	//     e.g. *,-foo, means "disable 'foo'"
-	ControllerGates []string
+	ControllerGates []string `json:"controller_gates,omitempty"`
+
+	// Enable update deployments or not.
+	UpdateDeploymentsEnabled bool `json:"update_deployments_enabled,omitempty"`
 
 	// Enable gops or not.
-	GOPSEnabled bool
+	GOPSEnabled bool `json:"gops_enabled,omitempty"`
 
 	// Cluster Role for Controller Manager to enable or disable controllers
 	// 'host' means all alert rule groups controllers will be disabled
 	// not equals to 'host' means all cluster controllers will be disabled
-	Role string
+	Role string `json:"role,omitempty"`
 }
 
 func NewKubeSphereControllerManagerOptions() *KubeSphereControllerManagerOptions {
@@ -121,6 +124,9 @@ func (s *KubeSphereControllerManagerOptions) Flags(allControllerNameSelectors []
 		"A list of controllers to enable. '*' enables all on-by-default controllers, 'foo' enables the controller "+
 		"named 'foo', '-foo' disables the controller named 'foo'.\nAll controllers: %s",
 		strings.Join(allControllerNameSelectors, ", ")))
+
+	gfs.BoolVar(&s.UpdateDeploymentsEnabled, "update-deployments", s.UpdateDeploymentsEnabled, "Whether to enable update deployments or not. "+
+		"When enabled this option, controller-manager will update deployments when apptemplateversion changes.")
 
 	gfs.BoolVar(&s.GOPSEnabled, "gops", s.GOPSEnabled, "Whether to enable gops or not.  When enabled this option, "+
 		"controller-manager will listen on a random port on 127.0.0.1, then you can use the gops tool to list and diagnose the controller-manager currently running.")

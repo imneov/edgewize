@@ -17,10 +17,12 @@ limitations under the License.
 package app
 
 import (
-	"github.com/edgewize-io/edgewize/pkg/controller/imservicegroup"
 	"time"
 
+	"github.com/edgewize-io/edgewize/pkg/controller/imservicegroup"
+
 	"github.com/edgewize-io/edgewize/pkg/controller/apptemplate"
+	"github.com/edgewize-io/edgewize/pkg/controller/apptemplateversion"
 	"github.com/edgewize-io/edgewize/pkg/controller/edgeappset"
 	"github.com/edgewize-io/edgewize/pkg/controller/imdeployment"
 	"github.com/edgewize-io/edgewize/pkg/controller/imtemplate"
@@ -72,6 +74,12 @@ func addAllControllers(mgr manager.Manager, client k8s.Client, informerFactory i
 		// "apptemplate" controller
 		appTemplateReconciler := &apptemplate.Reconciler{}
 		addControllerWithSetup(mgr, "apptemplate", appTemplateReconciler)
+
+		if cmOptions.UpdateDeploymentsEnabled {
+			// "apptemplateversion" controller
+			appTemplateVersionsReconciler := &apptemplateversion.Reconciler{}
+			addControllerWithSetup(mgr, "apptemplateversion", appTemplateVersionsReconciler)
+		}
 
 		imTemplateReconciler := &imtemplate.Reconciler{}
 		addControllerWithSetup(mgr, "imtemplate", imTemplateReconciler)

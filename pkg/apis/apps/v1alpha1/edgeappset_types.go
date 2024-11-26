@@ -31,6 +31,7 @@ const (
 	LabelNode                 = "apps.edgewize.io/node"
 	LabelAppTemplate          = "apps.edgewize.io/apptemplate"
 	LabelAppTemplateVersion   = "apps.edgewize.io/apptemplateversion"
+	LabelAppTemplateHash      = "apps.edgewize.io/apptemplatehash"
 	ImagePullSecretAnnotation = "apps.edgewize.io/image-pull-secret-synced"
 )
 
